@@ -1,0 +1,199 @@
+# 📖 ParsearFacturas - Manual del Proyecto
+
+**Versión:** 5.4  
+**Última actualización:** 31/12/2025  
+**Negocio:** TASCA BAREA S.L.L. (restaurante + distribución gourmet COMESTIBLES BAREA)
+
+---
+
+## 🎯 OBJETIVO DEL PROYECTO
+
+Automatizar el flujo completo de facturas de proveedores:
+
+```
+📧 Gmail → 📄 PDF → 🔍 Extracción → 📊 Categorización → 💳 Pago SEPA
+```
+
+**Meta final:** Cada viernes a las 07:00, el sistema descarga facturas, las procesa y genera ficheros SEPA para pagar automáticamente.
+
+---
+
+## 📊 ESTADO ACTUAL (31/12/2025)
+
+| Componente | Estado | Progreso |
+|------------|--------|----------|
+| **ParsearFacturas** | ✅ Funcional | v5.4 - 140+ extractores |
+| **Categorización** | ✅ Funcional | Fuzzy matching 80% |
+| **Generador SEPA** | ✅ Prototipo | Falta validación IBAN |
+| **Extractor Gmail** | 🟡 OAuth2 OK | Falta integrar |
+| **Orquestador** | ❌ Pendiente | - |
+
+**Métricas ParsearFacturas v5.4:**
+- Cuadre OK: **~60%**
+- Con líneas: **~85%**
+- Objetivo: **80%**
+
+---
+
+## 🗂️ TABLAS DEL SISTEMA
+
+| Tabla | Origen | Contenido | Uso |
+|-------|--------|-----------|-----|
+| ARTICULOS LOYVERSE | Loyverse POS | 578 artículos venta | Análisis márgenes |
+| VENTAS POR ARTICULOS | Loyverse | Ventas detalladas | Análisis ventas |
+| COMPRAS POR ARTICULOS | Este proyecto | 698 artículos, 116 categorías | Análisis costes |
+| FACTURAS | Facturas procesadas | Código, Proveedor, Fecha, Total | Contabilidad |
+| MOVIMIENTOS BANCO | Banco Sabadell N43 | Movimientos TASCA + COMESTIBLES | Conciliación |
+| PROVEEDORES | Manual + facturas | Nombre, CIF, IBAN, método pago | SEPA |
+
+---
+
+## 🚀 USO BÁSICO
+
+### Procesar facturas de un trimestre
+
+```cmd
+cd C:\_ARCHIVOS\TRABAJO\Facturas\ParsearFacturas-main
+
+python main.py -i "C:\...\FACTURAS 2025\FACTURAS RECIBIDAS\4 TRI 2025"
+```
+
+**Salida:**
+- `outputs/Facturas_4T25.xlsx` - Excel con líneas extraídas
+- `outputs/log_YYYYMMDD_HHMM.txt` - Log de procesamiento
+
+### Probar un extractor específico
+
+```cmd
+python tests/probar_extractor.py "CERES" "factura.pdf"
+python tests/probar_extractor.py "CERES" "factura.pdf" --debug
+```
+
+### Listar extractores disponibles
+
+```cmd
+python main.py --listar-extractores
+```
+
+---
+
+## 📁 ESTRUCTURA DEL PROYECTO
+
+```
+ParsearFacturas-main/
+├── main.py                          # Script principal v5.4
+├── actualizar_diccionario.py        # Actualiza categorías
+├── generar_proveedores.py           # Genera PROVEEDORES.md
+│
+├── extractores/                     # 140+ extractores
+│   ├── __init__.py                  # Registro automático @registrar
+│   ├── base.py                      # Clase ExtractorBase
+│   ├── ceres.py                     # 1 archivo por proveedor
+│   ├── bm.py
+│   ├── lavapies.py                  # NUEVO 31/12
+│   └── ...
+│
+├── nucleo/                          # Funciones core
+├── salidas/                         # Generación Excel/logs
+├── datos/                           # DiccionarioProveedoresCategoria.xlsx
+├── config/                          # Configuración
+│
+├── docs/                            # Documentación
+│   ├── README.md                    # Este archivo
+│   ├── ESTADO_PROYECTO.md           # Estado actual
+│   ├── PROVEEDORES.md               # Lista extractores
+│   ├── LEEME_PRIMERO.md             # Guía rápida
+│   └── COMO_AÑADIR_EXTRACTOR.md     # Guía técnica
+│
+├── tests/                           # Testing
+└── outputs/                         # Salidas generadas
+```
+
+---
+
+## 🔧 REGLAS TÉCNICAS CRÍTICAS
+
+### 1. Siempre pdfplumber (OCR solo si es escaneado)
+```python
+metodo_pdf = 'pdfplumber'  # SIEMPRE por defecto
+metodo_pdf = 'ocr'         # SOLO si es imagen/escaneado
+metodo_pdf = 'hibrido'     # Si algunas facturas son escaneadas y otras no
+```
+
+### 2. Siempre líneas individuales
+```python
+# ❌ MAL (agrupado)
+lineas.append({'articulo': 'PRODUCTOS IVA 10%', 'base': 500.00})
+
+# ✅ BIEN (individual)
+lineas.append({'articulo': 'QUESO MANCHEGO', 'cantidad': 2, 'base': 15.50})
+```
+
+### 3. Portes: distribuir proporcionalmente
+```python
+# Los portes NUNCA van como línea separada
+if portes > 0:
+    for linea in lineas:
+        proporcion = linea['base'] / base_total
+        linea['base'] += portes * proporcion
+```
+
+### 4. Tolerancia de cuadre: 0.10€
+
+### 5. Formato números europeo
+```python
+def _convertir_europeo(self, texto):
+    # "1.234,56" → 1234.56
+    texto = texto.replace('.', '').replace(',', '.')
+    return float(texto)
+```
+
+### 6. Bug extraer_referencia (SOLUCIONADO en base.py)
+El método `extraer_referencia()` en `base.py` llama automáticamente a `extraer_numero_factura()` si existe. No hace falta añadir alias en cada extractor.
+
+---
+
+## 📋 RUTINA DE TRABAJO CON CLAUDE
+
+### Al INICIAR sesión:
+1. Subir estos archivos a Claude:
+   - `docs/ESTADO_PROYECTO.md`
+   - `docs/PROVEEDORES.md`
+   - `docs/LEEME_PRIMERO.md`
+   - Facturas PDF del proveedor a trabajar
+2. Decir: "Continúo proyecto ParsearFacturas v5.4. Tarea: [describir]"
+
+### Al CERRAR sesión:
+1. Pedir: "Prepara documentación de cierre"
+2. Descargar archivos actualizados
+3. Copiar a `docs/` y hacer commit:
+```cmd
+git add .
+git commit -m "Sesión DD/MM: [resumen cambios]"
+git push
+```
+
+### Si añades extractores:
+1. Copiar archivos `.py` a `extractores/`
+2. Limpiar caché: `rmdir /s /q extractores\__pycache__`
+3. Ejecutar: `python generar_proveedores.py`
+4. Hacer commit de todo
+
+---
+
+## 🔗 ENLACES ÚTILES
+
+- **Repositorio:** https://github.com/TascaBarea/ParsearFacturas
+- **Dropbox facturas:** `Dropbox/File inviati/TASCA BAREA S.L.L/CONTABILIDAD/FACTURAS 2025`
+- **Banco Sabadell:** BS Online para SEPA
+
+---
+
+## 📞 SOPORTE
+
+Este proyecto se desarrolla con asistencia de Claude (Anthropic).
+Para continuar el trabajo, usa el patrón descrito en "Rutina de trabajo con Claude".
+
+---
+
+*Documento actualizado: 31/12/2025*
