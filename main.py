@@ -1,28 +1,8 @@
 #!/usr/bin/env python3
 """
-PARSEAR FACTURAS
-================
+PARSEAR FACTURAS v5.10
+======================
 Sistema modular para extraccion y procesamiento de facturas.
-
-CAMBIOS v5.16 (07/01/2026):
-- NUEVO: Asignación automática TEMP001, TEMP002... para archivos sin número de gestoría
-- Los archivos tipo "4T25 1020 PROVEEDOR TF.pdf" reciben TEMP001_4T25, etc.
-- Contador TEMP reinicia por trimestre dentro de cada ejecución
-- FIX: Extractores BERZAL, MADRUEÑO, ECOMS, EMBUTIDOS FERRIOL corregidos
-
-CAMBIOS v5.12 (04/01/2026):
-- NUEVO: Sistema inteligente de normalización de proveedores
-- NUEVO: 150+ alias auto-generados para unificar proveedores fragmentados
-- NUEVO: Módulo identificador_proveedor.py con fuzzy matching
-- NUEVO: Detección por CIF del PDF como prioridad
-- FIX: Proveedores como "2T25 0512 CERES" ahora se normalizan a "CERES"
-- FIX: Typos como "VIRGEN DE LA SIERA" se corrigen automáticamente
-
-CAMBIOS v5.11 (04/01/2026):
-- SOPORTE OCR: Extractores con metodo_pdf='ocr' procesan imágenes
-- SOPORTE JPG: Ahora busca archivos .pdf, .jpg, .jpeg, .png
-- Nuevos extractores OCR: tirso.py, la_cuchara.py
-- Fix bug doble IVA en bernal.py
 
 CAMBIOS v5.10 (04/01/2026):
 - Mensaje SIN_PROVEEDOR reemplazado por mensajes más específicos:
@@ -117,8 +97,7 @@ from nucleo.parser import (
     extraer_cif,
     extraer_iban,
     extraer_total,
-    extraer_referencia,
-    resetear_contadores_temp  # v5.16: Reset contadores TEMP por trimestre
+    extraer_referencia
 )
 from nucleo.validacion import validar_cuadre, validar_factura
 from extractores import obtener_extractor, listar_extractores, EXTRACTORES
@@ -241,11 +220,6 @@ ALIAS_DICCIONARIO = {
     'TIRSO PAPEL Y BOLSAS SL': 'TIRSO PAPEL Y BOLSAS',
     'TIRSO PAPAEL Y BOLSAS': 'TIRSO PAPEL Y BOLSAS',  # typo en archivos
     'TIRSO PAPAEL Y BOLSAS SL': 'TIRSO PAPEL Y BOLSAS',
-    # LA CUCHARA GOURMET (NUEVO 04/01/2026)
-    'LA CUCHARA': 'LA CUCHARA GOURMET',
-    'LA CUCHARA LAVAPIES': 'LA CUCHARA GOURMET',
-    'CUCHARA LAVAPIES': 'LA CUCHARA GOURMET',
-    'LA CUCHARA GOURMET SL': 'LA CUCHARA GOURMET',
     # LA CONSERVERA DEL PREPIRINEO (NUEVO 01/01/2026)
     'CONSERVERA PREPIRINEO': 'LA CONSERVERA DEL PREPIRINEO',
     'CONSERVERA DEL PREPIRINEO': 'LA CONSERVERA DEL PREPIRINEO',
@@ -322,329 +296,6 @@ ALIAS_DICCIONARIO = {
     # JULIO GARCIA VIVAS
     'GARCIA VIVAS': 'JULIO GARCIA VIVAS',
     'GARCIA VIVAS JULIO': 'JULIO GARCIA VIVAS',
-    
-    # ========== ALIAS AUTO-GENERADOS v5.12 (04/01/2026) ==========
-    
-    # ABBATI
-    '2T25 0430 ABBATI CAFFE': 'ABBATI',
-    'ABBATI CAFE': 'ABBATI',
-    'CAFFE ABBATI': 'ABBATI',
-    
-    # ALFARERIA ANGEL Y LOLI
-    'ALFARERIA ANGEL Y LOLI': 'ANGEL Y LOLI',
-    'ANGEL Y LOLI ALFARERIA': 'ANGEL Y LOLI',
-    
-    # ANTHROPIC
-    '4T 1108 ANTHROPIC': 'ANTHROPIC',
-    '4T25 1120 ANTHROPIC': 'ANTHROPIC',
-    '4T25 1224 ANTHROPIC': 'ANTHROPIC',
-    
-    # ARTESANOS DEL MOLLETE
-    'ARTESANOS DEL MOLLETE': 'MOLLETES ARTESANOS',
-    'MOLLETES ARTESANOS DE ANTEQUERA': 'MOLLETES ARTESANOS',
-    'MOLLETES': 'MOLLETES ARTESANOS',
-    
-    # BENJAMIN ORTEGA (con fechas)
-    '2T25 0401 BENJAMIN ORTEGA OJO RETENCION': 'BENJAMIN ORTEGA',
-    '2T25 0501 BENJAMIN ORTEGA OJO RETENCION': 'BENJAMIN ORTEGA',
-    '2T25 0601 BENJAMIN ORTEGA OJO RETENCION': 'BENJAMIN ORTEGA',
-    '3T25 0701 BENJAMIN ORTEGA RETENCION': 'BENJAMIN ORTEGA',
-    '3T25 0801 BENJAMIN ORTEGA RETENCION': 'BENJAMIN ORTEGA',
-    '3T25 0901 BENJAMIN ORTEGA RETENCION': 'BENJAMIN ORTEGA',
-    'BENJAMIN ORTEGA ALONSO': 'BENJAMIN ORTEGA',
-    
-    # BERZAL
-    '10011 BERZAL HERMANOS': 'BERZAL',
-    
-    # BM SUPERMERCADOS (unificación)
-    '1T25 0213 BM SUPERMERCADOS': 'BM SUPERMERCADOS',
-    '1T25 0213 BM SUPERMERCADOS 3': 'BM SUPERMERCADOS',
-    'BM': 'BM SUPERMERCADOS',
-    '2 BM': 'BM SUPERMERCADOS',
-    'BM SUPERMERCADOS 2': 'BM SUPERMERCADOS',
-    'BM SUPERMERCADOS 3': 'BM SUPERMERCADOS',
-    'SUPERMERCADOS BM': 'BM SUPERMERCADOS',
-    'SUPERMERCADOS BM 2': 'BM SUPERMERCADOS',
-    
-    # BODEGAS BORBOTON
-    '1T25 0109 BODEGAS BORBOTON': 'BODEGAS BORBOTON',
-    'BORBOTON': 'BODEGAS BORBOTON',
-    
-    # CARLOS NAVAS / QUESERIA NAVAS
-    'QUESERIA CARLOS NAVAS': 'CARLOS NAVAS',
-    'QUESERIA NAVAS': 'CARLOS NAVAS',
-    'QUESOS NAVAS': 'CARLOS NAVAS',
-    
-    # CARRASCAL
-    'JOSE LUIS SANCHEZ EL CARRASCAL': 'CARRASCAL',
-    
-    # CASA DEL DUQUE
-    'CASA DEL DUQUE SL': 'CASA DEL DUQUE',
-    'T25 1206 CASA DEL DUQUE': 'CASA DEL DUQUE',
-    
-    # CELONIS
-    '3T25 0815 CELONIS': 'CELONIS',
-    '4T25 1015 CELONIS .': 'CELONIS',
-    '4T25 1015 CELONIS TJ.': 'CELONIS',
-    
-    # CERES (eliminar prefijos de fecha)
-    '1T25 0211 CERES OJO SIN APUNTE': 'CERES',
-    '1T25 0328 CERES': 'CERES',
-    '2T25 0401 CERES': 'CERES',
-    '2T25 0422 CERES': 'CERES',
-    '2T25 0425 CERES': 'CERES',
-    '2T25 0520 CERES': 'CERES',
-    '2T25 0523 CERES': 'CERES',
-    '2T25 0527 CERES': 'CERES',
-    '2T25 0610 CERES': 'CERES',
-    '2T25 0620 CERES': 'CERES',
-    'ATRASADA 1T25 0328 CERES': 'CERES',
-    'CERES 2': 'CERES',
-    
-    # CONSERVERA PREPIRINEO
-    'LA CONSERVERA DEL PREPIRINEO': 'CONSERVERA PREPIRINEO',
-    
-    # DE LUIS SABORES UNICOS
-    'DE LUIS': 'DE LUIS SABORES UNICOS',
-    
-    # DEBORA GARCIA TOLEDANO
-    'BEDORAH GARCIA TOLEDANO': 'DEBORA GARCIA TOLEDANO',
-    'DEBORAH GARCIA': 'DEBORA GARCIA TOLEDANO',
-    
-    # DIA
-    'DIA': 'DIA',
-    '2DIA': 'DIA',
-    'GRUPO DIA': 'DIA',
-    
-    # DISTRIBUCIONES LAVAPIES
-    '1T25 0225 ASOCIACION COMERCIANTES LAVAPIES': 'DISTRIBUCIONES LAVAPIES',
-    '2T25 0414 ASOCIACION COMERCIANTES LAVAPIES': 'DISTRIBUCIONES LAVAPIES',
-    '4T25 1031 PANIFIESTO LAVAPIES': 'DISTRIBUCIONES LAVAPIES',
-    'ASOCIACION COMERCIANTES LAVAPIES': 'DISTRIBUCIONES LAVAPIES',
-    
-    # ECOFICUS
-    '3T25 0908 ECOFICUS': 'ECOFICUS',
-    
-    # ECOMS
-    'ECOMS S': 'ECOMS',
-    'ECOMS SUPERMARKET': 'ECOMS',
-    'ECOMS SUPERMARKET SL': 'ECOMS',
-    
-    # EMBUTIDOS BERNAL / JAMONES BERNAL
-    '4T25 1116 JAMONES Y EMBUTIDOS BERNAL': 'JAMONES BERNAL',
-    'EMBUTIDOS BERNAL': 'JAMONES BERNAL',
-    
-    # EMBUTIDOS FERRIOL
-    'EMBUTIDOS FERIOL': 'EMBUTIDOS FERRIOL',
-    
-    # FABEIRO
-    '02218 FABEIRO': 'FABEIRO',
-    '0731 FABEIRO': 'FABEIRO',
-    
-    # FELISA GOURMET
-    'FELISA': 'FELISA GOURMET',
-    
-    # FISHGOURMET
-    'FISH GOURMET': 'FISHGOURMET',
-    
-    # GADITAUN
-    'GADITAUN MARILILNA': 'GADITAUN',
-    'GARDITAUN MARIA LINAREJOS': 'GADITAUN',
-    
-    # GRUPO DISBER
-    'GRUPO DISBER 2': 'GRUPO DISBER',
-    
-    # GRUPO TERRITORIO CAMPERO
-    'TERRITORIO CAMPERO': 'GRUPO TERRITORIO CAMPERO',
-    
-    # HERNANDEZ SUMINISTROS
-    'HERNANDEZ SUMINISTROS HOSTELEROS': 'HERNANDEZ SUMINISTROS',
-    'Hernández Suministros': 'HERNANDEZ SUMINISTROS',
-    
-    # IBARRAKO PIPARRAK
-    'IBARRAKO PIPPARRAK': 'IBARRAKO PIPARRAK',
-    
-    # ISTA
-    'ISTA 2': 'ISTA',
-    
-    # JAIME FERNANDEZ (con fechas)
-    '2T25 0401 JAIME FERNANDEZ OJO RETENCION': 'JAIME FERNANDEZ',
-    '2T25 0501 JAIME FERNANDEZ OJO RETENCION': 'JAIME FERNANDEZ',
-    '2T25 0601 JAIME FERNANDEZ OJO RETENCION': 'JAIME FERNANDEZ',
-    '3T25 0701 JAIME FERNANDEZ RETENCION': 'JAIME FERNANDEZ',
-    '3T25 0801 JAIME FERNANDEZ RETENCION': 'JAIME FERNANDEZ',
-    '3T25 0901 JAIME FERNANDEZ RETENCION': 'JAIME FERNANDEZ',
-    
-    # JIMELUZ
-    '1T25 0112 JIMELUZ': 'JIMELUZ',
-    '2T25 0525 JIMELUZ EF (1)': 'JIMELUZ',
-    'JIMELUZ SL': 'JIMELUZ',
-    
-    # JULIO GARCIA VIVAS (con fechas)
-    '1T25 0131 JULIO GARCIA VIVAS': 'JULIO GARCIA VIVAS',
-    '1T25 0331 JULIO GARCIA VIVAS': 'JULIO GARCIA VIVAS',
-    '2T25 0430 JULIO GARCIA VIVAS': 'JULIO GARCIA VIVAS',
-    '2T25 0531 JULIO GARCIA VIVAS': 'JULIO GARCIA VIVAS',
-    '2T25 0630 JULIO GARCIA VIVAS': 'JULIO GARCIA VIVAS',
-    '3T25 0831 JULIO GARCIA VIVAS': 'JULIO GARCIA VIVAS',
-    '3T25 0930 JULIO GARCIA VIVAS': 'JULIO GARCIA VIVAS',
-    '4T25 1031 GARCIA VIVAS JULIO': 'JULIO GARCIA VIVAS',
-    '4T25 1130 JULIO GARCIA VIVAS': 'JULIO GARCIA VIVAS',
-    
-    # KINEMA
-    'COOPERATIVA KINEMA': 'KINEMA',
-    
-    # LA ALACENA
-    'CONSERVAS LA ALACENA': 'LA ALACENA',
-    
-    # LA BARRA DULCE
-    'LA BARRA DULCE S.L': 'LA BARRA DULCE',
-    
-    # LA CUCHARA GOURMET
-    '0731LA CUCHARA': 'LA CUCHARA GOURMET',
-    '0731LA CUCHARA 2': 'LA CUCHARA GOURMET',
-    
-    # LA LLEIDIRIA / LA LLILDIRIA (unificar variantes)
-    'LA LLEIDIRIA': 'LA LLILDIRIA',
-    
-    # LA MOLIENDA VERDE
-    '4T24 0114 LA MOLIENDA VERDE': 'LA MOLIENDA VERDE',
-    'LA MOLIENDA VERDE.': 'LA MOLIENDA VERDE',
-    
-    # LA PURISIMA
-    '01134 LA PURISIMA': 'LA PURISIMA',
-    'BODEGAS LA PURISIMA': 'LA PURISIMA',
-    
-    # LA ROSQUILLERIA
-    'LA ROSQUILLERIA S.L.U.': 'LA ROSQUILLERIA',
-    
-    # LICORES MADRUEÑO
-    'LICORES MADRUEÑO 2': 'LICORES MADRUEÑO',
-    
-    # LIDL
-    '1T25 0328 LIDL': 'LIDL',
-    
-    # LOS GREDALES
-    'BODEGA LOS GREDALES': 'LOS GREDALES',
-    
-    # MAKRO (NUEVO)
-    'MAKRO': 'MAKRO',
-    'MAKRO DISTRIBUCION': 'MAKRO',
-    'MAKRO DISTRIBUCION MAYORISTA': 'MAKRO',
-    
-    # MANIPULADOS ABELLAN
-    'EL LABRADOR': 'MANIPULADOS ABELLAN',
-    
-    # MARITA COSTA
-    'MARITA': 'MARITA COSTA',
-    
-    # MARTIN ABENZA
-    'MARTIN ARBENZA': 'MARTIN ABENZA',
-    'MARTIN ARBENZA EL MODESTO': 'MARTIN ABENZA',
-    
-    # MIGUEZ CAL
-    'FORPLAN MIGUEZ CAL': 'MIGUEZ CAL',
-    
-    # MONTBRIONE
-    'COOPERATIVA MONTBRIO': 'MONTBRIONE',
-    'COOPERATIVA MONTBRIONE': 'MONTBRIONE',
-    
-    # MRM
-    '1T25 0213 MRM': 'MRM',
-    '1T25 0213 MRM 2': 'MRM',
-    'MRM 2': 'MRM',
-    'O225 MRM': 'MRM',
-    
-    # OPENAI
-    'OPEN AI': 'OPENAI',
-    
-    # PABLO RUIZ
-    'PABLO RUIZ LA DOLOROSA': 'PABLO RUIZ',
-    
-    # PANIFIESTO (con fechas)
-    '1T25 0131 PANIFIESTO': 'PANIFIESTO',
-    '1T25 0228 PANIFIESTO': 'PANIFIESTO',
-    '1T25 0331 PANIFIESTO': 'PANIFIESTO',
-    '2T25 0430 PANIFIESTO': 'PANIFIESTO',
-    '2T25 0531 PANIFIESTO': 'PANIFIESTO',
-    '2T25 0630 PANIFIESTO': 'PANIFIESTO',
-    '3T25 0732 PANIFIESTO': 'PANIFIESTO',
-    '3T25 0831 PANIFIESTO': 'PANIFIESTO',
-    '3T25 0930 PANIFIESTO': 'PANIFIESTO',
-    'PANIFIESTO LAVAPIES': 'PANIFIESTO',
-    
-    # PILAR RODRIGUEZ
-    'EL MAJADAL PILAR RODRIGUEZ': 'PILAR RODRIGUEZ',
-    'PILAR RODRIGUEZ EL MAJADAL': 'PILAR RODRIGUEZ',
-    'PILAR RODRIGUEZ MAJADAL': 'PILAR RODRIGUEZ',
-    
-    # PORVAZ / CONSERVAS TITO
-    'PORVAZ CONSERVAS TITO': 'PORVAZ',
-    
-    # QUESERIA ZUCCA
-    'FORMAGGIARTE ZUCCA': 'QUESERIA ZUCCA',
-    'ZUCCA FORMAGGIARTE': 'QUESERIA ZUCCA',
-    
-    # QUESOS DEL CATI
-    'QUESOS DEL CATÍ': 'QUESOS DEL CATI',
-    
-    # QUESOS SILVA CORDERO
-    'QUESOS SILVA CORDERO': 'SILVA CORDERO',
-    
-    # SABORES DE PATERNA
-    'SABORES PATERNA': 'SABORES DE PATERNA',
-    
-    # SERRIN NO CHAN
-    'SERRIN NO CHAO': 'SERRIN NO CHAN',
-    'SERRIN NOCHAO': 'SERRIN NO CHAN',
-    
-    # SOM ENERGIA
-    '2T25 0527 SOM ENERGIA': 'SOM ENERGIA',
-    '2T25 0527 SOM ENERGIA 2': 'SOM ENERGIA',
-    'SOM ENERGIA 2': 'SOM ENERGIA',
-    'SOM ENERGIA COM.': 'SOM ENERGIA',
-    'SOM ENERGIA COMESTIBLES': 'SOM ENERGIA',
-    'SOM ENERGIA RODAS': 'SOM ENERGIA',
-    'SOM ENERGIA TAS.': 'SOM ENERGIA',
-    
-    # TIRSO
-    'BOLSAS TIRSO': 'TIRSO',
-    'TIRSO PAPEL Y BOLSAS': 'TIRSO',
-    'TIRSO PAPEL Y BOLSAS SL': 'TIRSO',
-    
-    # TRUCCO
-    '2T25 0523 ISAAC RODRIGUEZ TRUCCO COPIAS': 'TRUCCO',
-    'ISAAC RODRIGUEZ TRUCCO COPIAS': 'TRUCCO',
-    'TRUCCO COPIAS': 'TRUCCO',
-    'TRUCCO COPIAS ISAAC RODRIGUEZ': 'TRUCCO',
-    'TRUCCO ISSAC RODRIGUEZ': 'TRUCCO',
-    
-    # VINOS DE ARGANZA
-    '1T25 0312 VINOS DE ARGANZA': 'VINOS DE ARGANZA',
-    'VINOS DE ARGANZA SL': 'VINOS DE ARGANZA',
-    
-    # VIRGEN DE LA SIERRA (todas las variantes)
-    '1T25 0311 VIRGEN DE LA SIERRA': 'VIRGEN DE LA SIERRA',
-    '2T 0512 BODEGA VIRGEN DE LA SIERRA': 'VIRGEN DE LA SIERRA',
-    'BODEGA VIRGEN DE LA SIERRA': 'VIRGEN DE LA SIERRA',
-    'BODEGA VIRGEN DE LA SIERRA COOP': 'VIRGEN DE LA SIERRA',
-    'BODEGAS VIRGEN DE LA SIERRA': 'VIRGEN DE LA SIERRA',
-    'COOPERATIVA VIRGEN DE LA SIERRA': 'VIRGEN DE LA SIERRA',
-    'VIRGEN DE LA SIERA': 'VIRGEN DE LA SIERRA',  # typo corregido
-    
-    # WEBEMPRESA
-    '1T25 0326 WEBEMPRESA': 'WEBEMPRESA',
-    'WEBEMPRESA EUROPA': 'WEBEMPRESA',
-    
-    # WELLDONE
-    'WELLDONE LACTICOS': 'WELLDONE',
-    
-    # YOIGO
-    'XFERA YOIGO': 'YOIGO',
-    'YOIGO XFERA': 'YOIGO',
-    
-    # ZUBELZU
-    'ZUBELZU PIPARRAK': 'ZUBELZU',
 }
 
 
@@ -673,56 +324,24 @@ TOLERANCIA_RETENCION = 0.50
 
 
 # ============================================================================
-# CATEGORÍAS FIJAS POR PROVEEDOR (NUEVO v5.12)
-# ============================================================================
-
-# Proveedores que SIEMPRE tienen la misma categoría, sin necesidad de extractor.
-# El extractor genérico asignará esta categoría a todas las líneas.
-CATEGORIAS_FIJAS_PROVEEDOR = {
-    # Electricidad
-    'LUCERA': 'ELECTRICIDAD LOCAL',
-    'ENERGIA COLECTIVA': 'ELECTRICIDAD LOCAL',
-    'ENERGIA COLECTIVA LUCERA': 'ELECTRICIDAD LOCAL',
-    'SOM ENERGIA': 'ELECTRICIDAD LOCAL',
-    # Telefonía
-    'YOIGO': 'TELEFONO',
-    'XFERA YOIGO': 'TELEFONO',
-    # Web/Software
-    'WEBEMPRESA': 'WEB Y SOFTWARE',
-    'ANTHROPIC': 'WEB Y SOFTWARE',
-    'OPENAI': 'WEB Y SOFTWARE',
-    'CELONIS': 'WEB Y SOFTWARE',
-}
-
-
-# ============================================================================
-# FUNCIÓN: Normalizar nombre de proveedor (MEJORADA v5.12)
+# FUNCIÓN: Normalizar nombre de proveedor (MEJORADA v5.7)
 # ============================================================================
 
 def normalizar_proveedor(nombre: str) -> str:
     """
     Normaliza nombre de proveedor:
-    1. PRIMERO busca alias exacto del nombre original (para casos con fecha)
-    2. Quita prefijos de fecha/referencia (ej: "4T25 1031", "ATRASADA")
-    3. Quita sufijos OJO, RETENCION, etc.
-    4. Quita sufijos de tipo factura (TF, TR, TJ, EF, RC)
-    5. Quita sufijos numéricos (ej: " 2")
-    6. Aplica mapeo de alias conocidos
-    
-    v5.12: Busca alias ANTES de limpiar, para capturar variantes con fecha.
+    1. Quita prefijos de fecha/referencia (ej: "4T25 1031", "ATRASADA")
+    2. Quita sufijos numéricos (ej: " 2")
+    3. Quita sufijos de tipo factura (TF, TR, TJ, EF, RC)
+    4. Aplica mapeo de alias conocidos
     """
     if not nombre:
         return ""
     
-    nombre_original = nombre.strip().upper()
-    
-    # v5.12: PRIMERO buscar el nombre original completo en alias
-    # Esto captura casos como "2T25 0422 CERES" -> "CERES"
-    if nombre_original in ALIAS_DICCIONARIO:
-        return ALIAS_DICCIONARIO[nombre_original]
+    nombre_original = nombre
     
     # Paso 1: Quitar prefijos tipo "4T25 1031 " o "1T25 0331 "
-    nombre = re.sub(r'^\d[TQ]\d{2}\s+\d{3,4}\s+', '', nombre_original)
+    nombre = re.sub(r'^\d[TQ]\d{2}\s+\d{3,4}\s+', '', nombre)
     
     # Paso 1b: Quitar prefijo "ATRASADA" o "ATRASADA 3T25" etc.
     nombre = re.sub(r'^ATRASADA\s*(\d[TQ]\d{2})?\s*\d*\s*', '', nombre, flags=re.IGNORECASE)
@@ -733,30 +352,22 @@ def normalizar_proveedor(nombre: str) -> str:
     # Paso 1d: Quitar prefijo número solo "442 "
     nombre = re.sub(r'^\d{3,4}\s+', '', nombre)
     
-    # Paso 1e: v5.12 - Quitar prefijo "2T " sin año
-    nombre = re.sub(r'^\d[TQ]\s+', '', nombre)
+    # Paso 2: Quitar sufijos tipo factura: TF, TR, TJ, EF, RC (con o sin punto)
+    nombre = re.sub(r'\s+(TF|TR|TJ|EF|RC|EG)\.?$', '', nombre, flags=re.IGNORECASE)
     
-    # Paso 2: Quitar extensión .pdf si quedó
-    nombre = re.sub(r'\.pdf$', '', nombre, flags=re.IGNORECASE)
-    
-    # Paso 3: v5.12 - Quitar sufijos OJO y similares PRIMERO
-    nombre = re.sub(r'\s+OJO.*$', '', nombre, flags=re.IGNORECASE)
-    nombre = re.sub(r'\s+RETENCION.*$', '', nombre, flags=re.IGNORECASE)
-    nombre = re.sub(r'\s+SIN\s+APUNTE.*$', '', nombre, flags=re.IGNORECASE)
-    
-    # Paso 4: Quitar sufijos tipo factura: TF, TR, TJ, EF, RC, REC
-    nombre = re.sub(r'\s+(TF|TR|TJ|EF|RC|REC|EG)\.?$', '', nombre, flags=re.IGNORECASE)
-    
-    # Paso 5: Quitar sufijos numéricos tipo " 2" o " 3"
+    # Paso 3: Quitar sufijos numéricos tipo " 2" o " 3"
     nombre = re.sub(r'\s+\d+$', '', nombre)
+    
+    # Paso 4: Quitar extensión .pdf si quedó
+    nombre = re.sub(r'\.pdf$', '', nombre, flags=re.IGNORECASE)
     
     nombre = nombre.strip().upper()
     
-    # Paso 6: Aplicar mapeo de alias
+    # Paso 5: Aplicar mapeo de alias
     if nombre in ALIAS_DICCIONARIO:
         return ALIAS_DICCIONARIO[nombre]
     
-    # Paso 7: Buscar coincidencia parcial en alias (para nombres con errores)
+    # Paso 6: Buscar coincidencia parcial en alias (para nombres con errores)
     for alias, normalizado in ALIAS_DICCIONARIO.items():
         # Si el nombre contiene el alias completo
         if alias in nombre:
@@ -1011,8 +622,6 @@ def categorizar_linea(linea, proveedor: str, indice: dict, tiene_extractor: bool
         proveedor: Nombre del proveedor
         indice: Diccionario de categorías
         tiene_extractor: True si hay extractor específico, False si usa genérico
-    
-    v5.12: Añadido soporte para CATEGORIAS_FIJAS_PROVEEDOR
     """
     import pandas as pd
     
@@ -1022,20 +631,6 @@ def categorizar_linea(linea, proveedor: str, indice: dict, tiene_extractor: bool
         return
     
     prov_normalizado = normalizar_proveedor(proveedor)
-    
-    # v5.12: Verificar si el proveedor tiene categoría fija
-    if prov_normalizado in CATEGORIAS_FIJAS_PROVEEDOR:
-        linea.categoria = CATEGORIAS_FIJAS_PROVEEDOR[prov_normalizado]
-        linea.match_info = 'CATEGORIA_FIJA'
-        return
-    
-    # También buscar por nombre original (por si no se normalizó)
-    prov_upper = proveedor.upper().strip()
-    if prov_upper in CATEGORIAS_FIJAS_PROVEEDOR:
-        linea.categoria = CATEGORIAS_FIJAS_PROVEEDOR[prov_upper]
-        linea.match_info = 'CATEGORIA_FIJA'
-        return
-    
     prov_diccionario = buscar_en_diccionario(prov_normalizado, indice)
     
     if prov_diccionario not in indice:
@@ -1091,35 +686,27 @@ def categorizar_linea(linea, proveedor: str, indice: dict, tiene_extractor: bool
 
 
 # ============================================================================
-# FUNCIÓN: procesar_factura (MEJORADA v5.12 - NORMALIZACIÓN)
+# FUNCIÓN: procesar_factura (MEJORADA v5.7)
 # ============================================================================
 
-def procesar_factura(ruta_archivo: Path, indice: dict, es_carpeta_atrasadas: bool = False) -> Factura:
+def procesar_factura(ruta_pdf: Path, indice: dict) -> Factura:
     """
-    Procesa una factura PDF o imagen (JPG/PNG).
-    
-    v5.16: Soporte para parámetro es_carpeta_atrasadas.
-    v5.12: Normalización de proveedores mejorada.
-    v5.11: Soporte para extractores OCR que procesan imágenes directamente.
+    Procesa una factura PDF.
     """
-    info = parsear_nombre_archivo(ruta_archivo.name, es_carpeta_atrasadas=es_carpeta_atrasadas)
-    
-    # v5.12: NORMALIZAR proveedor desde el inicio
-    proveedor_raw = info.get('proveedor', 'DESCONOCIDO')
-    proveedor_normalizado = normalizar_proveedor(proveedor_raw)
+    info = parsear_nombre_archivo(ruta_pdf.name)
     
     factura = Factura(
-        archivo=ruta_archivo.name,
+        archivo=ruta_pdf.name,
         numero=info.get('numero', ''),
-        ruta=ruta_archivo,
-        proveedor=proveedor_normalizado
+        ruta=ruta_pdf,
+        proveedor=info.get('proveedor', 'DESCONOCIDO')
     )
     
     extractor = obtener_extractor(factura.proveedor)
     
     # v5.7: Si no encontró extractor, buscar proveedor en el nombre del archivo
     if extractor is None:
-        proveedor_alternativo = buscar_proveedor_en_nombre(ruta_archivo.name, EXTRACTORES)
+        proveedor_alternativo = buscar_proveedor_en_nombre(ruta_pdf.name, EXTRACTORES)
         if proveedor_alternativo:
             factura.proveedor = proveedor_alternativo
             extractor = obtener_extractor(proveedor_alternativo)
@@ -1127,162 +714,69 @@ def procesar_factura(ruta_archivo: Path, indice: dict, es_carpeta_atrasadas: boo
     # v5.10: Guardar si hay extractor específico (no genérico)
     tiene_extractor_especifico = extractor is not None
     
-    # v5.14: Guardar nombre del extractor para el Excel
-    if tiene_extractor_especifico and extractor:
-        factura.extractor_nombre = extractor.__class__.__name__
-    else:
-        factura.extractor_nombre = ''
+    if extractor is None:
+        extractor = ExtractorGenerico()
     
-    # v5.11: Detectar si el extractor usa OCR
-    usa_ocr = extractor and hasattr(extractor, 'metodo_pdf') and extractor.metodo_pdf == 'ocr'
+    metodo = extractor.metodo_pdf if extractor else 'pypdf'
+    texto = extraer_texto_pdf(ruta_pdf, metodo=metodo, fallback=True)
+    factura.texto_raw = texto
+    factura.metodo_pdf = metodo
     
-    # v5.11: Si el extractor es OCR y tiene método procesar(), usarlo directamente
-    if usa_ocr and hasattr(extractor, 'procesar'):
-        try:
-            resultado_ocr = extractor.procesar(str(ruta_archivo))
-            
-            # Transferir datos del resultado OCR a la factura
-            factura.fecha = resultado_ocr.get('fecha')
-            factura.total = resultado_ocr.get('total')
-            factura.cif = resultado_ocr.get('cif') or (extractor.cif if extractor else None)
-            factura.metodo_pdf = 'ocr'
-            factura.texto_raw = getattr(extractor, '_texto_ocr', '[OCR]')
-            
-            lineas_raw = resultado_ocr.get('lineas', [])
-            
-        except Exception as e:
-            factura.agregar_error(f'OCR_ERROR: {str(e)[:50]}')
-            factura.cuadre = 'ERROR_OCR'
-            return factura
-    else:
-        # Flujo normal: extraer texto del PDF
-        if extractor is None:
-            extractor = ExtractorGenerico()
-        
-        metodo = extractor.metodo_pdf if extractor else 'pypdf'
-        texto = extraer_texto_pdf(ruta_archivo, metodo=metodo, fallback=True)
-        factura.texto_raw = texto
-        factura.metodo_pdf = metodo
-        
-        if not texto:
-            factura.agregar_error('PDF_VACIO')
-            factura.cuadre = 'SIN_TEXTO'
-            return factura
-        
-        if extractor and hasattr(extractor, 'extraer_fecha'):
-            factura.fecha = extractor.extraer_fecha(texto)
-        if not factura.fecha:
-            factura.fecha = extraer_fecha(texto)
-        
-        factura.cif = extractor.cif if extractor and extractor.cif else extraer_cif(texto)
-        factura.iban = extractor.iban if extractor and extractor.iban else extraer_iban(texto)
-        
-        if extractor and hasattr(extractor, 'extraer_referencia'):
-            factura.referencia = extractor.extraer_referencia(texto)
-        if not factura.referencia:
-            factura.referencia = extraer_referencia(texto)
-        
-        if extractor and hasattr(extractor, 'extraer_total'):
-            factura.total = extractor.extraer_total(texto)
-        if factura.total is None:
-            factura.total = extraer_total(texto, factura.proveedor)
-        
-        try:
-            lineas_raw = extractor.extraer_lineas(texto) if extractor else []
-        except Exception as e:
-            factura.agregar_error(f'EXTRACTOR_ERROR: {str(e)[:50]}')
-            lineas_raw = []
+    if not texto:
+        factura.agregar_error('PDF_VACIO')
+        factura.cuadre = 'SIN_TEXTO'
+        return factura
+    
+    if extractor and hasattr(extractor, 'extraer_fecha'):
+        factura.fecha = extractor.extraer_fecha(texto)
+    if not factura.fecha:
+        factura.fecha = extraer_fecha(texto)
+    
+    factura.cif = extractor.cif if extractor and extractor.cif else extraer_cif(texto)
+    factura.iban = extractor.iban if extractor and extractor.iban else extraer_iban(texto)
+    
+    if extractor and hasattr(extractor, 'extraer_referencia'):
+        factura.referencia = extractor.extraer_referencia(texto)
+    if not factura.referencia:
+        factura.referencia = extraer_referencia(texto)
+    
+    if extractor and hasattr(extractor, 'extraer_total'):
+        factura.total = extractor.extraer_total(texto)
+    if factura.total is None:
+        factura.total = extraer_total(texto, factura.proveedor)
+    
+    try:
+        lineas_raw = extractor.extraer_lineas(texto) if extractor else []
+    except Exception as e:
+        factura.agregar_error(f'EXTRACTOR_ERROR: {str(e)[:50]}')
+        lineas_raw = []
     
     lineas_convertidas = []
     for linea_raw in lineas_raw:
         if isinstance(linea_raw, LineaFactura):
             linea = linea_raw
         elif isinstance(linea_raw, dict):
-            # v5.12: Detectar si la línea tiene importe_iva_inc (BM y similares)
-            # En ese caso, necesitamos buscar IVA en diccionario ANTES de calcular base
-            tiene_importe_iva_inc = 'importe_iva_inc' in linea_raw and 'base' not in linea_raw
-            
-            if tiene_importe_iva_inc:
-                # Buscar IVA y categoría en el diccionario
-                articulo_upper = linea_raw.get('articulo', '').upper().strip()
-                prov_normalizado = normalizar_proveedor(factura.proveedor)
-                prov_diccionario = buscar_en_diccionario(prov_normalizado, indice)
-                
-                iva_encontrado = None
-                categoria_encontrada = None
-                
-                if prov_diccionario in indice:
-                    articulos_prov = indice[prov_diccionario]
-                    
-                    # 1. Match exacto
-                    if articulo_upper in articulos_prov:
-                        data = articulos_prov[articulo_upper]
-                        iva_encontrado = data.get('iva', data.get('tipo_iva'))
-                        categoria_encontrada = data.get('categoria')
-                    else:
-                        # 2. Match parcial
-                        for art_dic, data in articulos_prov.items():
-                            if art_dic in articulo_upper or articulo_upper in art_dic:
-                                iva_encontrado = data.get('iva', data.get('tipo_iva'))
-                                categoria_encontrada = data.get('categoria')
-                                break
-                        
-                        # 3. Fuzzy match si no hubo parcial
-                        if iva_encontrado is None:
-                            mejor_ratio = 0
-                            for art_dic, data in articulos_prov.items():
-                                ratio = SequenceMatcher(None, articulo_upper, art_dic).ratio()
-                                if ratio > mejor_ratio and ratio >= 0.7:
-                                    mejor_ratio = ratio
-                                    iva_encontrado = data.get('iva', data.get('tipo_iva'))
-                                    categoria_encontrada = data.get('categoria')
-                
-                # Si no encontró en diccionario: IVA=0, categoria=PENDIENTE
-                if iva_encontrado is None:
-                    iva_valor = 0
-                    categoria_final = 'PENDIENTE'
-                    base_calculada = linea_raw.get('importe_iva_inc', 0)  # Sin conversión
-                else:
-                    iva_valor = int(iva_encontrado)
-                    categoria_final = categoria_encontrada or 'PENDIENTE'
-                    # Calcular base desde importe con IVA
-                    importe_con_iva = linea_raw.get('importe_iva_inc', 0)
-                    factor = 1 + iva_valor / 100
-                    base_calculada = round(importe_con_iva / factor, 2)
-                
-                linea = LineaFactura(
-                    articulo=linea_raw.get('articulo', ''),
-                    base=base_calculada,
-                    iva=iva_valor,
-                    codigo=str(linea_raw.get('codigo', '') or ''),
-                    cantidad=linea_raw.get('cantidad'),
-                    precio_ud=linea_raw.get('precio_ud'),
-                    categoria=categoria_final,
-                    id_categoria=''
-                )
+            iva_raw = linea_raw.get('iva')
+            if iva_raw is None:
+                iva_valor = 21
             else:
-                # Flujo normal para extractores que devuelven 'base'
-                iva_raw = linea_raw.get('iva')
-                if iva_raw is None:
-                    iva_valor = 21
-                else:
-                    iva_valor = int(iva_raw)
-                
-                # Categoría: usar la de la línea, o categoria_fija del extractor como fallback
-                cat_linea = linea_raw.get('categoria', '')
-                cat_extractor = getattr(extractor, 'categoria_fija', '') if extractor else ''
-                categoria_final = cat_linea or cat_extractor
-                
-                linea = LineaFactura(
-                    articulo=linea_raw.get('articulo', ''),
-                    base=float(linea_raw.get('base', 0.0) or 0),
-                    iva=iva_valor,
-                    codigo=str(linea_raw.get('codigo', '') or ''),
-                    cantidad=linea_raw.get('cantidad'),
-                    precio_ud=linea_raw.get('precio_ud'),
-                    categoria=categoria_final,
-                    id_categoria=str(linea_raw.get('id_categoria', '') or '')
-                )
+                iva_valor = int(iva_raw)
+            
+            # Categoría: usar la de la línea, o categoria_fija del extractor como fallback
+            cat_linea = linea_raw.get('categoria', '')
+            cat_extractor = getattr(extractor, 'categoria_fija', '') if extractor else ''
+            categoria_final = cat_linea or cat_extractor
+            
+            linea = LineaFactura(
+                articulo=linea_raw.get('articulo', ''),
+                base=float(linea_raw.get('base', 0.0) or 0),
+                iva=iva_valor,
+                codigo=str(linea_raw.get('codigo', '') or ''),
+                cantidad=linea_raw.get('cantidad'),
+                precio_ud=linea_raw.get('precio_ud'),
+                categoria=categoria_final,
+                id_categoria=str(linea_raw.get('id_categoria', '') or '')
+            )
         else:
             continue
         
@@ -1336,13 +830,6 @@ def validar_cuadre_con_retencion(lineas, total, proveedor=''):
 
 
 # ============================================================================
-# CONFIGURACIÓN RUTAS (v5.16)
-# ============================================================================
-
-RUTA_BASE_CONTABILIDAD = Path(r"C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD")
-
-
-# ============================================================================
 # FUNCIÓN: detectar_trimestre
 # ============================================================================
 
@@ -1366,270 +853,30 @@ def detectar_trimestre(carpeta_nombre: str) -> str:
 
 
 # ============================================================================
-# FUNCIÓN: buscar_carpetas_trimestre (NUEVA v5.16)
-# ============================================================================
-
-def buscar_carpetas_trimestre(ruta_base: Path) -> list:
-    """
-    Busca carpetas de trimestres en la ruta base.
-    
-    Detecta patrones como:
-    - "1 TRI 2025", "2 TRI 2025", etc.
-    - "1T25", "2T25", etc.
-    - "TRI 1 2025", etc.
-    
-    Returns:
-        Lista de tuplas (carpeta_path, nombre, tiene_atrasadas)
-    """
-    carpetas = []
-    
-    if not ruta_base.exists():
-        return carpetas
-    
-    # Patrones para detectar carpetas de trimestre
-    patrones = [
-        r'^\d\s*TRI.*\d{4}',      # "1 TRI 2025", "1TRI2025"
-        r'^TRI.*\d\s*\d{4}',      # "TRI 1 2025"
-        r'^\d[TQ]\d{2}',          # "1T25", "4Q25"
-        r'.*TRIMESTRE.*\d',       # "TRIMESTRE 1 2025"
-    ]
-    
-    for item in sorted(ruta_base.iterdir()):
-        if item.is_dir():
-            nombre = item.name
-            # Verificar si coincide con algún patrón de trimestre
-            for patron in patrones:
-                if re.search(patron, nombre, re.IGNORECASE):
-                    # Verificar si tiene subcarpeta ATRASADAS
-                    tiene_atrasadas = (item / 'ATRASADAS').exists()
-                    carpetas.append((item, nombre, tiene_atrasadas))
-                    break
-    
-    return carpetas
-
-
-# ============================================================================
-# FUNCIÓN: mostrar_menu_interactivo (NUEVA v5.16)
-# ============================================================================
-
-def seleccionar_carpeta_grafico() -> Path:
-    """
-    Abre un diálogo gráfico para seleccionar carpeta con el ratón.
-    
-    Returns:
-        Path de la carpeta seleccionada o None si cancela
-    """
-    try:
-        import tkinter as tk
-        from tkinter import filedialog
-        
-        # Crear ventana oculta
-        root = tk.Tk()
-        root.withdraw()  # Ocultar ventana principal
-        root.attributes('-topmost', True)  # Poner encima de otras ventanas
-        
-        # Directorio inicial
-        directorio_inicial = RUTA_BASE_CONTABILIDAD
-        if not directorio_inicial.exists():
-            directorio_inicial = Path.home()
-        
-        # Mostrar diálogo
-        carpeta = filedialog.askdirectory(
-            title="Selecciona la carpeta de facturas",
-            initialdir=str(directorio_inicial)
-        )
-        
-        root.destroy()
-        
-        if carpeta:
-            return Path(carpeta)
-        return None
-        
-    except Exception as e:
-        print(f"⚠️  Error al abrir selector gráfico: {e}")
-        return None
-
-
-def mostrar_menu_interactivo() -> tuple:
-    """
-    Muestra menú interactivo para seleccionar carpeta a procesar.
-    
-    Returns:
-        Tupla (carpeta_principal, solo_atrasadas)
-        - carpeta_principal: Path de la carpeta seleccionada
-        - solo_atrasadas: True si solo procesar ATRASADAS
-    """
-    print("\n" + "="*60)
-    print("PARSEAR FACTURAS - SELECCIÓN DE CARPETA")
-    print("="*60)
-    
-    # Verificar ruta base
-    ruta_base = RUTA_BASE_CONTABILIDAD
-    
-    if not ruta_base.exists():
-        print(f"\n⚠️  Ruta por defecto no encontrada:")
-        print(f"   {ruta_base}")
-    
-    # Buscar carpetas de trimestres
-    carpetas = []
-    if ruta_base.exists():
-        carpetas = buscar_carpetas_trimestre(ruta_base)
-    
-    # Mostrar opciones
-    print(f"\nOpciones:\n")
-    
-    opciones = []
-    num = 1
-    
-    if carpetas:
-        print(f"  Carpetas en: {ruta_base}\n")
-        for carpeta_path, nombre, tiene_atrasadas in carpetas:
-            # Opción: carpeta principal + ATRASADAS (si existe)
-            if tiene_atrasadas:
-                print(f"  {num}. {nombre} (+ ATRASADAS)")
-            else:
-                print(f"  {num}. {nombre}")
-            opciones.append((carpeta_path, False))  # (path, solo_atrasadas=False)
-            num += 1
-            
-            # Opción adicional: solo ATRASADAS
-            if tiene_atrasadas:
-                print(f"  {num}. {nombre} → solo ATRASADAS")
-                opciones.append((carpeta_path, True))  # (path, solo_atrasadas=True)
-                num += 1
-        print()
-    
-    print(f"  E. 📁 Explorar con ratón (abrir selector de carpetas)")
-    print(f"  M. Introducir ruta manualmente")
-    print(f"  Q. Salir")
-    
-    # Pedir selección
-    print("\nSelecciona una opción:")
-    seleccion = input("> ").strip().lower()
-    
-    if seleccion == 'q':
-        print("Saliendo...")
-        sys.exit(0)
-    
-    if seleccion == 'e':
-        print("\nAbriendo selector de carpetas...")
-        carpeta = seleccionar_carpeta_grafico()
-        if carpeta:
-            print(f"   Seleccionada: {carpeta}")
-            # Preguntar si solo ATRASADAS
-            if (carpeta / 'ATRASADAS').exists():
-                print(f"\n   Se detectó subcarpeta ATRASADAS.")
-                print(f"   ¿Procesar solo ATRASADAS? (s/N):")
-                resp = input("   > ").strip().lower()
-                if resp == 's':
-                    return (carpeta, True)
-            return (carpeta, False)
-        else:
-            print("   Cancelado.")
-            sys.exit(0)
-    
-    if seleccion == 'm':
-        print("\nIntroduce la ruta completa de la carpeta:")
-        ruta_manual = input("> ").strip()
-        if not ruta_manual:
-            print("ERROR: No se especificó ruta")
-            sys.exit(1)
-        carpeta = Path(ruta_manual)
-        if not carpeta.exists():
-            print(f"ERROR: No existe la ruta: {carpeta}")
-            sys.exit(1)
-        # Preguntar si solo ATRASADAS
-        if (carpeta / 'ATRASADAS').exists():
-            print(f"\n   Se detectó subcarpeta ATRASADAS.")
-            print(f"   ¿Procesar solo ATRASADAS? (s/N):")
-            resp = input("   > ").strip().lower()
-            if resp == 's':
-                return (carpeta, True)
-        return (carpeta, False)
-    
-    try:
-        idx = int(seleccion) - 1
-        if 0 <= idx < len(opciones):
-            return opciones[idx]
-        else:
-            print("ERROR: Opción no válida")
-            sys.exit(1)
-    except ValueError:
-        print("ERROR: Introduce un número válido o E/M/Q")
-        sys.exit(1)
-
-
-# ============================================================================
-# FUNCIÓN: procesar_carpeta_con_atrasadas (NUEVA v5.16)
-# ============================================================================
-
-def procesar_carpeta_con_atrasadas(carpeta: Path, solo_atrasadas: bool = False) -> list:
-    """
-    Obtiene lista de archivos a procesar, incluyendo subcarpeta ATRASADAS.
-    
-    Args:
-        carpeta: Carpeta principal del trimestre
-        solo_atrasadas: Si True, solo procesa la subcarpeta ATRASADAS
-        
-    Returns:
-        Lista de tuplas (archivo_path, es_carpeta_atrasadas)
-    """
-    archivos = []
-    extensiones = ['*.pdf', '*.jpg', '*.jpeg', '*.png']
-    
-    carpeta_atrasadas = carpeta / 'ATRASADAS'
-    
-    if solo_atrasadas:
-        # Solo procesar ATRASADAS
-        if carpeta_atrasadas.exists():
-            for ext in extensiones:
-                for archivo in carpeta_atrasadas.glob(ext):
-                    archivos.append((archivo, True))
-        else:
-            print(f"⚠️  No existe subcarpeta ATRASADAS en: {carpeta}")
-    else:
-        # Procesar carpeta principal
-        for ext in extensiones:
-            for archivo in carpeta.glob(ext):
-                archivos.append((archivo, False))
-        
-        # Procesar ATRASADAS si existe
-        if carpeta_atrasadas.exists():
-            for ext in extensiones:
-                for archivo in carpeta_atrasadas.glob(ext):
-                    archivos.append((archivo, True))
-    
-    return archivos
-
-
-# ============================================================================
 # FUNCIÓN: main
 # ============================================================================
 
 def main():
     """Funcion principal."""
     parser = argparse.ArgumentParser(
-        description=f'ParsearFacturas v{VERSION} (con soporte OCR)',
+        description='ParsearFacturas v5.10',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Ejemplos:
-  python main.py                              # Modo interactivo
-  python main.py -i "C:\\Facturas\\4 TRI 2025"  # Modo directo
+  python main.py -i "C:\\Facturas\\4 TRI 2025"
   python main.py -i facturas/ -o resultado.xlsx
   python main.py --listar-extractores
-
-v5.16: Modo interactivo, soporte ATRASADAS, TEMP por trimestre
         """
     )
     
-    parser.add_argument('--input', '-i', help='Carpeta de facturas (PDF/JPG/PNG)')
+    parser.add_argument('--input', '-i', help='Carpeta de facturas PDF')
     parser.add_argument('--output', '-o', default=None, 
                         help='Archivo Excel de salida')
     parser.add_argument('--diccionario', '-d', default=DICCIONARIO_DEFAULT,
                         help='DiccionarioProveedoresCategoria.xlsx')
     parser.add_argument('--listar-extractores', action='store_true',
                         help='Listar extractores disponibles y salir')
-    parser.add_argument('--version', '-v', action='version', version=f'v{VERSION}')
+    parser.add_argument('--version', '-v', action='version', version='v5.10')
     
     args = parser.parse_args()
     
@@ -1641,16 +888,12 @@ v5.16: Modo interactivo, soporte ATRASADAS, TEMP por trimestre
         print()
         return
     
-    # v5.16: Resetear contadores TEMP al inicio de cada ejecución
-    resetear_contadores_temp()
-    
-    # v5.16: Modo interactivo si no se especifica -i
-    solo_atrasadas = False
     if not args.input:
-        carpeta, solo_atrasadas = mostrar_menu_interactivo()
-    else:
-        carpeta = Path(args.input)
+        parser.print_help()
+        print("\nERROR: Debes especificar una carpeta con -i")
+        sys.exit(1)
     
+    carpeta = Path(args.input)
     if not carpeta.exists():
         print(f"ERROR: No existe la carpeta: {carpeta}")
         sys.exit(1)
@@ -1666,7 +909,7 @@ v5.16: Modo interactivo, soporte ATRASADAS, TEMP por trimestre
         print(f"   {len(indice)} proveedores indexados")
     
     print("\n" + "="*60)
-    print(f"PARSEAR FACTURAS v{VERSION}")
+    print("PARSEAR FACTURAS v5.10")
     print("="*60)
     
     script_dir = Path(__file__).parent
@@ -1682,35 +925,23 @@ v5.16: Modo interactivo, soporte ATRASADAS, TEMP por trimestre
     else:
         carpeta_nombre = carpeta.name.upper()
         trimestre = detectar_trimestre(carpeta_nombre)
-        sufijo = '_ATRASADAS' if solo_atrasadas else ''
-        ruta_excel = outputs_dir / f'Facturas_{trimestre}{sufijo}.xlsx'
+        ruta_excel = outputs_dir / f'Facturas_{trimestre}.xlsx'
     
-    # v5.16: Buscar archivos incluyendo subcarpeta ATRASADAS
-    archivos_con_tipo = procesar_carpeta_con_atrasadas(carpeta, solo_atrasadas)
-    
-    # Contar por tipo
-    archivos_principal = [a for a, es_atr in archivos_con_tipo if not es_atr]
-    archivos_atrasadas = [a for a, es_atr in archivos_con_tipo if es_atr]
-    
+    archivos = list(carpeta.glob('*.pdf'))
     print(f"\nCarpeta: {carpeta}")
-    if not solo_atrasadas:
-        print(f"   Archivos principales: {len(archivos_principal)}")
-    if archivos_atrasadas or solo_atrasadas:
-        print(f"   Archivos ATRASADAS: {len(archivos_atrasadas)}")
-    print(f"   Total: {len(archivos_con_tipo)}")
+    print(f"   Archivos PDF: {len(archivos)}")
     
-    if not archivos_con_tipo:
-        print("ERROR: No se encontraron archivos PDF/JPG/PNG")
+    if not archivos:
+        print("ERROR: No se encontraron archivos PDF")
         sys.exit(1)
     
     facturas = []
-    for i, (archivo, es_atrasadas) in enumerate(sorted(archivos_con_tipo, key=lambda x: x[0].name), 1):
+    for i, archivo in enumerate(sorted(archivos), 1):
         nombre_corto = archivo.name[:45] + '...' if len(archivo.name) > 48 else archivo.name
-        marca = "[ATR]" if es_atrasadas else ""
-        print(f"   [{i:3d}/{len(archivos_con_tipo)}] {marca} {nombre_corto}", end=" ")
+        print(f"   [{i:3d}/{len(archivos)}] {nombre_corto}", end=" ")
         
         try:
-            factura = procesar_factura(archivo, indice, es_carpeta_atrasadas=es_atrasadas)
+            factura = procesar_factura(archivo, indice)
             facturas.append(factura)
             
             if factura.errores:

@@ -1034,7 +1034,11 @@ def clasificar_casos_simples(concepto: str) -> Tuple[Optional[str], Optional[str
     if concepto_upper.startswith("INGRESO"):
         log(f"  → INGRESO")
         return "INGRESO", ""
-    
+
+    if "SERVICIO DE TPV" in concepto_upper:
+        log(f"  → SERVICIO DE TPV")
+        return "SERVICIO DE TPV", ""
+
     return None, None
 
 

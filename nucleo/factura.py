@@ -62,7 +62,6 @@ class Factura:
     errores: List[str] = field(default_factory=list)
     metodo_pdf: str = ''
     texto_raw: str = ''
-    extractor_nombre: str = ''  # v5.14: Nombre de la clase del extractor usado
     procesado_at: str = field(default_factory=lambda: datetime.now().isoformat())
     
     @property

@@ -9,11 +9,6 @@ Contiene funciones para extraer:
 - Referencia/número de factura
 - Datos del nombre de archivo
 
-CAMBIOS v5.16 (07/01/2026):
-- NUEVO: Asignación automática de TEMP001, TEMP002... para archivos sin número de gestoría
-- Los archivos tipo "4T25 1020 PROVEEDOR TF.pdf" reciben TEMP001_4T25, TEMP002_4T25, etc.
-- Contador TEMP reinicia por trimestre dentro de cada ejecución
-
 Uso:
     from nucleo.parser import extraer_fecha, extraer_cif, extraer_total
     
@@ -27,76 +22,28 @@ from pathlib import Path
 
 
 # =============================================================================
-# CONTADOR GLOBAL TEMP POR TRIMESTRE (v5.16)
-# =============================================================================
-
-# Diccionario que guarda el contador TEMP por trimestre
-# Ejemplo: {'4T25': 3, '1T26': 1} significa que ya se asignaron TEMP001-003 en 4T25
-_CONTADOR_TEMP_POR_TRIMESTRE: Dict[str, int] = {}
-
-
-def resetear_contadores_temp():
-    """
-    Resetea los contadores TEMP. Llamar al inicio de cada ejecución.
-    """
-    global _CONTADOR_TEMP_POR_TRIMESTRE
-    _CONTADOR_TEMP_POR_TRIMESTRE = {}
-
-
-def _obtener_siguiente_temp(trimestre: str) -> str:
-    """
-    Obtiene el siguiente número TEMP para un trimestre.
-    
-    Args:
-        trimestre: Código de trimestre (ej: '4T25', '1T26')
-        
-    Returns:
-        Número TEMP formateado (ej: 'TEMP001_4T25')
-    """
-    global _CONTADOR_TEMP_POR_TRIMESTRE
-    
-    if trimestre not in _CONTADOR_TEMP_POR_TRIMESTRE:
-        _CONTADOR_TEMP_POR_TRIMESTRE[trimestre] = 0
-    
-    _CONTADOR_TEMP_POR_TRIMESTRE[trimestre] += 1
-    contador = _CONTADOR_TEMP_POR_TRIMESTRE[trimestre]
-    
-    return f"TEMP{contador:03d}_{trimestre}"
-
-
-# =============================================================================
 # PARSEO DEL NOMBRE DE ARCHIVO
 # =============================================================================
 
-def parsear_nombre_archivo(nombre: str, es_carpeta_atrasadas: bool = False) -> Dict:
+def parsear_nombre_archivo(nombre: str) -> Dict:
     """
     Extrae información del nombre del archivo.
     
     Formato esperado: NNNN TRIMESTRE FECHA PROVEEDOR TIPO.pdf
     Ejemplo: 2001 1T25 0115 CERES TF.pdf
     
-    NUEVO v5.16: 
-    - Si el archivo empieza con TRIMESTRE (ej: "4T25 1020 PROVEEDOR...")
-      se asigna automáticamente un número TEMP001_4T25, TEMP002_4T25, etc.
-    - Si el archivo empieza con 3 dígitos → es ATRASADA
-      Formato: XXX [ATRASADA] [TRIMESTRE_ORIGEN] MMDD PROVEEDOR TIPO.pdf
-      El # se devuelve como "XXX ATRASADA"
-    
     Args:
         nombre: Nombre del archivo (con o sin extensión)
-        es_carpeta_atrasadas: True si el archivo está en subcarpeta ATRASADAS
         
     Returns:
         Diccionario con:
-        - numero: Número de factura (int, str "XXX ATRASADA", o str "TEMPXXX_XTxx")
+        - numero: Número de factura (int)
         - trimestre: Trimestre (ej: '1T25')
         - fecha_archivo: Fecha del nombre (MMDD)
         - proveedor: Nombre del proveedor
         - tipo: Tipo de factura (TF, RC, EF, TJ, TR)
-        - es_atrasada: bool indicando si es factura atrasada
     """
     # Eliminar extensión
-    nombre_original = nombre
     nombre = Path(nombre).stem
     
     resultado = {
@@ -104,64 +51,12 @@ def parsear_nombre_archivo(nombre: str, es_carpeta_atrasadas: bool = False) -> D
         'trimestre': '',
         'fecha_archivo': '',
         'proveedor': '',
-        'tipo': '',
-        'es_atrasada': False
+        'tipo': ''
     }
     
-    # =========================================================================
-    # CASO 0: ATRASADA - Archivo con 3 dígitos al inicio (rango típico 900-999, 400-499)
-    # Patrón: XXX [ATRASADA] [TRIMESTRE_ORIGEN] MMDD PROVEEDOR TIPO
-    # Ejemplos: 
-    #   - 460 ATRASADA 1T25 0326 SWITCHBOT TJ.pdf
-    #   - 946 T25 0619 DE LUIS SABORES UNICOS TF.pdf (sin palabra ATRASADA)
-    #   - 401 ATRASADAS 0710 BM TJ.pdf (sin trimestre origen)
-    # 
-    # REGLA: Si 3 dígitos + tiene palabra ATRASADA → siempre es atrasada
-    #        Si 3 dígitos + NO tiene ATRASADA + está en carpeta ATRASADAS → es atrasada
-    #        Si 3 dígitos + NO tiene ATRASADA + NO está en carpeta ATRASADAS → ERROR
-    # =========================================================================
-    
-    # Detectar si empieza con 3 dígitos
-    match_3dig = re.match(r'^(\d{3})\s+(.+)$', nombre)
-    if match_3dig:
-        num_3_digitos = match_3dig.group(1)
-        resto = match_3dig.group(2)
-        tiene_palabra_atrasada = bool(re.search(r'\bATRASADAS?\b', resto, re.IGNORECASE))
-        
-        # Determinar si tratar como atrasada o error
-        if tiene_palabra_atrasada or es_carpeta_atrasadas:
-            # Es una atrasada válida
-            # Limpiar "ATRASADA" del resto para parsear mejor
-            resto_limpio = re.sub(r'\bATRASADAS?\s*', '', resto, flags=re.IGNORECASE)
-            
-            # Intentar extraer trimestre origen, fecha, proveedor, tipo
-            patron_resto = r'^(?:(\d[TQ]\d{2})\s+)?(?:(\d{4})\s+)?(.+?)\s*(TF|RC|EF|TJ|TR|REC)?\s*$'
-            match_resto = re.match(patron_resto, resto_limpio, re.IGNORECASE)
-            
-            if match_resto:
-                resultado['numero'] = f"{num_3_digitos} ATRASADA"
-                resultado['trimestre'] = match_resto.group(1) or ''
-                resultado['fecha_archivo'] = match_resto.group(2) or ''
-                resultado['proveedor'] = match_resto.group(3).strip() if match_resto.group(3) else ''
-                resultado['tipo'] = match_resto.group(4).upper() if match_resto.group(4) else ''
-            else:
-                resultado['numero'] = f"{num_3_digitos} ATRASADA"
-                resultado['proveedor'] = resto_limpio.strip()
-            
-            resultado['es_atrasada'] = True
-            return resultado
-        else:
-            # 3 dígitos sin palabra ATRASADA y fuera de carpeta ATRASADAS → ERROR
-            resultado['numero'] = f"ERROR_3DIG_{num_3_digitos}"
-            resultado['proveedor'] = resto
-            return resultado
-    
-    # =========================================================================
-    # CASO 1: Archivo con número de gestoría (formato estándar) - 4 dígitos
     # Patrón: NNNN [TRIMESTRE] [FECHA] PROVEEDOR TIPO
     # Ejemplo: 2001 1T25 0115 CERES TF
-    # =========================================================================
-    patron = r'^(\d{4})\s+(?:(\d[TQ]\d{2})\s+)?(?:(\d{4})\s+)?(.+?)\s+(TF|RC|EF|TJ|TR|REC)?\s*$'
+    patron = r'^(\d{3,4})\s+(?:(\d[TQ]\d{2})\s+)?(?:(\d{4})\s+)?(.+?)\s+(TF|RC|EF|TJ|TR|REC)?\s*$'
     
     match = re.match(patron, nombre, re.IGNORECASE)
     if match:
@@ -170,46 +65,19 @@ def parsear_nombre_archivo(nombre: str, es_carpeta_atrasadas: bool = False) -> D
         resultado['fecha_archivo'] = match.group(3) or ''
         resultado['proveedor'] = match.group(4).strip() if match.group(4) else ''
         resultado['tipo'] = match.group(5).upper() if match.group(5) else ''
-        return resultado
+    else:
+        # Intento simplificado: solo número al inicio
+        match_simple = re.match(r'^(\d{3,4})\s+(.+)$', nombre)
+        if match_simple:
+            resultado['numero'] = int(match_simple.group(1))
+            resto = match_simple.group(2)
+            # Extraer tipo al final
+            match_tipo = re.search(r'\s+(TF|RC|EF|TJ|TR|REC)\s*$', resto, re.IGNORECASE)
+            if match_tipo:
+                resultado['tipo'] = match_tipo.group(1).upper()
+                resto = resto[:match_tipo.start()]
+            resultado['proveedor'] = resto.strip()
     
-    # =========================================================================
-    # CASO 2: Archivo sin número de gestoría (empieza con TRIMESTRE)
-    # Patrón: TRIMESTRE FECHA PROVEEDOR TIPO
-    # Ejemplo: 4T25 1020 EMBUTIDOS FERRIOL TF
-    # =========================================================================
-    patron_sin_numero = r'^(\d[TQ]\d{2})\s+(\d{4})\s+(.+?)\s+(TF|RC|EF|TJ|TR|REC)?\s*$'
-    
-    match_sin_num = re.match(patron_sin_numero, nombre, re.IGNORECASE)
-    if match_sin_num:
-        trimestre = match_sin_num.group(1).upper()
-        # Asignar número TEMP
-        numero_temp = _obtener_siguiente_temp(trimestre)
-        
-        resultado['numero'] = numero_temp  # String tipo "TEMP001_4T25"
-        resultado['trimestre'] = trimestre
-        resultado['fecha_archivo'] = match_sin_num.group(2) or ''
-        resultado['proveedor'] = match_sin_num.group(3).strip() if match_sin_num.group(3) else ''
-        resultado['tipo'] = match_sin_num.group(4).upper() if match_sin_num.group(4) else ''
-        return resultado
-    
-    # =========================================================================
-    # CASO 3: Intento simplificado (solo número al inicio) - 4 dígitos
-    # =========================================================================
-    match_simple = re.match(r'^(\d{4})\s+(.+)$', nombre)
-    if match_simple:
-        resultado['numero'] = int(match_simple.group(1))
-        resto = match_simple.group(2)
-        # Extraer tipo al final
-        match_tipo = re.search(r'\s+(TF|RC|EF|TJ|TR|REC)\s*$', resto, re.IGNORECASE)
-        if match_tipo:
-            resultado['tipo'] = match_tipo.group(1).upper()
-            resto = resto[:match_tipo.start()]
-        resultado['proveedor'] = resto.strip()
-        return resultado
-    
-    # =========================================================================
-    # CASO 4: No se pudo parsear - devolver valores por defecto
-    # =========================================================================
     return resultado
 
 

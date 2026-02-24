@@ -3,11 +3,16 @@ Módulo de generación de Excel.
 
 Genera archivos Excel con las facturas procesadas.
 
-CAMBIOS v5.16 (07/01/2026):
-- NUEVO: Columna ARCHIVO en hoja Facturas (después de #)
-- NUEVO: Columna TOTAL FACTURA (total extraído del PDF)
-- NUEVO: Columna Total ahora es el total calculado de líneas (base × IVA)
-- Orden columnas Facturas: #, ARCHIVO, CUENTA, TITULO, Fec.Fac., REF, TOTAL FACTURA, Total, OBSERVACIONES
+CAMBIOS v5.12 (18/01/2026):
+- Nueva columna EXTRACTOR en hoja Lineas (nombre.py + método)
+- Nueva función generar_nombre_salida_inteligente()
+- Nombre archivo: carpeta_v1.xlsx o carpeta_v1_HHMM.xlsx si existe
+
+CAMBIOS v5.11 (18/01/2026):
+- Cabeceras Facturas: #, ARCHIVO, CUENTA, Fec.Fac., TITULO, REF, TOTAL FACTURA, Total Parseo, OBSERVACIONES
+- CUENTA desde MAESTRO_PROVEEDORES.xlsx (matching 3 niveles: exacto → alias → similitud 70%)
+- Nueva columna "Total Parseo" = suma de líneas parseadas
+- Ruta MAESTRO: C:\\_ARCHIVOS\\TRABAJO\\Facturas\\gestion-facturas\\datos\\MAESTRO_PROVEEDORES.xlsx
 
 CAMBIOS v5.9 (02/01/2026):
 - FIX: Sanitización de caracteres ilegales para Excel (IllegalCharacterError)
@@ -26,75 +31,62 @@ from datetime import datetime
 from difflib import SequenceMatcher
 import re
 
-# Imports para formateo Excel
-from openpyxl.styles import Font, Alignment
-from openpyxl.worksheet.table import Table, TableStyleInfo
-from openpyxl.utils import get_column_letter
-
 if TYPE_CHECKING:
     from nucleo.factura import Factura
 
 
 # ==============================================================================
-# FORMATEO DE TABLAS EXCEL
+# GENERACIÓN DE NOMBRE DE SALIDA INTELIGENTE (v5.12)
 # ==============================================================================
 
-def formatear_hoja_como_tabla(worksheet, nombre_tabla: str, estilo: str = 'TableStyleMedium9'):
+def generar_nombre_salida_inteligente(carpeta_entrada: Path, outputs_dir: Path) -> Path:
     """
-    Formatea una hoja Excel como tabla con estilo y fuente Aptos Narrow 9.
+    Genera nombre de archivo de salida inteligente basado en la carpeta de entrada.
+    
+    Reglas:
+    - Carpeta normal (ej: "4 TRI 2025") → "4_TRI_2025_v1.xlsx"
+    - Carpeta ATRASADAS dentro de trimestre → "4_TRI_2025_ATRASADAS_v1.xlsx"
+    - Carpeta ATRASADAS suelta → "ATRASADAS_v1.xlsx"
+    - Si v1 existe → añadir timestamp: "4_TRI_2025_v1_1430.xlsx"
     
     Args:
-        worksheet: Hoja de openpyxl
-        nombre_tabla: Nombre único para la tabla
-        estilo: Estilo de tabla Excel
-               - TableStyleMedium9 = Gris
-               - TableStyleMedium16 = Morado claro
+        carpeta_entrada: Path de la carpeta con las facturas
+        outputs_dir: Path del directorio de salida
+        
+    Returns:
+        Path completo del archivo de salida
     """
-    if worksheet.max_row < 1:
-        return
+    # Obtener nombre de la carpeta
+    nombre_carpeta = carpeta_entrada.name
     
-    # Definir rango de la tabla
-    max_col = worksheet.max_column
-    max_row = worksheet.max_row
+    # Verificar si es ATRASADAS dentro de un trimestre
+    if nombre_carpeta.upper() == 'ATRASADAS':
+        carpeta_padre = carpeta_entrada.parent.name
+        # Verificar si el padre parece un trimestre
+        if re.match(r'^\d\s*T', carpeta_padre, re.IGNORECASE) or 'TRI' in carpeta_padre.upper():
+            nombre_base = f"{carpeta_padre}_ATRASADAS"
+        else:
+            nombre_base = "ATRASADAS"
+    else:
+        nombre_base = nombre_carpeta
     
-    # Crear referencia de rango (A1:X100)
-    rango = f"A1:{get_column_letter(max_col)}{max_row}"
+    # Normalizar: espacios a guiones bajos
+    nombre_base = nombre_base.replace(' ', '_')
     
-    # Crear tabla
-    tabla = Table(displayName=nombre_tabla, ref=rango)
+    # Asegurar que outputs existe
+    outputs_dir.mkdir(parents=True, exist_ok=True)
     
-    # Estilo de tabla
-    style = TableStyleInfo(
-        name=estilo,
-        showFirstColumn=False,
-        showLastColumn=False,
-        showRowStripes=True,
-        showColumnStripes=False
-    )
-    tabla.tableStyleInfo = style
+    # Buscar versión disponible
+    nombre_v1 = f"{nombre_base}_v1.xlsx"
+    ruta_v1 = outputs_dir / nombre_v1
     
-    # Añadir tabla a la hoja
-    worksheet.add_table(tabla)
+    if not ruta_v1.exists():
+        return ruta_v1
     
-    # Aplicar fuente Aptos Narrow 9 a todas las celdas
-    fuente = Font(name='Aptos Narrow', size=9)
-    fuente_cabecera = Font(name='Aptos Narrow', size=9, bold=True)
-    
-    for row_idx, row in enumerate(worksheet.iter_rows(min_row=1, max_row=max_row, max_col=max_col), 1):
-        for cell in row:
-            if row_idx == 1:
-                cell.font = fuente_cabecera
-            else:
-                cell.font = fuente
-    
-    # Ajustar ancho de columnas (aproximado)
-    for col_idx in range(1, max_col + 1):
-        col_letter = get_column_letter(col_idx)
-        # Ancho basado en el contenido de la cabecera + margen
-        header_value = worksheet.cell(row=1, column=col_idx).value
-        if header_value:
-            width = max(len(str(header_value)) + 2, 8)
-            worksheet.column_dimensions[col_letter].width = min(width, 50)
+    # Si v1 existe, añadir timestamp
+    timestamp = datetime.now().strftime('%H%M')
+    nombre_con_timestamp = f"{nombre_base}_v1_{timestamp}.xlsx"
+    return outputs_dir / nombre_con_timestamp
 
 
 # ==============================================================================
@@ -143,26 +135,26 @@ def sanitizar_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 # CONFIGURACIÓN DEL DICCIONARIO DE CUENTAS
 # ==============================================================================
 
-# Ruta por defecto al diccionario (se puede sobreescribir)
-DICCIONARIO_CUENTAS_DEFAULT = r"C:\_ARCHIVOS\TRABAJO\Facturas\ParsearFacturas-main\datos\DiccionarioEmisorTitulo.xlsx"
+# Ruta por defecto al MAESTRO_PROVEEDORES
+MAESTRO_PROVEEDORES_DEFAULT = r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\datos\MAESTRO_PROVEEDORES.xlsx"
 
 # Caché global para evitar recargar el diccionario en cada llamada
-_CACHE_CUENTAS: Dict[str, str] = {}  # TITULO -> CUENTA
-_CACHE_ALIAS: Dict[str, str] = {}     # NOMBRE_EN_CONCEPTO -> TITULO_FACTURA
+_CACHE_CUENTAS: Dict[str, str] = {}  # PROVEEDOR -> CUENTA
+_CACHE_ALIAS: Dict[str, str] = {}     # ALIAS -> PROVEEDOR
 _CACHE_CARGADO: bool = False
 
 
 def cargar_diccionario_cuentas(ruta: Optional[Path] = None) -> Tuple[Dict[str, str], Dict[str, str]]:
     """
-    Carga el diccionario de cuentas desde el Excel.
+    Carga el MAESTRO_PROVEEDORES para obtener CUENTA por proveedor.
     
     Args:
-        ruta: Ruta al archivo DiccionarioEmisorTitulo.xlsx
+        ruta: Ruta al archivo MAESTRO_PROVEEDORES.xlsx
         
     Returns:
         Tupla (dict_cuentas, dict_alias)
-        - dict_cuentas: {TITULO_NORMALIZADO: CUENTA}
-        - dict_alias: {ALIAS_NORMALIZADO: TITULO}
+        - dict_cuentas: {PROVEEDOR_NORMALIZADO: CUENTA}
+        - dict_alias: {ALIAS_NORMALIZADO: PROVEEDOR}
     """
     global _CACHE_CUENTAS, _CACHE_ALIAS, _CACHE_CARGADO
     
@@ -170,38 +162,52 @@ def cargar_diccionario_cuentas(ruta: Optional[Path] = None) -> Tuple[Dict[str, s
         return _CACHE_CUENTAS, _CACHE_ALIAS
     
     if ruta is None:
-        ruta = Path(DICCIONARIO_CUENTAS_DEFAULT)
+        ruta = Path(MAESTRO_PROVEEDORES_DEFAULT)
     
     dict_cuentas = {}
     dict_alias = {}
     
     try:
-        # Cargar hoja de cuentas (Hoja1)
-        df_cuentas = pd.read_excel(ruta, sheet_name='Hoja1')
-        for _, row in df_cuentas.iterrows():
-            cuenta = str(row.get('CUENTA ', row.get('CUENTA', ''))).strip()
-            cliente = str(row.get('CLIENTE', '')).strip().upper()
-            if cuenta and cliente:
-                dict_cuentas[cliente] = cuenta
-                # También añadir versiones sin puntuación
-                cliente_limpio = re.sub(r'[.,]', '', cliente)
-                if cliente_limpio != cliente:
-                    dict_cuentas[cliente_limpio] = cuenta
+        # Cargar MAESTRO_PROVEEDORES (Sheet1)
+        df = pd.read_excel(ruta, sheet_name='Sheet1')
         
-        # Cargar hoja de alias (Sheet1)
-        df_alias = pd.read_excel(ruta, sheet_name='Sheet1')
-        for _, row in df_alias.iterrows():
-            nombre = str(row.get('NOMBRE_EN_CONCEPTO', '')).strip().upper()
-            titulo = str(row.get('TITULO_FACTURA', '')).strip().upper()
-            if nombre and titulo and titulo != 'CASO ESPECIAL':
-                dict_alias[nombre] = titulo
+        for _, row in df.iterrows():
+            # Obtener CUENTA (puede ser float, convertir a int string)
+            cuenta_raw = row.get('CUENTA', '')
+            if pd.notna(cuenta_raw):
+                cuenta = str(int(float(cuenta_raw)))
+            else:
+                continue
+            
+            # Obtener PROVEEDOR
+            proveedor = str(row.get('PROVEEDOR', '')).strip().upper()
+            if proveedor and cuenta:
+                dict_cuentas[proveedor] = cuenta
+                # También sin puntuación
+                proveedor_limpio = re.sub(r'[.,]', '', proveedor)
+                if proveedor_limpio != proveedor:
+                    dict_cuentas[proveedor_limpio] = cuenta
+            
+            # Procesar ALIAS (separados por coma)
+            alias_raw = row.get('ALIAS', '')
+            if pd.notna(alias_raw) and alias_raw:
+                aliases = [a.strip().upper() for a in str(alias_raw).split(',')]
+                for alias in aliases:
+                    if alias:
+                        dict_alias[alias] = proveedor
+                        # También sin puntuación
+                        alias_limpio = re.sub(r'[.,]', '', alias)
+                        if alias_limpio != alias:
+                            dict_alias[alias_limpio] = proveedor
         
         _CACHE_CUENTAS = dict_cuentas
         _CACHE_ALIAS = dict_alias
         _CACHE_CARGADO = True
         
+        print(f"   MAESTRO_PROVEEDORES: {len(dict_cuentas)} proveedores, {len(dict_alias)} alias")
+        
     except Exception as e:
-        print(f"[AVISO] No se pudo cargar DiccionarioEmisorTitulo.xlsx: {e}")
+        print(f"[AVISO] No se pudo cargar MAESTRO_PROVEEDORES.xlsx: {e}")
     
     return dict_cuentas, dict_alias
 
@@ -230,14 +236,14 @@ def buscar_cuenta_titulo(proveedor: str, ruta_diccionario: Optional[Path] = None
     """
     Busca la CUENTA y TITULO oficial de un proveedor.
     
-    Flujo de búsqueda:
-    1. Buscar en alias (Sheet1) → obtener TITULO_FACTURA
-    2. Buscar TITULO en cuentas (Hoja1) → obtener CUENTA
-    3. Si no hay alias, buscar directamente en cuentas por similitud
+    Matching de 3 niveles:
+    1. Búsqueda exacta en PROVEEDOR
+    2. Búsqueda en ALIAS (separados por coma en MAESTRO)
+    3. Búsqueda por similitud (>70%)
     
     Args:
         proveedor: Nombre del proveedor (del extractor o archivo)
-        ruta_diccionario: Ruta al diccionario (opcional)
+        ruta_diccionario: Ruta al MAESTRO_PROVEEDORES (opcional)
         
     Returns:
         Tupla (CUENTA, TITULO) o ('PENDIENTE', proveedor_original) si no encuentra
@@ -251,7 +257,19 @@ def buscar_cuenta_titulo(proveedor: str, ruta_diccionario: Optional[Path] = None
     proveedor_norm = normalizar_para_busqueda(proveedor)
     proveedor_upper = proveedor.upper().strip()
     
-    # 1. Búsqueda exacta en alias
+    # =========================================================================
+    # NIVEL 1: Búsqueda exacta en PROVEEDOR
+    # =========================================================================
+    if proveedor_upper in dict_cuentas:
+        return (dict_cuentas[proveedor_upper], proveedor_upper)
+    
+    if proveedor_norm in dict_cuentas:
+        return (dict_cuentas[proveedor_norm], proveedor_norm)
+    
+    # =========================================================================
+    # NIVEL 2: Búsqueda en ALIAS
+    # =========================================================================
+    # Búsqueda exacta en alias
     if proveedor_upper in dict_alias:
         titulo = dict_alias[proveedor_upper]
         if titulo in dict_cuentas:
@@ -262,41 +280,47 @@ def buscar_cuenta_titulo(proveedor: str, ruta_diccionario: Optional[Path] = None
         if titulo in dict_cuentas:
             return (dict_cuentas[titulo], titulo)
     
-    # 2. Búsqueda exacta en cuentas
-    if proveedor_upper in dict_cuentas:
-        return (dict_cuentas[proveedor_upper], proveedor_upper)
-    
-    if proveedor_norm in dict_cuentas:
-        return (dict_cuentas[proveedor_norm], proveedor_norm)
-    
-    # 3. Búsqueda parcial en alias (contiene)
+    # Búsqueda parcial en alias (contiene)
     for alias, titulo in dict_alias.items():
         if alias in proveedor_upper or proveedor_upper in alias:
             if titulo in dict_cuentas:
                 return (dict_cuentas[titulo], titulo)
     
-    # 4. Búsqueda parcial en cuentas (contiene)
+    # Búsqueda parcial en cuentas (contiene)
     for cliente, cuenta in dict_cuentas.items():
         if cliente in proveedor_upper or proveedor_upper in cliente:
             return (cuenta, cliente)
     
-    # 5. Búsqueda por similitud (último recurso)
+    # =========================================================================
+    # NIVEL 3: Búsqueda por similitud (>70%)
+    # =========================================================================
     mejor_match = None
     mejor_ratio = 0.0
     
     # Primero en alias
     for alias, titulo in dict_alias.items():
         ratio = SequenceMatcher(None, proveedor_norm, alias).ratio()
-        if ratio > mejor_ratio and ratio > 0.6:
+        if ratio > mejor_ratio and ratio > 0.70:
             mejor_ratio = ratio
             mejor_match = ('alias', alias, titulo)
     
     # Luego en cuentas
     for cliente, cuenta in dict_cuentas.items():
         ratio = SequenceMatcher(None, proveedor_norm, cliente).ratio()
-        if ratio > mejor_ratio and ratio > 0.6:
+        if ratio > mejor_ratio and ratio > 0.70:
             mejor_ratio = ratio
             mejor_match = ('cuenta', cliente, cuenta)
+    
+    if mejor_match:
+        if mejor_match[0] == 'alias':
+            titulo = mejor_match[2]
+            if titulo in dict_cuentas:
+                return (dict_cuentas[titulo], titulo)
+        else:
+            return (mejor_match[2], mejor_match[1])
+    
+    # No encontrado
+    return ('PENDIENTE', proveedor)
     
     if mejor_match:
         if mejor_match[0] == 'alias':
@@ -415,16 +439,20 @@ def generar_excel(facturas: List['Factura'], ruta: Path, nombre_hoja: str = 'Lin
     
     # =========================================================================
     # HOJA 1: LINEAS (detalle de artículos)
+    # v5.12: Nueva columna EXTRACTOR al final
     # =========================================================================
     filas_lineas = []
     
     for f in facturas:
-        # Obtener nombre del extractor (nombre de la clase)
-        nombre_extractor = ''
-        if hasattr(f, 'extractor_nombre') and f.extractor_nombre:
-            nombre_extractor = f.extractor_nombre
-        elif hasattr(f, 'extractor') and f.extractor:
-            nombre_extractor = f.extractor.__class__.__name__
+        # v5.12: Obtener info del extractor
+        extractor_nombre = getattr(f, 'extractor_nombre', '') or ''
+        extractor_metodo = getattr(f, 'metodo_pdf', '') or ''
+        if extractor_nombre:
+            extractor_info = f"{extractor_nombre} ({extractor_metodo})" if extractor_metodo else extractor_nombre
+        elif extractor_metodo:
+            extractor_info = f"generico ({extractor_metodo})"
+        else:
+            extractor_info = ''
         
         if f.lineas:
             for linea in f.lineas:
@@ -435,6 +463,7 @@ def generar_excel(facturas: List['Factura'], ruta: Path, nombre_hoja: str = 'Lin
                     'PROVEEDOR': f.proveedor,
                     'ARTICULO': linea.articulo,
                     'CATEGORIA': linea.categoria or 'PENDIENTE',
+                    'ID_CAT': linea.id_categoria or '',
                     'CANTIDAD': linea.cantidad if linea.cantidad else '',
                     'PRECIO_UD': linea.precio_ud if linea.precio_ud else '',
                     'TIPO IVA': linea.iva,
@@ -443,7 +472,7 @@ def generar_excel(facturas: List['Factura'], ruta: Path, nombre_hoja: str = 'Lin
                     'TOTAL FAC': f.total or '',
                     'CUADRE': f.cuadre,
                     'ARCHIVO': f.archivo,
-                    'EXTRACTOR': nombre_extractor
+                    'EXTRACTOR': extractor_info,  # v5.12
                 })
         else:
             # Factura sin líneas extraídas
@@ -454,6 +483,7 @@ def generar_excel(facturas: List['Factura'], ruta: Path, nombre_hoja: str = 'Lin
                 'PROVEEDOR': f.proveedor,
                 'ARTICULO': 'VER FACTURA',
                 'CATEGORIA': 'PENDIENTE',
+                'ID_CAT': '',
                 'CANTIDAD': '',
                 'PRECIO_UD': '',
                 'TIPO IVA': '',
@@ -462,14 +492,12 @@ def generar_excel(facturas: List['Factura'], ruta: Path, nombre_hoja: str = 'Lin
                 'TOTAL FAC': f.total or '',
                 'CUADRE': f.cuadre,
                 'ARCHIVO': f.archivo,
-                'EXTRACTOR': nombre_extractor
+                'EXTRACTOR': extractor_info,  # v5.12
             })
     
     # =========================================================================
     # HOJA 2: FACTURAS (cabeceras, una fila por factura)
-    # Columnas: #, ARCHIVO, CUENTA, TITULO, Fec.Fac., REF, TOTAL FACTURA, Total, OBSERVACIONES
-    # - TOTAL FACTURA = total extraído del PDF por el extractor
-    # - Total = suma calculada de líneas (base × IVA)
+    # Cabeceras: #, ARCHIVO, CUENTA, Fec.Fac., TITULO, REF, TOTAL FACTURA, Total Parseo, OBSERVACIONES
     # =========================================================================
     filas_facturas = []
     
@@ -481,19 +509,20 @@ def generar_excel(facturas: List['Factura'], ruta: Path, nombre_hoja: str = 'Lin
             num_gestoria = f"TMP{contador_tmp:03d}"
             contador_tmp += 1
         
-        # Buscar CUENTA y TITULO
+        # Buscar CUENTA y TITULO desde MAESTRO_PROVEEDORES
         cuenta, titulo = buscar_cuenta_titulo(f.proveedor, ruta_diccionario)
         
-        # Formatear fecha
+        # Formatear fecha DD-MM-YY
         fecha_formateada = formatear_fecha_factura(f.fecha)
         
-        # Calcular total desde líneas (suma de base * (1 + iva/100))
-        total_calculado = ''
+        # Calcular Total Parseo (suma de líneas)
         if f.lineas:
-            total_calc = sum(l.base * (1 + l.iva/100) for l in f.lineas)
-            total_calculado = round(total_calc, 2)
+            total_parseo = sum(l.base * (1 + l.iva/100) for l in f.lineas)
+            total_parseo = round(total_parseo, 2)
+        else:
+            total_parseo = ''
         
-        # Construir observaciones
+        # OBSERVACIONES = cuadre
         observaciones = f.cuadre or ''
         if es_temporal:
             if observaciones:
@@ -501,29 +530,20 @@ def generar_excel(facturas: List['Factura'], ruta: Path, nombre_hoja: str = 'Lin
             else:
                 observaciones = 'SIN_NUM_GESTORIA'
         
-        # Nombre del archivo sin extensión para la columna ARCHIVO
-        archivo_nombre = f.archivo if f.archivo else ''
-        if archivo_nombre.lower().endswith('.pdf'):
-            archivo_nombre = archivo_nombre[:-4]
-        elif archivo_nombre.lower().endswith(('.jpg', '.png')):
-            archivo_nombre = archivo_nombre[:-4]
-        elif archivo_nombre.lower().endswith('.jpeg'):
-            archivo_nombre = archivo_nombre[:-5]
-        
         filas_facturas.append({
             '#': num_gestoria,
-            'ARCHIVO': archivo_nombre,
+            'ARCHIVO': f.archivo,
             'CUENTA': cuenta,
-            'TITULO': titulo,
             'Fec.Fac.': fecha_formateada,
+            'TITULO': titulo,
             'REF': f.referencia or '',
-            'TOTAL FACTURA': f.total or '',  # Total extraído del PDF
-            'Total': total_calculado,         # Total calculado de líneas
+            'TOTAL FACTURA': f.total or '',
+            'Total Parseo': total_parseo,
             'OBSERVACIONES': observaciones
         })
     
     # =========================================================================
-    # GUARDAR EXCEL CON AMBAS HOJAS Y FORMATO TABLA
+    # GUARDAR EXCEL CON AMBAS HOJAS
     # =========================================================================
     df_lineas = pd.DataFrame(filas_lineas)
     df_facturas = pd.DataFrame(filas_facturas)
@@ -533,20 +553,9 @@ def generar_excel(facturas: List['Factura'], ruta: Path, nombre_hoja: str = 'Lin
     df_facturas = sanitizar_dataframe(df_facturas)
     
     with pd.ExcelWriter(ruta, engine='openpyxl') as writer:
-        # Orden: Lineas primero, Facturas después
+        # Orden: Lineas primero, Facturas después (según preferencia B)
         df_lineas.to_excel(writer, index=False, sheet_name='Lineas')
         df_facturas.to_excel(writer, index=False, sheet_name='Facturas')
-        
-        # Obtener workbook para formatear
-        workbook = writer.book
-        
-        # Formatear hoja Lineas (tabla gris)
-        ws_lineas = workbook['Lineas']
-        formatear_hoja_como_tabla(ws_lineas, 'TablaLineas', 'TableStyleMedium9')
-        
-        # Formatear hoja Facturas (tabla morado claro)
-        ws_facturas = workbook['Facturas']
-        formatear_hoja_como_tabla(ws_facturas, 'TablaFacturas', 'TableStyleMedium16')
     
     return len(filas_lineas)
 
