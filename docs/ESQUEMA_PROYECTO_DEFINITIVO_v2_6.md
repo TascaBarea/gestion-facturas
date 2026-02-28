@@ -1,7 +1,7 @@
 # 📐 ESQUEMA PROYECTO GESTIÓN-FACTURAS
 
-**Versión:** 2.7
-**Fecha:** 23/02/2026
+**Versión:** 2.9
+**Fecha:** 28/02/2026
 **Estado:** DEFINITIVO - Base para desarrollo
 
 ---
@@ -17,7 +17,7 @@
 │   ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐                 │
 │   │    Ⓐ    │    │    Ⓑ    │    │    Ⓒ    │    │    Ⓓ    │                 │
 │   │ PARSEO  │    │  GMAIL  │    │ VENTAS  │    │ CUADRE  │                 │
-│   │  ✅ 85% │    │  ✅ 97% │    │  🟡 15% │    │  ✅ 75% │                 │
+│   │  ✅ 85% │    │  ✅ 97% │    │  ✅ 80% │    │  ✅ 75% │                 │
 │   └────┬────┘    └────┬────┘    └────┬────┘    └────┬────┘                 │
 │        │              │              │              │                       │
 │        ▼              ▼              ▼              ▼                       │
@@ -36,9 +36,9 @@
 | # | Nombre | Archivo Ejemplo | Pestañas | Generado por | Usado por |
 |---|--------|-----------------|----------|--------------|-----------|
 | ① | **COMPRAS** | COMPRAS_1T26v1.xlsx | Lineas + Facturas | Ⓐ PARSEO | Ⓓ CUADRE |
-| ② | **PAGOS_GMAIL** | PAGOS_Gmail_1T26.xlsx | FACTURAS + SEPA | Ⓑ GMAIL | Control pagos |
+| ② | **PAGOS_GMAIL** | PAGOS_Gmail_1T26.xlsx | FACTURAS (15 cols) + SEPA | Ⓑ GMAIL | Control pagos |
 | ②b | **FACTURAS_PROV** | Facturas 1T26 Provisional.xlsx | Facturas | Ⓑ GMAIL | Gestoría |
-| ③ | **VENTAS** | VENTAS_1T26.xlsx | TASCA + COMESTIBLES + WOO | Ⓒ VENTAS | Informes |
+| ③ | **VENTAS** | Ventas Barea 2026.xlsx | TascaRecibos + TascaItems + ComesRecibos + ComesItems + WOO | Ⓒ VENTAS | Informes |
 | ④ | **PROVEEDORES** | MAESTRO_PROVEEDORES.xlsx | 1 | MANUAL | Ⓐ Ⓑ Ⓓ |
 | ⑤ | **MOVIMIENTOS_BANCO** | MOV_BANCO_1T26.xlsx | TASCA + COMESTIBLES | NORMA43/Excel Sabadell | Ⓓ CUADRE |
 | ⑥ | **ARTICULOS** | ARTICULOS.xlsx | 1-2 | LOYVERSE (manual) | Ⓒ VENTAS |
@@ -57,17 +57,53 @@ FRECUENCIA:    Mensual/Trimestral
 ESTADO:        ✅ Funciona - 97 extractores dedicados
 ```
 
-### Ⓑ GMAIL (98% completado) ✅ v1.7
+### Ⓑ GMAIL (98% completado) ✅ v1.9
 ```
 UBICACIÓN:     C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\gmail\
 ENTRADA:       Gmail (etiqueta FACTURAS) + MAESTRO_PROVEEDORES
 SALIDA:        - PDFs descargados y renombrados en Dropbox local
-               - PAGOS_Gmail_XTxx.xlsx (FACTURAS + SEPA)
+               - PAGOS_Gmail_XTxx.xlsx (FACTURAS + SEPA) — 15 columnas
                - PROVEEDORES_NUEVOS_*.txt (sugerencias)
                - ⚠️_IBANS_SUGERIDOS_*.xlsx (verificación)
 INICIO:        AUTOMÁTICO (viernes 03:00) o MANUAL
 FRECUENCIA:    Semanal
-ESTADO:        ✅ v1.7 - Anti-duplicados, auto-reconexión, anti-suspensión, ATRASADAS fix
+ESTADO:        ✅ v1.9 - Detección PROFORMA + OBS multi-flag + extractores corregidos
+NOVEDADES v1.9 (28/02/2026):
+               P1 - SISTEMA PROFORMA:
+               - Nuevo método es_proforma() en ExtractorBase: detecta \bPROFORMA\b en texto
+               - FacturaExtraida tiene campo es_proforma: bool
+               - _usar_extractor_dedicado() llama a instancia.es_proforma(texto_pdf) tras extracción
+               - OBS multi-flag: "PROFORMA", "DUPLICADO", "DUPLICADO | PROFORMA"
+               P2 - EXTRACTORES CORREGIDOS (4 extractores):
+               - MRM: REF capturaba solo "1-2026" → ahora "1-2026-7545" (ref completa)
+               - MRM: líneas con unidad "P" (peso) no se capturaban (solo "U") → [UP]
+               - MOLIENDA VERDE: REF fallaba si pdfplumber extraía "Numero" sin acento → N[uú]mero
+               - ECOFICUS: soporte proforma completo (REF PVT/, TOTAL PROFORMA, fecha sin colon, líneas sin lote)
+               - LA LLEIDIRIA: metodo_pdf='ocr'→'pdfplumber' con fallback_ocr=True (facturas nuevas son texto)
+               - LA LLEIDIRIA: formato línea actualizado: KG→(?:KG|Kg/\w+), €/KG→€/\w+
+               P3 - BASE.PY MEJORADO:
+               - extraer_total(): añadido patrón TOTAL PROFORMA
+               - extraer_referencia(): añadidos patrones proforma (PVT/, PRF/, PRO/)
+               - extraer_referencia(): "Número" con acento/colon opcionales
+               - es_proforma(): nuevo método para detectar proformas
+NOVEDADES v1.8 (27/02/2026):
+               P1 - FIX COLUMN SHIFT:
+               - _migrar_si_necesario() reescrito: solo añade col CUENTA si falta
+               - Eliminada migración v1.7 de columna fantasma (ya aplicada)
+               P2 - TOTAL COMO FLOAT:
+               - Antes: total_str = "12,50" (string con coma) → Excel lo trata como texto
+               - Ahora: total_num = 12.50 (float) → Excel lo reconoce como número
+               P3 - IBAN LIMPIO:
+               - Solo escribe IBANs reales (>=15 chars, empieza con 2 letras)
+               - No escribe RECIBO/TARJETA/basura en la columna IBAN
+               P4 - COLUMNA CUENTA (col 15):
+               - Nueva columna: 'TASCA' o 'COMESTIBLES' según proveedor
+               - Se lee de MAESTRO_PROVEEDORES (campo CUENTA del proveedor)
+               - _migrar_si_necesario() añade la columna a Excels existentes
+               P5 - ANTI-DUPLICADO CIF+REF EFECTIVO:
+               - Antes: detectaba CIF+REF duplicado pero lo guardaba igualmente en Excel
+               - Ahora: si es_duplicado_cif_ref → NO guarda en Dropbox NI en Excel
+               - Log: "Duplicado CIF+REF: se omite Dropbox y Excel"
 NOVEDADES v1.7 (20/02/2026):
                P1 - FIX ATRASADAS (fecha=None):
                - Si extractor falla al extraer fecha → factura nunca era detectada como ATRASADA
@@ -123,31 +159,53 @@ NOVEDADES v1.4:
                - Emails marcados como leídos
 ```
 
-### Ⓒ VENTAS (15% - EN DESARROLLO)
+### Ⓒ VENTAS (80% - FUNCIONAL) ✅ v2.0
 ```
 UBICACIÓN:     gestion-facturas/ventas_semana/
-ENTRADA:       - API Loyverse (TASCA + COMESTIBLES)
-               - API Woocommerce (cursos)
-               - ARTICULOS.xlsx (catálogo)
-SALIDA:        VENTAS_XTxx.xlsx (3 pestañas)
+ENTRADA:       - API Loyverse (TASCA + COMESTIBLES) — recibos + items
+               - API Woocommerce (cursos online)
+               - ARTICULOS.xlsx (catálogo, actualizado automáticamente)
+SALIDA:        Ventas Barea 2026.xlsx (5 pestañas):
+               - TascaRecibos (19 cols, receipt-level)
+               - TascaItems (23 cols, line-item detail)
+               - ComesRecibos (19 cols)
+               - ComesItems (23 cols)
+               - WOOCOMMERCE (pedidos online)
 INICIO:        MANUAL → futuro AUTOMÁTICO
-FRECUENCIA:    Semanal/Mensual
-ESTADO:        🟡 Script básico existe (script_barea.py)
-               Falta: consolidación trimestral, informes
+FRECUENCIA:    Semanal (lunes anterior → domingo anterior)
+ESTADO:        ✅ v2.0 - Reescrito completo (27/02/2026)
+NOVEDADES v2.0 (27/02/2026):
+               - Descarga semanal fija (lunes-domingo anterior), no incremental
+               - Todas las columnas Loyverse: TPV, Tienda, Cajero, Cliente, Categoría,
+                 Tipo de pago — resolución de IDs via API adicionales
+               - fetch_lookup_data(): stores, pos_devices, employees, customers,
+                 categories, payment_types, items → dict id→nombre
+               - procesar_recibos(): genera df_recibos (19 cols) + df_items (23 cols)
+               - Dedup estable: unique_id = {receipt_number}_{line_idx}
+               - Acumulación semanal con dedup (no sobreescribe datos anteriores)
+               - WooCommerce con paginación + filtro semanal (after/before)
+               - .env relativo al script (os.path.dirname(__file__))
+               - _COL_RENAMES para normalizar columnas antiguas (tildes)
+               Falta: consolidación trimestral, informes, automatización
 ```
 
-### Ⓓ CUADRE (75% - FUNCIONAL) ✅ v1.5
+### Ⓓ CUADRE (75% - FUNCIONAL) ✅ v1.5b
 ```
 UBICACIÓN:     gestion-facturas/cuadre/banco/cuadre.py
 ENTRADA:       - Excel gestoría (Tasca + Comestibles + Facturas)
-               - MAESTRO_PROVEEDORES.xlsx (193 proveedores, 565 aliases)
+               - MAESTRO_PROVEEDORES.xlsx (195 proveedores, ~585 aliases)
 SALIDA:        - Excel con Categoria_Tipo + Categoria_Detalle
                - Columna Origen en hoja Facturas
                - Archivo LOG con decisiones
 INICIO:        MANUAL (GUI selección archivo)
 FRECUENCIA:    Mensual/Trimestral
-VERSIÓN:       v1.5
-ESTADO:        ✅ Funciona - Refactorizado (dedup + perf)
+VERSIÓN:       v1.5b
+ESTADO:        ✅ Funciona - SERVICIO DE TPV + aliases nuevos
+NOVEDADES v1.5b (27/02/2026):
+               - Nuevo clasificador: SERVICIO DE TPV (12 movimientos recuperados)
+               - 16 aliases añadidos al MAESTRO (OPENAI, MAKRO, LIDL, MERCADONA, ALCAMPO...)
+               - 2 proveedores nuevos: HIPER DEL EMBALAJE SL, BODEGAS R. LOPEZ DE HEREDIA
+               - Resultado: 3355 clasificados (85.1%), 590 REVISAR (antes 621)
 NOVEDADES v1.5 (23/02/2026):
                - buscar_factura_candidata() extraída de 3 clasificadores (~85 líneas menos)
                - buscar_mejor_alias() optimizado con dict precalculado (O(1) exact match)
@@ -171,8 +229,8 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │
 ├── gestion-facturas\                ← PROYECTO UNIFICADO (este repo)
 │   │
-│   ├── gmail\                       ← Ⓑ GMAIL (✅ v1.7)
-│   │   ├── gmail.py                 ← Módulo principal v1.7 (~2130 líneas)
+│   ├── gmail\                       ← Ⓑ GMAIL (✅ v1.8)
+│   │   ├── gmail.py                 ← Módulo principal v1.9 (~2180 líneas)
 │   │   ├── config.py                ← Configuración (rutas, umbrales, trimestres)
 │   │   ├── config_local.py          ← Overrides locales
 │   │   ├── auth.py                  ← Autenticación Gmail API
@@ -186,7 +244,7 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   │   ├── gmail_auto.bat           ← Script automatización (anti-suspensión+powercfg)
 │   │   └── gmail_auto_setup.bat     ← Setup tarea programada
 │   │
-│   ├── cuadre\                      ← Ⓓ CUADRE (✅ v1.5)
+│   ├── cuadre\                      ← Ⓓ CUADRE (✅ v1.5b)
 │   │   ├── banco\
 │   │   │   ├── cuadre.py            ← Clasificador principal (~1300 líneas)
 │   │   │   ├── router.py            ← Router de clasificadores
@@ -221,7 +279,7 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   │   └── tools\                   ← Herramientas auxiliares
 │   │
 │   ├── datos\                       ← Documentos maestros
-│   │   ├── MAESTRO_PROVEEDORES.xlsx ← 193 proveedores, 565 aliases
+│   │   ├── MAESTRO_PROVEEDORES.xlsx ← 195 proveedores, ~585 aliases
 │   │   ├── DiccionarioProveedoresCategoria.xlsx
 │   │   ├── DiccionarioEmisorTitulo.xlsx
 │   │   ├── EXTRACTORES_COMPLETO.xlsx
@@ -256,7 +314,26 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 | **Material** | 12 | 80% | Papelería, envases |
 | **OCR** | 7 | 75% | LA LLILDIRIA, CASA DEL DUQUE... |
 
-### 5.2 Extractores Corregidos (20/02/2026 - v1.7)
+### 5.2 Extractores Corregidos (28/02/2026 - v1.9)
+
+| Extractor | Problema | Solución | Tasa |
+|-----------|----------|----------|------|
+| **MRM** | `extraer_referencia` solo capturaba "1-2026" (faltaba "-7545") | Regex extendido: `[\d\-]+(?:\s*-[\d.]+)?` + normalización (quita puntos) | 100% |
+| **MRM** | Líneas con unidad "P" (peso) no se capturaban (solo "U") | `\s+U\s+` → `\s+[UP]\s+` | 100% |
+| **MOLIENDA VERDE** | REF fallaba si pdfplumber extraía "Numero" sin acento | `Número` → `N[uú]mero` | 100% |
+| **ECOFICUS** | Proformas sin soporte (REF, total, fecha, líneas) | Fallbacks: PVT/\d+, TOTAL PROFORMA, Fecha sin colon, patrón línea proforma | 100% |
+| **LA LLEIDIRIA** | `metodo_pdf='ocr'` en facturas nuevas (ya son texto PDF) | Cambiado a `pdfplumber` con `fallback_ocr=True` | 100% |
+| **LA LLEIDIRIA** | Formato línea cambiado: "Kg/1KG", "€/Pack" | `KG` → `(?:KG\|Kg/\w+)`, `€/KG` → `€/\w+` | 100% |
+| **base.py** | Sin detección proforma ni patrones REF proforma | `es_proforma()`, TOTAL PROFORMA, PVT/PRF/PRO/, Número con acento opcional | 100% |
+
+**VERIFICADOS SIN BUGS (28/02/2026):**
+
+| Extractor | Facturas probadas | Resultado |
+|-----------|-------------------|-----------|
+| **ANTHROPIC** | 1T26_0220 | ✅ REF EXB4HCQN-0005 correcta |
+| **QUESOS DE CATI** | factura con Número FRA: 532 | ✅ REF correcta |
+
+### 5.3 Extractores Corregidos (20/02/2026 - v1.7)
 
 | Extractor | Problema | Solución | Tasa |
 |-----------|----------|----------|------|
@@ -352,10 +429,11 @@ class ExtractorBase(ABC):
     def extraer_lineas(self, texto) -> List[Dict]    # Líneas de producto
 
     # MÉTODOS OPCIONALES (sobrescribir si formato especial)
-    def extraer_total(self, texto) -> float           # Por defecto: patrones genéricos
+    def extraer_total(self, texto) -> float           # Por defecto: patrones genéricos (incl. PROFORMA)
     def extraer_fecha(self, texto) -> str             # Por defecto: DD/MM/YYYY
-    def extraer_referencia(self, texto) -> str        # Por defecto: patrones genéricos
+    def extraer_referencia(self, texto) -> str        # Por defecto: patrones genéricos + proforma (PVT/,PRF/,PRO/)
     def extraer_numero_factura(self, texto) -> str    # Alias, prioridad sobre extraer_referencia
+    def es_proforma(self, texto) -> bool              # Detecta \bPROFORMA\b en texto
 
     # UTILIDADES HEREDADAS
     def _convertir_importe(self, texto) -> float      # Español/americano → float
@@ -379,13 +457,14 @@ class ExtractorBase(ABC):
 }
 ```
 
-### 5.7.5 Estadísticas (91 extractores)
+### 5.7.5 Estadísticas (97 extractores)
 
 | Concepto | Valor |
 |---|---|
-| Total extractores | 91 |
-| Método pdfplumber | 82 (90%) |
-| Método OCR | 8 (9%): fishgourmet, gaditaun, jimeluz, la_cuchara, la_lleidiria, la_llildiria, manipulados_abellan, tirso |
+| Total extractores | 97 |
+| Método pdfplumber | 89 (92%) |
+| Método OCR | 6 (6%): fishgourmet, gaditaun, jimeluz, la_cuchara, manipulados_abellan, tirso |
+| Método pdfplumber+fallback_ocr | 1 (1%): la_lleidiria (facturas nuevas=texto, antiguas=imagen) |
 | Método híbrido | 2 (2%): angel_borja, casa_del_duque |
 | Con extraer_total propio | 90 (100%) |
 | Con extraer_fecha propio | 90 (100%) |
@@ -409,7 +488,9 @@ portes_equiv = (portes_base × (1 + IVA_portes/100)) / (1 + IVA_productos/100)
 
 **REFERENCIA:** Filtro anti-falsos positivos en `_es_referencia_valida()`: excluye teléfonos, CIFs, fechas, números de cliente, palabras sueltas. Mínimo 3 caracteres y 2 dígitos.
 
-**OCR:** Para PDFs imagen (sin texto extraíble). Usa `pytesseract` + `pdf2image` con `lang='spa'`. Los extractores OCR definen `metodo_pdf = 'ocr'`.
+**OCR:** Para PDFs imagen (sin texto extraíble). Usa `pytesseract` + `pdf2image` con `lang='spa'`. Los extractores OCR definen `metodo_pdf = 'ocr'`. Algunos usan `fallback_ocr = True` para intentar pdfplumber primero y OCR si falla.
+
+**PROFORMA:** Documentos que no son facturas fiscales (presupuesto/pedido). Se detectan automáticamente con `es_proforma()` (busca `\bPROFORMA\b` en texto). Se marcan con "PROFORMA" en columna OBS del Excel. Patrones de REF proforma en base.py: `PVT/`, `PRF/`, `PRO/`. Extractores con soporte proforma específico: ECOFICUS.
 
 **CATEGORÍA FIJA:** 43 extractores asignan categoría automáticamente (ej: `categoria_fija = 'QUESOS'`). El resto usa el DiccionarioProveedoresCategoria.
 
@@ -456,13 +537,13 @@ PASO 6: El extractor se carga automáticamente (sin tocar __init__.py)
 
 ---
 
-## 6. Ⓑ GMAIL v1.7 - DETALLE TÉCNICO
+## 6. Ⓑ GMAIL v1.8 - DETALLE TÉCNICO
 
 ### 6.1 Flujo de Ejecución
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           Ⓑ GMAIL MODULE v1.7                               │
+│                           Ⓑ GMAIL MODULE v1.8                               │
 │                                                                             │
 │  ┌──────────────┐                                                           │
 │  │   GMAIL API  │                                                           │
@@ -518,7 +599,7 @@ PASO 6: El extractor se carga automáticamente (sin tocar __init__.py)
 
 ---
 
-## 7. Ⓓ CUADRE v1.5 - DETALLE
+## 7. Ⓓ CUADRE v1.5b - DETALLE
 
 ### 7.1 Clasificadores Implementados
 
@@ -532,15 +613,16 @@ PASO 6: El extractor se carga automáticamente (sin tocar __init__.py)
 | **Yoigo** | `YOIGO` | XFERA MOVILES SAU | #factura |
 | **Comunidad** | `COM PROP` | COMUNIDAD DE VECINOS | Dirección |
 | **Suscripciones** | `LOYVERSE`, `SPOTIFY` | GASTOS VARIOS | Sin factura |
+| **Servicio TPV** | `SERVICIO DE TPV` | SERVICIO DE TPV | (cargo bancario) |
 | **Alquiler** | `BENJAMIN ORTEGA` | ALQUILER | Local |
 
-### 7.2 Arquitectura cuadre.py (v1.5)
+### 7.2 Arquitectura cuadre.py (v1.5b)
 
 ```
 main()
  │
  ├── Cargar MAESTRO_PROVEEDORES → construir_df_fuzzy() → construir_indice_aliases()
- │                                 (565 filas)            (470 entradas, dict O(1))
+ │                                 (~585 filas)           (~490 entradas, dict O(1))
  ├── Cargar Excel entrada (Tasca + Comestibles + Facturas)
  │
  └── Por cada hoja de movimientos:
@@ -591,12 +673,14 @@ Lógica común a transferencias, compra_tarjeta y adeudo_recibo (~40 líneas cad
 
 ### 7.5 Resultados verificados (Movimientos Cuenta 2025.xlsx)
 
-| Métrica | Valor |
-|---|---|
-| Total movimientos | 3945 (Tasca: 2697 + Comestibles: 1248) |
-| Clasificados | 3324 (84.3%) |
-| REVISAR | 621 (15.7%) |
-| MAESTRO aliases | 565 filas → 470 entradas en índice |
+| Métrica | v1.5 | v1.5b |
+|---|---|---|
+| Total movimientos | 3945 | 3945 |
+| Clasificados | 3324 (84.3%) | 3355 (85.1%) |
+| REVISAR | 621 (15.7%) | 590 (14.9%) |
+| MAESTRO aliases | 565 filas | ~585 filas |
+
+**Mejoras v1.5b:** +31 movimientos clasificados (SERVICIO DE TPV: 12, aliases nuevos: ~19)
 
 ---
 
@@ -646,7 +730,7 @@ Lógica común a transferencias, compra_tarjeta y adeudo_recibo (~40 líneas cad
 | ~~1️⃣~~ | ~~Ⓑ GMAIL~~ | ~~Descargar + renombrar~~ | ✅ **v1.7** |
 | ~~2️⃣~~ | ~~Extractores PARSEO~~ | ~~Mejorar tasa de éxito (85%→95%)~~ | ✅ **97 extractores** |
 | 3️⃣ | Ⓓ CUADRE integración | Conectar con COMPRAS (ESTADO_PAGO) | 🟡 Pendiente |
-| 4️⃣ | Ⓒ VENTAS | Loyverse + Woocommerce (script base existe) | 🟡 15% |
+| 4️⃣ | Ⓒ VENTAS | Loyverse + Woocommerce (v2.0 funcional) | ✅ **80%** |
 | 5️⃣ | Integrar | Mover PARSEO a gestion-facturas | ❌ Futuro |
 | 6️⃣ | Informes | Dashboards y análisis | ❌ Futuro |
 
@@ -704,6 +788,45 @@ C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD\
 
 ## CHANGELOG
 
+### v2.9 (28/02/2026)
+- ✅ **SISTEMA PROFORMA implementado** — Detección y marcado automático de proformas
+  - `ExtractorBase.es_proforma()`: detecta `\bPROFORMA\b` en texto del PDF
+  - `FacturaExtraida.es_proforma`: nuevo campo bool propagado por todo el pipeline
+  - Columna OBS multi-flag: "PROFORMA", "DUPLICADO", "DUPLICADO | PROFORMA"
+  - Patrones REF proforma genéricos: PVT/, PRF/, PRO/ (en base.py)
+  - Patrón TOTAL PROFORMA añadido a `extraer_total()` genérico
+  - `extraer_referencia()`: patrón `Número` con acento y colon opcionales
+- ✅ **6 extractores corregidos** (análisis con PDFs reales):
+  - MRM: REF completa "1-2026-7545" (antes solo "1-2026") + soporte unidad "P" (peso)
+  - MOLIENDA VERDE: `N[uú]mero` para manejar acento variable de pdfplumber
+  - ECOFICUS: soporte proforma completo (REF PVT/, TOTAL PROFORMA, fecha sin colon, líneas sin lote)
+  - LA LLEIDIRIA: `metodo_pdf='pdfplumber'` con `fallback_ocr=True` (facturas nuevas son texto)
+  - LA LLEIDIRIA: formato línea actualizado (`Kg/\w+`, `€/\w+`) para facturas 2026
+  - base.py: 4 mejoras (es_proforma, TOTAL PROFORMA, patrones proforma, Número flexible)
+- ✅ **ANTHROPIC y QUESOS DE CATI verificados** — sin bugs en extractores
+- ✅ **Estadísticas corregidas**: sección 5.7.5 actualizada de 91→97 extractores, LA LLEIDIRIA movida de OCR a pdfplumber+fallback
+
+### v2.8 (27/02/2026)
+- ✅ **GMAIL actualizado a v1.8** — 5 fixes basados en diagnóstico de PAGOS_Gmail_1T26.xlsx
+  - P1 Fix column shift: `_migrar_si_necesario()` reescrito (solo añade CUENTA, eliminada migración fantasma)
+  - P2 TOTAL como float: antes string "12,50" → ahora float 12.50 (Excel lo reconoce como número)
+  - P3 IBAN limpio: solo escribe IBANs reales (>=15 chars, 2 letras iniciales), no RECIBO/TARJETA
+  - P4 CUENTA (col 15): nueva columna con 'TASCA'/'COMESTIBLES' leída del MAESTRO_PROVEEDORES
+  - P5 Anti-duplicado CIF+REF efectivo: antes detectaba pero guardaba → ahora omite Dropbox y Excel
+- ✅ **CUADRE actualizado a v1.5b** — +31 movimientos clasificados (621→590 REVISAR)
+  - Nuevo clasificador: SERVICIO DE TPV (12 movimientos de cargo bancario por datáfono)
+  - 16 aliases añadidos al MAESTRO (OPENAI, MAKRO, LIDL, MERCADONA, ALCAMPO, ANTHROPIC...)
+  - 2 proveedores nuevos: HIPER DEL EMBALAJE SL, BODEGAS R. LOPEZ DE HEREDIA VINA TONDONIA SA
+  - MAESTRO: 193→195 proveedores, 565→~585 aliases
+- ✅ **VENTAS reescrito a v2.0** — script_barea.py completamente reescrito
+  - Descarga semanal fija (lunes→domingo anterior) en vez de incremental
+  - Todas las columnas Loyverse con resolución de IDs: TPV, Tienda, Cajero, Cliente, Categoría, Tipo de pago
+  - 5 pestañas: TascaRecibos (19 cols), TascaItems (23 cols), ComesRecibos, ComesItems, WOOCOMMERCE
+  - WooCommerce con paginación y filtro semanal
+  - Dedup estable con unique_id, normalización columnas antiguas (_COL_RENAMES)
+  - Datos reparados desde ejemplo Loyverse: 3274 recibos Tasca, 11199 items Tasca, 804 recibos Comes
+- ✅ **borboton.py**: archivo eliminado del proyecto (SyntaxWarning ya no aplica)
+
 ### v2.7 (23/02/2026)
 - ✅ **CUADRE actualizado a v1.5** — Refactorización de calidad (sin cambio funcional)
   - `buscar_factura_candidata()` extraída de 3 clasificadores (~85 líneas de código duplicado eliminadas)
@@ -756,7 +879,7 @@ C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD\
   - Convenciones de código
 - ✅ **Nuevo Excel de salida**: `Facturas 1T26 Provisional.xlsx` (6+1 columnas)
   - Se genera ADEMÁS del PAGOS_Gmail
-  - Detección de duplicados por NOMBRE → columna OBS="DUPLICADO"
+  - Columna OBS multi-flag: "DUPLICADO", "PROFORMA", "DUPLICADO | PROFORMA"
   - Formato: NOMBRE | PROVEEDOR | Fec.Fac. | Factura | Total | Origen | OBS
 
 ### v2.4 (13/02/2026)
@@ -830,4 +953,4 @@ C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD\
 **Documento de referencia para todas las sesiones futuras.**
 
 ✅ **APROBADO POR:** Tasca
-📅 **FECHA:** 23/02/2026
+📅 **FECHA:** 28/02/2026

@@ -181,6 +181,7 @@ class FacturaExtraida:
     exito: bool = False
     metodo: str = ""
     fecha_futura: bool = False
+    es_proforma: bool = False
 
 
 @dataclass
@@ -201,6 +202,7 @@ class ResultadoProcesamiento:
     motivo_revision: str = ""
     iban_sugerido: str = ""
     alerta_roja: bool = False
+    es_duplicado: bool = False
 
 
 # ============================================================================
@@ -557,10 +559,14 @@ class ControlDuplicados:
     def hash_existe(self, hash_pdf: str) -> bool:
         return hash_pdf in self.datos["hashes"]
     
-    def factura_existe(self, cif: str, referencia: str) -> bool:
-        if not cif or not referencia:
+    def factura_existe(self, cif: str, referencia: str, nombre: str = "") -> bool:
+        if not referencia:
             return False
-        clave = f"{cif}|{referencia}"
+        # v1.8: Usar nombre como fallback cuando CIF está vacío (ej: ODOO)
+        identificador = cif if cif else nombre
+        if not identificador:
+            return False
+        clave = f"{identificador}|{referencia}"
         return clave in self.datos["facturas"]
     
     def registrar(self, resultado: ResultadoProcesamiento):
@@ -573,18 +579,23 @@ class ControlDuplicados:
             "dropbox": resultado.dropbox_path
         }
         
-        if resultado.hash_pdf:
+        # v1.8: No sobreescribir hash/factura si ya existen (protección contra duplicados)
+        if resultado.hash_pdf and resultado.hash_pdf not in self.datos["hashes"]:
             self.datos["hashes"][resultado.hash_pdf] = {
                 "email_id": resultado.email_id,
                 "archivo": resultado.archivo_generado
             }
-        
+
         if resultado.proveedor and resultado.factura and resultado.factura.referencia:
-            clave = f"{resultado.proveedor.cif}|{resultado.factura.referencia}"
-            self.datos["facturas"][clave] = {
-                "email_id": resultado.email_id,
-                "archivo": resultado.archivo_generado
-            }
+            # v1.8: Usar nombre como fallback cuando CIF está vacío (ej: ODOO)
+            identificador = resultado.proveedor.cif if resultado.proveedor.cif else resultado.proveedor.nombre
+            if identificador:
+                clave = f"{identificador}|{resultado.factura.referencia}"
+                if clave not in self.datos["facturas"]:
+                    self.datos["facturas"][clave] = {
+                        "email_id": resultado.email_id,
+                        "archivo": resultado.archivo_generado
+                    }
     
     def registrar_email_visto(self, email_id: str, motivo: str = ""):
         """
@@ -1103,7 +1114,7 @@ class ExcelGenerator:
     COLUMNAS_FACTURAS = [
         "#", "ARCHIVO", "PROVEEDOR", "CIF", "FECHA_FACTURA", "REF",
         "TOTAL", "IBAN", "FORMA_PAGO", "ESTADO_PAGO", "MOV#", "OBS", "REMITENTE",
-        "FECHA_PROCESO"
+        "FECHA_PROCESO", "CUENTA"
     ]
     
     COLUMNAS_SEPA = [
@@ -1114,7 +1125,7 @@ class ExcelGenerator:
     ANCHOS_FACTURAS = {
         "#": 6, "ARCHIVO": 45, "PROVEEDOR": 30, "CIF": 12, "FECHA_FACTURA": 12,
         "REF": 15, "TOTAL": 12, "IBAN": 30, "FORMA_PAGO": 12, "ESTADO_PAGO": 12,
-        "MOV#": 10, "OBS": 25, "REMITENTE": 35, "FECHA_PROCESO": 14
+        "MOV#": 10, "OBS": 25, "REMITENTE": 35, "FECHA_PROCESO": 14, "CUENTA": 15
     }
     
     ANCHOS_SEPA = {
@@ -1244,46 +1255,37 @@ class ExcelGenerator:
                 self._crear_cabecera_sepa()
             else:
                 self.ws_sepa = self.wb["SEPA"]
-            # v1.7: Migrar formato antiguo (columna fantasma + añadir FECHA_PROCESO)
+            # v1.8: Añadir columna CUENTA si falta
             self._migrar_si_necesario()
         else:
             self._crear_nuevo()
 
     def _migrar_si_necesario(self):
         """
-        v1.7: Detecta y migra formato antiguo de hoja FACTURAS.
-        - Elimina columna fantasma (col 3 = None) que desplazaba todos los datos
-        - Añade columna FECHA_PROCESO al final si no existe
+        v1.8: Añade columna CUENTA si no existe.
+        (Migración v1.7 de columna fantasma y FECHA_PROCESO ya aplicada.)
         """
         if self.ws_facturas is None:
             return
 
-        font_header = Font(name='Aptos Display', size=10, bold=True, color="FFFFFF")
-        fill_header = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
-        border = Border(
-            left=Side(style='thin', color='CCCCCC'),
-            right=Side(style='thin', color='CCCCCC'),
-            top=Side(style='thin', color='CCCCCC'),
-            bottom=Side(style='thin', color='CCCCCC')
-        )
-
-        # Detectar formato antiguo: col 3 = None y col 4 = 'PROVEEDOR'
-        h3 = self.ws_facturas.cell(1, 3).value
-        h4 = self.ws_facturas.cell(1, 4).value
-        if h3 is None and h4 == 'PROVEEDOR':
-            self.ws_facturas.delete_cols(3)
-
-        # Añadir FECHA_PROCESO si no existe
         headers = [self.ws_facturas.cell(1, c).value
                    for c in range(1, self.ws_facturas.max_column + 1)]
-        if 'FECHA_PROCESO' not in headers:
+        if 'CUENTA' not in headers:
+            font_header = Font(name='Aptos Display', size=10, bold=True, color="FFFFFF")
+            fill_header = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+            border = Border(
+                left=Side(style='thin', color='CCCCCC'),
+                right=Side(style='thin', color='CCCCCC'),
+                top=Side(style='thin', color='CCCCCC'),
+                bottom=Side(style='thin', color='CCCCCC')
+            )
             col_nueva = self.ws_facturas.max_column + 1
-            cell = self.ws_facturas.cell(row=1, column=col_nueva, value='FECHA_PROCESO')
+            cell = self.ws_facturas.cell(row=1, column=col_nueva, value='CUENTA')
             cell.font = font_header
             cell.fill = fill_header
             cell.alignment = Alignment(horizontal='center', vertical='center')
             cell.border = border
-            self.ws_facturas.column_dimensions[get_column_letter(col_nueva)].width = 14
+            self.ws_facturas.column_dimensions[get_column_letter(col_nueva)].width = 15
     
     def añadir_fila(self, resultado: ResultadoProcesamiento):
         """Añade una fila a la pestaña FACTURAS y a SEPA si es TF"""
@@ -1300,16 +1302,21 @@ class ExcelGenerator:
         
         # Datos
         fecha_str = ""
-        total_str = ""
-        total_num = 0
-        
+        total_num = None
+
         if resultado.factura:
             if resultado.factura.fecha:
                 fecha_str = resultado.factura.fecha.strftime(CONFIG.FECHA_EXCEL)
             if resultado.factura.total:
-                total_str = f"{resultado.factura.total:.2f}".replace(".", ",")
-                total_num = resultado.factura.total
-        
+                total_num = float(resultado.factura.total)
+
+        # v1.8: IBAN — solo escribir IBANs reales (2 letras + dígitos, >=15 chars)
+        iban_valor = ""
+        if resultado.proveedor and resultado.proveedor.iban:
+            iban_clean = resultado.proveedor.iban.replace(" ", "")
+            if len(iban_clean) >= 15 and iban_clean[:2].isalpha():
+                iban_valor = formatear_iban(resultado.proveedor.iban)
+
         valores = [
             num,
             resultado.archivo_generado,
@@ -1317,14 +1324,15 @@ class ExcelGenerator:
             resultado.proveedor.cif if resultado.proveedor else "",
             fecha_str,
             resultado.factura.referencia if resultado.factura else "",
-            total_str,
-            formatear_iban(resultado.proveedor.iban) if resultado.proveedor else "",
+            total_num,                                                      # v1.8: float, no string
+            iban_valor,                                                     # v1.8: solo IBAN real
             resultado.proveedor.forma_pago if resultado.proveedor else "",
             "",  # ESTADO_PAGO
             "",  # MOV#
             resultado.motivo_revision if resultado.requiere_revision else "",
             resultado.remitente,
-            datetime.now().date()  # FECHA_PROCESO v1.7
+            datetime.now().date(),                                          # FECHA_PROCESO
+            resultado.proveedor.cuenta if resultado.proveedor else "",      # v1.8: CUENTA
         ]
         
         # Estilos
@@ -1346,7 +1354,7 @@ class ExcelGenerator:
         
         # Si es TF, añadir también a pestaña SEPA
         if resultado.proveedor and resultado.proveedor.forma_pago == "TF":
-            self._añadir_fila_sepa(resultado, num, fecha_hoy, total_num)
+            self._añadir_fila_sepa(resultado, num, fecha_hoy, total_num or 0)
     
     def _añadir_fila_sepa(self, resultado: ResultadoProcesamiento, num_factura: int, 
                           fecha_hoy: str, total: float):
@@ -1506,7 +1514,12 @@ class ExcelFacturas:
         fecha_proceso_col = datetime.now().date()
         
         # Col G: OBS
-        obs = "DUPLICADO" if es_duplicado else ""
+        obs_parts = []
+        if es_duplicado:
+            obs_parts.append("DUPLICADO")
+        if resultado.factura and resultado.factura.es_proforma:
+            obs_parts.append("PROFORMA")
+        obs = " | ".join(obs_parts)
         
         font_normal = Font(name='Aptos Light', size=11)
         
@@ -1876,18 +1889,24 @@ class GmailProcessor:
                 if nombre_archivo.lower().endswith('.pdf'):
                     self._procesar_pdf(resultado, nombre_archivo, contenido, fecha_proceso)
                     break
-            
-            if not resultado.archivo_generado:
+
+            # v1.8: Si el PDF era duplicado (hash o CIF+REF), NO intentar imágenes
+            if not resultado.archivo_generado and not resultado.es_duplicado:
                 for nombre_archivo, contenido in adjuntos:
                     if nombre_archivo.lower().endswith(('.jpg', '.jpeg', '.png')):
                         self._procesar_imagen(resultado, nombre_archivo, contenido, fecha_proceso)
                         break
-            
+
             self.resultados.append(resultado)
-            
+
             # ── PASO 5: Registrar en JSON y guardar INMEDIATAMENTE ──
             if not self.modo_test:
-                self.control.registrar_y_guardar(resultado)
+                if resultado.es_duplicado:
+                    # v1.8: Duplicado → solo registrar email como visto (no sobreescribir facturas/hashes)
+                    self.control.registrar_email_visto(email_id, resultado.motivo_revision or "duplicado")
+                    self.control.guardar()
+                else:
+                    self.control.registrar_y_guardar(resultado)
             
         except Exception as e:
             self.logger.error(f"  ↳ Error: {e}")
@@ -1927,6 +1946,7 @@ class GmailProcessor:
         hash_pdf = calcular_hash_archivo(contenido)
         if self.control.hash_existe(hash_pdf):
             self.logger.info(f"  ↳ PDF duplicado (hash), saltando")
+            resultado.es_duplicado = True
             return
         
         resultado.hash_pdf = hash_pdf
@@ -2000,49 +2020,56 @@ class GmailProcessor:
                 else:
                     self.logger.info(f"  ↳ 💡 IBAN detectado en PDF: {iban_pdf[:8]}... (no está en MAESTRO)")
         
+        # v1.8: Detectar duplicado CIF+REF (o NOMBRE+REF si CIF vacío)
+        es_duplicado_cif_ref = False
         if proveedor and factura.referencia:
-            if self.control.factura_existe(proveedor.cif, factura.referencia):
-                self.logger.warning(f"  ↳ Factura CIF+REF duplicada")
+            if self.control.factura_existe(proveedor.cif, factura.referencia, proveedor.nombre):
+                es_duplicado_cif_ref = True
+                resultado.es_duplicado = True
+                self.logger.warning(f"  ↳ Factura CIF+REF duplicada — NO se guardará")
                 resultado.requiere_revision = True
-                resultado.motivo_revision = "Posible duplicado (CIF+REF)"
-        
+                resultado.motivo_revision = "Duplicado (CIF+REF) — descartado"
+
         nombre_generado = generar_nombre_archivo(
             proveedor, factura, fecha_proceso, resultado.remitente
         )
         resultado.archivo_generado = nombre_generado
         self.logger.info(f"  ↳ Archivo: {nombre_generado}")
-        
-        # Subir a Dropbox Local (v1.4)
-        if self.dropbox and not self.modo_test:
-            fecha_factura = factura.fecha if factura.fecha else fecha_proceso
-            
-            ruta_dropbox = self.dropbox.subir_archivo(
-                contenido, 
-                nombre_generado, 
-                fecha_factura, 
-                fecha_proceso
-            )
-            resultado.dropbox_path = ruta_dropbox
-            self.logger.info(f"  ↳ Copiado a Dropbox Local")
-        
-        # Añadir al Excel PAGOS_Gmail
-        if not self.modo_test:
-            trimestre = obtener_trimestre(fecha_proceso)
-            excel_path = os.path.join(CONFIG.OUTPUT_PATH, f"PAGOS_Gmail_{trimestre}.xlsx")
-            
-            excel = ExcelGenerator(excel_path)
-            excel.abrir_o_crear()
-            excel.añadir_fila(resultado)
-            excel.guardar()
-            
-            # Añadir al Excel Facturas_XTYY_Provisional (v1.6)
-            facturas_path = os.path.join(CONFIG.OUTPUT_PATH, f"Facturas {trimestre} Provisional.xlsx")
-            facturas_excel = ExcelFacturas(facturas_path)
-            facturas_excel.abrir_o_crear()
-            facturas_excel.añadir_fila(resultado)
-            facturas_excel.guardar()
-            
-            self.logger.info(f"  ↳ Añadido a Excel")
+
+        if es_duplicado_cif_ref:
+            self.logger.info(f"  ↳ Duplicado CIF+REF: se omite Dropbox y Excel")
+        else:
+            # Subir a Dropbox Local (v1.4)
+            if self.dropbox and not self.modo_test:
+                fecha_factura = factura.fecha if factura.fecha else fecha_proceso
+
+                ruta_dropbox = self.dropbox.subir_archivo(
+                    contenido,
+                    nombre_generado,
+                    fecha_factura,
+                    fecha_proceso
+                )
+                resultado.dropbox_path = ruta_dropbox
+                self.logger.info(f"  ↳ Copiado a Dropbox Local")
+
+            # Añadir al Excel PAGOS_Gmail
+            if not self.modo_test:
+                trimestre = obtener_trimestre(fecha_proceso)
+                excel_path = os.path.join(CONFIG.OUTPUT_PATH, f"PAGOS_Gmail_{trimestre}.xlsx")
+
+                excel = ExcelGenerator(excel_path)
+                excel.abrir_o_crear()
+                excel.añadir_fila(resultado)
+                excel.guardar()
+
+                # Añadir al Excel Facturas_XTYY_Provisional (v1.6)
+                facturas_path = os.path.join(CONFIG.OUTPUT_PATH, f"Facturas {trimestre} Provisional.xlsx")
+                facturas_excel = ExcelFacturas(facturas_path)
+                facturas_excel.abrir_o_crear()
+                facturas_excel.añadir_fila(resultado)
+                facturas_excel.guardar()
+
+                self.logger.info(f"  ↳ Añadido a Excel")
         
         # NOTA: El registro en JSON se hace en _procesar_email() con registrar_y_guardar()
     
@@ -2164,7 +2191,14 @@ class GmailProcessor:
                                     datos['referencia'] = instancia.extraer_referencia(texto_pdf)
                                 except Exception as e:
                                     self.logger.debug(f"  ↳ Error extraer_referencia: {e}")
-                
+
+                            # Detectar proforma
+                            if hasattr(instancia, 'es_proforma'):
+                                try:
+                                    datos['es_proforma'] = instancia.es_proforma(texto_pdf)
+                                except:
+                                    pass
+
                 # Fallback: funciones a nivel módulo
                 if not datos:
                     if hasattr(modulo, 'extraer_datos'):
@@ -2217,7 +2251,8 @@ class GmailProcessor:
                     
                     resultado.exito = resultado.fecha is not None or resultado.total is not None
                     resultado.metodo = f"extractor:{proveedor.archivo_extractor}"
-                
+                    resultado.es_proforma = datos.get('es_proforma', False)
+
                 return resultado
                 
             finally:
