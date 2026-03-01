@@ -1314,7 +1314,9 @@ def main():
             df_maestro = pd.read_excel(maestro_path)
             df_fuzzy = construir_df_fuzzy(df_maestro)
             indice_aliases = construir_indice_aliases(df_fuzzy)
-            print(f"   ✅ Cargados {len(df_maestro)} proveedores, {len(df_fuzzy)} aliases")
+            n_activos = (df_maestro.get("ACTIVO", pd.Series()).astype(str).str.upper() == "SI").sum()
+            n_extractor = (df_maestro.get("TIENE_EXTRACTOR", pd.Series()).astype(str).str.upper() == "SI").sum()
+            print(f"   ✅ {len(df_maestro)} proveedores ({n_activos} activos), {len(df_fuzzy)} aliases, {n_extractor} con extractor")
             log(f"MAESTRO_PROVEEDORES: {len(df_maestro)} proveedores, {len(df_fuzzy)} aliases")
         except Exception as e:
             print(f"   ❌ Error cargando MAESTRO: {e}")

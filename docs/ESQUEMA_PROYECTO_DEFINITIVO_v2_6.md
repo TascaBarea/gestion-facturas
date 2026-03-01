@@ -54,7 +54,7 @@ ENTRADA:       Carpeta con PDFs de facturas + MAESTRO_PROVEEDORES
 SALIDA:        COMPRAS_XTxx.xlsx (Lineas + Facturas)
 INICIO:        MANUAL (menú)
 FRECUENCIA:    Mensual/Trimestral
-ESTADO:        ✅ Funciona - 97 extractores dedicados
+ESTADO:        ✅ Funciona - 99 extractores dedicados
 ```
 
 ### Ⓑ GMAIL (98% completado) ✅ v1.9
@@ -152,7 +152,7 @@ NOVEDADES v1.5:
                - Evita reprocesar los mismos emails cada semana
                - gmail_auto.bat mejorado (espera 60s, timestamps, verificaciones red/token)
 NOVEDADES v1.4:
-               - Integración 97 extractores PARSEO
+               - Integración 99 extractores PARSEO
                - LocalDropboxClient (copia directa a carpeta sincronizada)
                - ATRASADAS detecta facturas de trimestres anteriores
                - Pestaña SEPA con IBANs y datos para pagos
@@ -254,7 +254,7 @@ NOVEDADES v1.5 (23/02/2026):
 C:\_ARCHIVOS\TRABAJO\Facturas\
 │
 ├── Parseo\                          ← Ⓐ PARSEO (FUNCIONA)
-│   ├── extractores\                 ← 97 extractores específicos
+│   ├── extractores\                 ← 99 extractores específicos
 │   ├── nucleo\
 │   ├── salidas\
 │   ├── outputs\
@@ -350,7 +350,7 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 
 ---
 
-## 5. Ⓐ PARSEO - EXTRACTORES (97 total)
+## 5. Ⓐ PARSEO - EXTRACTORES (99 total)
 
 ### 5.1 Estado de Extractores
 
@@ -505,12 +505,12 @@ class ExtractorBase(ABC):
 }
 ```
 
-### 5.7.5 Estadísticas (97 extractores)
+### 5.7.5 Estadísticas (99 extractores)
 
 | Concepto | Valor |
 |---|---|
-| Total extractores | 97 |
-| Método pdfplumber | 89 (92%) |
+| Total extractores | 99 |
+| Método pdfplumber | 91 (92%) |
 | Método OCR | 6 (6%): fishgourmet, gaditaun, jimeluz, la_cuchara, manipulados_abellan, tirso |
 | Método pdfplumber+fallback_ocr | 1 (1%): la_lleidiria (facturas nuevas=texto, antiguas=imagen) |
 | Método híbrido | 2 (2%): angel_borja, casa_del_duque |
@@ -786,7 +786,7 @@ Lógica común a transferencias, compra_tarjeta y adeudo_recibo (~40 líneas cad
 | Prioridad | Función | Descripción | Estado |
 |-----------|---------|-------------|--------|
 | ~~1️⃣~~ | ~~Ⓑ GMAIL~~ | ~~Descargar + renombrar~~ | ✅ **v1.7** |
-| ~~2️⃣~~ | ~~Extractores PARSEO~~ | ~~Mejorar tasa de éxito (85%→95%)~~ | ✅ **97 extractores** |
+| ~~2️⃣~~ | ~~Extractores PARSEO~~ | ~~Mejorar tasa de éxito (85%→95%)~~ | ✅ **99 extractores** |
 | 3️⃣ | Ⓓ CUADRE integración | Conectar con COMPRAS (ESTADO_PAGO) | 🟡 Pendiente |
 | ~~4️⃣~~ | ~~Ⓒ VENTAS~~ | ~~Loyverse + Woocommerce~~ | ✅ **v4.0 (95%)** |
 | ~~5️⃣~~ | ~~Informes~~ | ~~Dashboards + PDF + email~~ | ✅ **Comes + Tasca** |
@@ -982,7 +982,7 @@ Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` p
   - LA LLEIDIRIA: formato línea actualizado (`Kg/\w+`, `€/\w+`) para facturas 2026
   - base.py: 4 mejoras (es_proforma, TOTAL PROFORMA, patrones proforma, Número flexible)
 - ✅ **ANTHROPIC y QUESOS DE CATI verificados** — sin bugs en extractores
-- ✅ **Estadísticas corregidas**: sección 5.7.5 actualizada de 91→97 extractores, LA LLEIDIRIA movida de OCR a pdfplumber+fallback
+- ✅ **Estadísticas corregidas**: sección 5.7.5 actualizada de 91→99 extractores, LA LLEIDIRIA movida de OCR a pdfplumber+fallback
 
 ### v2.8 (27/02/2026)
 - ✅ **GMAIL actualizado a v1.8** — 5 fixes basados en diagnóstico de PAGOS_Gmail_1T26.xlsx
@@ -1091,7 +1091,7 @@ Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` p
 - ⚠️ **Pendiente**: Extractores sin total (LA LLILDIRIA, GARUA, GREDALES, ISIFAR, ODOO, ACHILIPÚ)
 
 ### v2.2 (03/02/2026)
-- ✅ **PARSEO mejorado: 91→97 extractores** (+6 nuevos/corregidos)
+- ✅ **PARSEO mejorado: 91→99 extractores** (+8 nuevos/corregidos)
 - ✅ Corregido YOIGO (encoding €)
 - ✅ Corregido MRM (patrón simplificado)
 - ✅ Corregido BERNAL (portes IVA 21% distribuidos)

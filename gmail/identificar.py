@@ -28,28 +28,50 @@ from config import (
 
 _maestro_cache = None
 
-def cargar_maestro() -> pd.DataFrame:
+def cargar_maestro(verbose: bool = True) -> pd.DataFrame:
     """
     Carga el MAESTRO_PROVEEDORES (con cache).
-    
+
     Returns:
         DataFrame con proveedores
     """
     global _maestro_cache
-    
+
     if _maestro_cache is not None:
         return _maestro_cache
-    
+
     if not os.path.exists(MAESTRO_PROVEEDORES):
         raise FileNotFoundError(f"No existe MAESTRO_PROVEEDORES: {MAESTRO_PROVEEDORES}")
-    
+
     df = pd.read_excel(MAESTRO_PROVEEDORES)
-    
+
     # Normalizar nombres de columnas
     df.columns = df.columns.str.strip().str.upper()
-    
+
     _maestro_cache = df
+
+    if verbose:
+        _imprimir_estadisticas_maestro(df)
+
     return df
+
+
+def _imprimir_estadisticas_maestro(df: pd.DataFrame):
+    """Imprime resumen estadistico del MAESTRO_PROVEEDORES."""
+    total = len(df)
+    activos = (df["ACTIVO"].astype(str).str.upper() == "SI").sum() if "ACTIVO" in df.columns else total
+    con_extractor = (df["TIENE_EXTRACTOR"].astype(str).str.upper() == "SI").sum() if "TIENE_EXTRACTOR" in df.columns else 0
+    con_email = df["EMAIL"].notna().sum() if "EMAIL" in df.columns else 0
+    con_cif = df["CIF"].notna().sum() if "CIF" in df.columns else 0
+    con_iban = df["IBAN"].notna().sum() if "IBAN" in df.columns else 0
+
+    n_alias = 0
+    if "ALIAS" in df.columns:
+        for val in df["ALIAS"].dropna():
+            n_alias += len([a.strip() for a in str(val).split(",") if a.strip()])
+
+    print(f"   MAESTRO: {total} proveedores ({activos} activos)")
+    print(f"   Extractores: {con_extractor} | Emails: {con_email} | CIF: {con_cif} | IBAN: {con_iban} | Alias: {n_alias}")
 
 
 def obtener_lista_proveedores() -> list[str]:

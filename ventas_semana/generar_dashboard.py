@@ -155,6 +155,60 @@ def _normalizar_df(df_i, df_r):
     return df_i, df_r
 
 
+COMES_OTROS_UMBRAL = 1.0  # Categorías con <1% del total anual → "OTROS"
+
+
+def _agrupar_otros(d_year, umbral=COMES_OTROS_UMBRAL):
+    """Agrupa categorias con <umbral% del total anual en 'OTROS'."""
+    cats_total = d_year["cats_total"]
+    if not cats_total:
+        return
+
+    # Identificar categorias pequenas (excluir "OTROS" si ya existe)
+    pequenas = {c for c, pct in cats_total.items()
+                if pct < umbral and c != "OTROS"}
+    if not pequenas:
+        return
+
+    # -- cats_total: sumar en OTROS
+    otros_pct = sum(cats_total[c] for c in pequenas)
+    cats_total["OTROS"] = _round(cats_total.get("OTROS", 0) + otros_pct, 1)
+    for c in pequenas:
+        del cats_total[c]
+
+    # -- cats_euros: sumar en OTROS
+    cats_euros = d_year["cats_euros"]
+    otros_euros = sum(cats_euros.get(c, 0) for c in pequenas)
+    cats_euros["OTROS"] = _round(cats_euros.get("OTROS", 0) + otros_euros)
+    for c in pequenas:
+        cats_euros.pop(c, None)
+
+    # -- cats: recalcular lista ordenada
+    d_year["cats"] = sorted(cats_total.keys())
+
+    # -- mensual[m]["cats"]: agrupar en cada mes
+    for m in range(1, 13):
+        mc = d_year["mensual"][str(m)]["cats"]
+        otros_m = sum(mc.get(c, 0) for c in pequenas)
+        if otros_m > 0:
+            mc["OTROS"] = _round(mc.get("OTROS", 0) + otros_m, 1)
+        for c in pequenas:
+            mc.pop(c, None)
+
+    # -- pbm: fusionar productos de categorias pequenas bajo "OTROS"
+    for m in range(1, 13):
+        pm = d_year["pbm"][str(m)]
+        otros_prods = []
+        for c in pequenas:
+            if c in pm:
+                otros_prods.extend(pm.pop(c))
+        if otros_prods:
+            existing = pm.get("OTROS", [])
+            existing.extend(otros_prods)
+            existing.sort(key=lambda x: x["euros"], reverse=True)
+            pm["OTROS"] = existing
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # COMESTIBLES
 # ══════════════════════════════════════════════════════════════════════════════
@@ -307,6 +361,11 @@ def calcular_D(items_por_año, recibos_por_año, df_woo):
             "cats_euros": cats_euros_dict,
             "cats": sorted(cats_total.keys()),
         }
+
+    # Agrupar categorias pequenas en "OTROS"
+    for year in YEAR_LIST:
+        if year in D:
+            _agrupar_otros(D[year])
 
     D["woo"] = _calcular_woo(df_woo)
     return D
