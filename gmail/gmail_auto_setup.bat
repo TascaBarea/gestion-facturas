@@ -25,7 +25,7 @@ if %errorLevel% neq 0 (
 
 REM Configuración
 set "TASK_NAME=Gmail_Facturas_Semanal"
-set "BAT_PATH=C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\gmail\gmail_auto.bat"
+set "BAT_PATH=%~dp0gmail_auto.bat"
 
 echo Creando tarea programada: %TASK_NAME%
 echo.

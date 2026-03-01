@@ -13,11 +13,14 @@ REM ============================================================================
 
 setlocal enabledelayedexpansion
 
-REM Configuracion
+REM Configuracion (rutas relativas al .bat via %~dp0)
 set "PYTHON_PATH=python"
-set "SCRIPT_DIR=C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\gmail"
+set "SCRIPT_DIR=%~dp0"
+REM Quitar trailing backslash
+if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 set "SCRIPT_PATH=%SCRIPT_DIR%\gmail.py"
-set "LOG_PATH=C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\outputs\logs_gmail"
+for %%i in ("%SCRIPT_DIR%\..") do set "PROJECT_ROOT=%%~fi"
+set "LOG_PATH=%PROJECT_ROOT%\outputs\logs_gmail"
 set "DATE_STR=%date:~6,4%-%date:~3,2%-%date:~0,2%"
 set "LOG_FILE=%LOG_PATH%\auto_%DATE_STR%.log"
 
@@ -108,6 +111,8 @@ if %EXIT_CODE% EQU 0 (
     echo [%date% %time%] EXITO: Ejecucion completada correctamente >> "%LOG_FILE%"
 ) else (
     echo [%date% %time%] ERROR: Fallo con codigo %EXIT_CODE% >> "%LOG_FILE%"
+    echo [%date% %time%] Enviando alerta por email... >> "%LOG_FILE%"
+    %PYTHON_PATH% "%PROJECT_ROOT%\alerta_fallo.py" "Gmail_Semanal" "%EXIT_CODE%" "%LOG_FILE%" >> "%LOG_FILE%" 2>&1
 )
 
 REM ============================================================================

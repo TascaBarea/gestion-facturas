@@ -1,6 +1,6 @@
 # 📐 ESQUEMA PROYECTO GESTIÓN-FACTURAS
 
-**Versión:** 2.9
+**Versión:** 3.0
 **Fecha:** 28/02/2026
 **Estado:** DEFINITIVO - Base para desarrollo
 
@@ -17,7 +17,7 @@
 │   ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐                 │
 │   │    Ⓐ    │    │    Ⓑ    │    │    Ⓒ    │    │    Ⓓ    │                 │
 │   │ PARSEO  │    │  GMAIL  │    │ VENTAS  │    │ CUADRE  │                 │
-│   │  ✅ 85% │    │  ✅ 97% │    │  ✅ 80% │    │  ✅ 75% │                 │
+│   │  ✅ 85% │    │  ✅ 97% │    │  ✅ 90% │    │  ✅ 75% │                 │
 │   └────┬────┘    └────┬────┘    └────┬────┘    └────┬────┘                 │
 │        │              │              │              │                       │
 │        ▼              ▼              ▼              ▼                       │
@@ -159,21 +159,48 @@ NOVEDADES v1.4:
                - Emails marcados como leídos
 ```
 
-### Ⓒ VENTAS (80% - FUNCIONAL) ✅ v2.0
+### Ⓒ VENTAS (90% - FUNCIONAL) ✅ v3.0
 ```
 UBICACIÓN:     gestion-facturas/ventas_semana/
 ENTRADA:       - API Loyverse (TASCA + COMESTIBLES) — recibos + items
                - API Woocommerce (cursos online)
                - ARTICULOS.xlsx (catálogo, actualizado automáticamente)
-SALIDA:        Ventas Barea 2026.xlsx (5 pestañas):
-               - TascaRecibos (19 cols, receipt-level)
-               - TascaItems (23 cols, line-item detail)
-               - ComesRecibos (19 cols)
-               - ComesItems (23 cols)
-               - WOOCOMMERCE (pedidos online)
-INICIO:        MANUAL → futuro AUTOMÁTICO
-FRECUENCIA:    Semanal (lunes anterior → domingo anterior)
-ESTADO:        ✅ v2.0 - Reescrito completo (27/02/2026)
+SALIDA:        - Ventas Barea 2026.xlsx (5 pestañas):
+                 TascaRecibos (19 cols), TascaItems (23 cols),
+                 ComesRecibos (19 cols), ComesItems (23 cols), WOOCOMMERCE
+               - Dashboard HTML interactivo (Comestibles):
+                 dashboards/dashboard_comestibles.html
+               - GitHub Pages: https://tascabarea.github.io/barea-dashboard/
+INICIO:        AUTOMÁTICO (lunes 03:00) o MANUAL
+FRECUENCIA:    Semanal (ventas) + Mensual (dashboard cerrado + email socios)
+ESTADO:        ✅ v3.0 - Dashboard + email + GitHub Pages + automatización
+NOVEDADES v3.0 (28/02/2026):
+               DASHBOARD COMESTIBLES:
+               - generar_dashboard.py: genera HTML interactivo desde Excel
+               - Template-based: dashboard_comes_template.html con placeholders
+                 ({{D_DATA}}, {{MD_DATA}}, {{YEARS_DATA}}, {{CAT_COLORS_DATA}})
+               - 3 años de datos: 2024 (histórico) + 2025 (histórico) + 2026 (actual)
+               - Gráficas Chart.js: ventas mensuales, categorías, ticket medio
+               - Análisis de rotación: alta/baja/todos con umbral dinámico
+               - Rentabilidad (margen €/kg) por producto
+               - WooCommerce integrado (pedidos online)
+               - Filtrado meses cerrados: --solo-cerrados (excluye mes actual)
+               EMAIL SOCIOS:
+               - Gmail API (OAuth2, reutiliza credentials de Ⓑ GMAIL)
+               - HTML con KPIs: ventas, tickets, ticket medio, top categoría
+               - Comparativa con mismo mes del año anterior
+               - Dashboard HTML adjunto + link GitHub Pages
+               - Destinatarios: 4 socios configurados en EMAILS_DASHBOARD
+               GITHUB PAGES:
+               - Repo: TascaBarea/barea-dashboard
+               - URL: https://tascabarea.github.io/barea-dashboard/
+               - Push automático tras generar dashboard
+               AUTOMATIZACIÓN:
+               - barea_auto.bat: runner Windows Task Scheduler
+               - Anti-suspensión (powercfg), verificaciones (Python, internet)
+               - Cada lunes: descarga ventas + regenera dashboard
+               - 1er lunes del mes (día ≤ 7): dashboard meses cerrados + email
+               - barea_auto_setup.bat: crea tarea Ventas_Barea_Semanal (03:00, WakeToRun)
 NOVEDADES v2.0 (27/02/2026):
                - Descarga semanal fija (lunes-domingo anterior), no incremental
                - Todas las columnas Loyverse: TPV, Tienda, Cajero, Cliente, Categoría,
@@ -186,7 +213,7 @@ NOVEDADES v2.0 (27/02/2026):
                - WooCommerce con paginación + filtro semanal (after/before)
                - .env relativo al script (os.path.dirname(__file__))
                - _COL_RENAMES para normalizar columnas antiguas (tildes)
-               Falta: consolidación trimestral, informes, automatización
+               Falta: consolidación trimestral, dashboard Tasca
 ```
 
 ### Ⓓ CUADRE (75% - FUNCIONAL) ✅ v1.5b
@@ -261,8 +288,14 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   │       ├── norma43.py            ← Parser ficheros N43 Sabadell
 │   │       └── archivados\           ← Ficheros N43 procesados
 │   │
-│   ├── ventas_semana\               ← Ⓒ VENTAS SEMANALES (script independiente)
+│   ├── ventas_semana\               ← Ⓒ VENTAS + DASHBOARD (✅ v3.0)
 │   │   ├── script_barea.py          ← Loyverse + WooCommerce API → Excel
+│   │   ├── generar_dashboard.py     ← Generador dashboard HTML + email + GitHub Pages
+│   │   ├── dashboards\
+│   │   │   ├── dashboard_comes_template.html  ← Template con placeholders
+│   │   │   └── dashboard_comestibles.html     ← Dashboard generado
+│   │   ├── barea_auto.bat           ← Runner tarea programada (anti-suspensión)
+│   │   ├── barea_auto_setup.bat     ← Setup tarea (1 vez, como admin)
 │   │   └── .env                     ← Credenciales API (no commitear)
 │   │
 │   ├── src\facturas\                ← Módulo PARSEO refactorizado (en desarrollo)
@@ -687,38 +720,48 @@ Lógica común a transferencias, compra_tarjeta y adeudo_recibo (~40 líneas cad
 ## 8. FLUJO DE TRABAJO COMPLETO
 
 ```
-                    SEMANAL                         MENSUAL
-                       │                               │
-                       ▼                               ▼
-              ┌────────────────┐              ┌────────────────┐
-              │   Ⓑ GMAIL     │              │   Ⓐ PARSEO    │
-              │ Descargar PDFs │              │ Procesar PDFs  │
-              │ (automático)   │              │ (manual)       │
-              └───────┬────────┘              └───────┬────────┘
-                      │                               │
-                      ▼                               ▼
-              ┌────────────────┐              ┌────────────────┐
-              │ PAGOS_Gmail    │              │    COMPRAS     │
-              │ _XTxx.xlsx     │              │   _XTxx.xlsx   │
-              └───────┬────────┘              └───────┬────────┘
-                      │                               │
-                      ▼                               │
-              ┌────────────────┐                      │
-              │ Revisar +      │                      │
-              │ Pagar TF       │                      │
-              └───────┬────────┘                      │
-                      │                               │
-                      ▼                               ▼
-              ┌────────────────┐              ┌────────────────┐
-              │ Movimientos    │              │   Ⓓ CUADRE    │◀── MOV_BANCO
-              │ Banco          │─────────────►│ Marcar pagadas │
-              └────────────────┘              └───────┬────────┘
-                                                      │
-                                                      ▼
-                                              ┌────────────────┐
-                                              │   COMPRAS      │
-                                              │   CUADRADO     │
-                                              └────────────────┘
+          SEMANAL (auto)              SEMANAL (auto)              MENSUAL
+               │                           │                         │
+               ▼                           ▼                         ▼
+      ┌────────────────┐          ┌────────────────┐        ┌────────────────┐
+      │   Ⓑ GMAIL     │          │  Ⓒ VENTAS     │        │   Ⓐ PARSEO    │
+      │ Descargar PDFs │          │ Loyverse + Woo │        │ Procesar PDFs  │
+      │ (vie 03:00)    │          │ (lun 03:00)    │        │ (manual)       │
+      └───────┬────────┘          └───────┬────────┘        └───────┬────────┘
+              │                           │                         │
+              ▼                           ▼                         ▼
+      ┌────────────────┐          ┌────────────────┐        ┌────────────────┐
+      │ PAGOS_Gmail    │          │ Ventas Barea   │        │    COMPRAS     │
+      │ _XTxx.xlsx     │          │ 2026.xlsx      │        │   _XTxx.xlsx   │
+      └───────┬────────┘          └───────┬────────┘        └───────┬────────┘
+              │                           │                         │
+              ▼                           ▼                         │
+      ┌────────────────┐    ┌──────────────────────────┐            │
+      │ Revisar +      │    │ Dashboard Comestibles    │            │
+      │ Pagar TF       │    │ (HTML interactivo)       │            │
+      └───────┬────────┘    └───────┬──────────────────┘            │
+              │                     │                               │
+              │               1er lunes del mes:                    │
+              │                     │                               │
+              │              ┌──────┴──────┐                        │
+              │              ▼             ▼                        │
+              │      ┌────────────┐ ┌────────────┐                  │
+              │      │ Email      │ │ GitHub     │                  │
+              │      │ socios     │ │ Pages      │                  │
+              │      │ (4 emails) │ │ (push)     │                  │
+              │      └────────────┘ └────────────┘                  │
+              │                                                     │
+              ▼                                                     ▼
+      ┌────────────────┐                                   ┌────────────────┐
+      │ Movimientos    │                                   │   Ⓓ CUADRE    │◀── MOV_BANCO
+      │ Banco          │──────────────────────────────────►│ Marcar pagadas │
+      └────────────────┘                                   └───────┬────────┘
+                                                                   │
+                                                                   ▼
+                                                           ┌────────────────┐
+                                                           │   COMPRAS      │
+                                                           │   CUADRADO     │
+                                                           └────────────────┘
 ```
 
 ---
@@ -730,9 +773,9 @@ Lógica común a transferencias, compra_tarjeta y adeudo_recibo (~40 líneas cad
 | ~~1️⃣~~ | ~~Ⓑ GMAIL~~ | ~~Descargar + renombrar~~ | ✅ **v1.7** |
 | ~~2️⃣~~ | ~~Extractores PARSEO~~ | ~~Mejorar tasa de éxito (85%→95%)~~ | ✅ **97 extractores** |
 | 3️⃣ | Ⓓ CUADRE integración | Conectar con COMPRAS (ESTADO_PAGO) | 🟡 Pendiente |
-| 4️⃣ | Ⓒ VENTAS | Loyverse + Woocommerce (v2.0 funcional) | ✅ **80%** |
-| 5️⃣ | Integrar | Mover PARSEO a gestion-facturas | ❌ Futuro |
-| 6️⃣ | Informes | Dashboards y análisis | ❌ Futuro |
+| 4️⃣ | Ⓒ VENTAS | Loyverse + Woocommerce (v2.0 funcional) | ✅ **90%** |
+| ~~5️⃣~~ | ~~Informes~~ | ~~Dashboards y análisis~~ | ✅ **Dashboard Comes** |
+| 6️⃣ | Integrar | Mover PARSEO a gestion-facturas | ❌ Futuro |
 
 ---
 
@@ -787,6 +830,36 @@ C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD\
 ---
 
 ## CHANGELOG
+
+### v3.0 (28/02/2026)
+- ✅ **DASHBOARD COMESTIBLES implementado** — Dashboard HTML interactivo con Chart.js
+  - `generar_dashboard.py`: lee Excel (3 años: 2024-2026), genera HTML con datos JSON inyectados
+  - Template-based: `dashboard_comes_template.html` con placeholders `{{D_DATA}}`, `{{MD_DATA}}`, etc.
+  - Gráficas: ventas mensuales, categorías, ticket medio, comparativa interanual
+  - Análisis rotación productos: alta/baja/todos con umbral dinámico `Math.max(0.3, 1/_n + 0.01)`
+  - Rentabilidad (margen €/kg) por producto con datos del MAESTRO
+  - WooCommerce integrado (cursos online) con filtrado por año
+  - Manejo formato decimal español 2024 ("3,51" string → 3.51 float)
+- ✅ **Filtrado meses cerrados** — Flag `--solo-cerrados` excluye mes en curso
+  - `_filtrar_meses_cerrados()`: filtra items, recibos y WooCommerce del año actual
+  - Años históricos (2024, 2025) no se tocan (ya cerrados)
+- ✅ **Email socios via Gmail API** — Flag `--email` envía resumen KPI
+  - Reutiliza OAuth2 existente de Ⓑ GMAIL (credentials.json + token.json)
+  - HTML con tabla KPIs: ventas, tickets, ticket medio, top categoría
+  - Comparativa con mismo mes del año anterior (si existe)
+  - Dashboard HTML como archivo adjunto + link GitHub Pages
+  - 4 destinatarios configurados: Roberto, Benjamín, Jaime, Elena
+- ✅ **GitHub Pages** — Dashboard público con URL fija
+  - Repo: `TascaBarea/barea-dashboard` (creado y configurado via API)
+  - URL: https://tascabarea.github.io/barea-dashboard/
+  - Push automático: copia HTML → `index.html` → git add/commit/push
+- ✅ **Automatización Windows** — Tarea programada semanal
+  - `barea_auto.bat`: anti-suspensión, verificaciones, logging
+  - `barea_auto_setup.bat`: crea tarea `Ventas_Barea_Semanal` (lunes 03:00, WakeToRun)
+  - Cada lunes: descarga ventas + regenera dashboard
+  - 1er lunes del mes (día ≤ 7): `--dashboard-mensual` → meses cerrados + email socios
+  - `script_barea.py`: nuevo flag `--dashboard-mensual` integrado
+- ✅ **VENTAS subido a v3.0** (antes v2.0, 80% → 90%)
 
 ### v2.9 (28/02/2026)
 - ✅ **SISTEMA PROFORMA implementado** — Detección y marcado automático de proformas

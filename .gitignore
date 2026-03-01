@@ -1,4 +1,20 @@
-__pycache__/ 
-~$* 
-outputs/log_*.txt 
-*.pyc 
+__pycache__/
+*.pyc
+~$*
+
+# Credenciales y tokens (NUNCA commitear)
+.env
+config_local.py
+credentials.json
+token.json
+
+# Outputs generados (datos financieros, IBANs, etc.)
+outputs/*.xlsx
+outputs/*.json
+outputs/*.txt
+outputs/backups/
+outputs/logs_gmail/
+outputs/logs_barea/
+
+# Dashboards generados
+ventas_semana/dashboards/dashboard_comestibles.html

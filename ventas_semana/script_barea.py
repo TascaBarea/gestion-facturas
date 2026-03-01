@@ -56,7 +56,8 @@ def get_wc_api():
         url=os.getenv("WC_URL"),
         consumer_key=os.getenv("WC_KEY"),
         consumer_secret=os.getenv("WC_SECRET"),
-        version="wc/v3"
+        version="wc/v3",
+        timeout=30
     )
 
 
@@ -83,12 +84,12 @@ def fetch_loyverse(token, endpoint, created_at_min=None, created_at_max=None):
             params["cursor"] = cursor
 
         try:
-            response = requests.get(base_url, headers=headers, params=params)
+            response = requests.get(base_url, headers=headers, params=params, timeout=30)
 
             if response.status_code in (401, 403, 404) and api_version == "v1.0" and page == 0:
                 api_version = "v2"
                 base_url = f"https://api.loyverse.com/{api_version}/{endpoint}"
-                response = requests.get(base_url, headers=headers)
+                response = requests.get(base_url, headers=headers, timeout=30)
                 if response.status_code != 200:
                     break
             elif response.status_code != 200:
@@ -175,6 +176,7 @@ def fetch_lookup_data(token):
         'customers': customers,
         'payment_types': payment_types,
         'items_by_variant': items_by_variant,
+        'categories': categories,
     }
 
 
@@ -342,28 +344,51 @@ def save_to_excel(df, path, sheet_name, unique_col=None):
         df.to_excel(path, sheet_name=sheet_name, index=False)
         return
 
+    # Leer datos existentes ANTES de abrir el writer (evita perderlos si falla)
+    existing_df = None
+    try:
+        existing_df = pd.read_excel(path, sheet_name=sheet_name)
+        existing_df.rename(columns=_COL_RENAMES, inplace=True)
+    except ValueError:
+        pass  # Hoja no existe todavia, se creara nueva
+    except Exception as e:
+        print(f"  ERROR leyendo {sheet_name} de {path}: {e}")
+        print(f"  ABORTANDO escritura para no perder datos existentes.")
+        return
+
+    if existing_df is not None and not existing_df.empty:
+        if unique_col and unique_col in df.columns and unique_col in existing_df.columns:
+            df[unique_col] = df[unique_col].astype(str)
+            existing_df[unique_col] = existing_df[unique_col].astype(str)
+            df = df[~df[unique_col].isin(existing_df[unique_col])]
+        combined_df = pd.concat([existing_df, df], ignore_index=True)
+    else:
+        combined_df = df
+
     try:
         with pd.ExcelWriter(path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-            try:
-                existing_df = pd.read_excel(path, sheet_name=sheet_name)
-                # Normalizar nombres de columna de datos antiguos
-                existing_df.rename(columns=_COL_RENAMES, inplace=True)
-
-                if unique_col and unique_col in df.columns and unique_col in existing_df.columns:
-                    df[unique_col] = df[unique_col].astype(str)
-                    existing_df[unique_col] = existing_df[unique_col].astype(str)
-                    df = df[~df[unique_col].isin(existing_df[unique_col])]
-
-                combined_df = pd.concat([existing_df, df], ignore_index=True)
-                combined_df.to_excel(writer, sheet_name=sheet_name, index=False)
-            except Exception:
-                df.to_excel(writer, sheet_name=sheet_name, index=False)
+            combined_df.to_excel(writer, sheet_name=sheet_name, index=False)
     except Exception as e:
         print(f"Error guardando {sheet_name}: {e}")
 
 
-def update_articles_history(new_items_raw, path, sheet_name):
-    """Actualiza Coste y Precio en el Excel de artículos."""
+def _strip_html(text):
+    """Elimina tags HTML de un string."""
+    import re as _re
+    if not text:
+        return ''
+    return _re.sub(r'<[^>]+>', '', str(text)).strip()
+
+
+def update_articles_history(new_items_raw, path, sheet_name, categories=None, taxes_by_id=None):
+    """
+    Actualiza el Excel de artículos con gestión completa:
+    - ALTAS: añade artículos nuevos de Loyverse
+    - BAJAS: marca artículos eliminados (ESTADO=BAJA + FECHA_BAJA)
+    - PRECIOS: actualiza Coste/Precio, registra cambios en Historial_Precios
+    """
+    import re as _re
+
     if not os.path.exists(path):
         print(f"  ⚠️ No existe {path}, saltando artículos")
         return
@@ -378,47 +403,249 @@ def update_articles_history(new_items_raw, path, sheet_name):
         print(f"  ⚠️ Pestaña '{sheet_name}' no tiene columna REF")
         return
 
-    col_precio = None
-    for col in old_df.columns:
-        if col.startswith('Precio'):
-            col_precio = col
-            break
+    # Buscar columnas dinámicamente
+    col_precio = next((c for c in old_df.columns if c.startswith('Precio')), None)
+    col_disponible = next((c for c in old_df.columns if c.startswith('Disponibles')), None)
+    col_inventario = next((c for c in old_df.columns if c.startswith('En inventario')), None)
+    col_existencias = next((c for c in old_df.columns if c.startswith('Existencias')), None)
 
     if not col_precio:
         print(f"  ⚠️ No se encontró columna 'Precio [...]' en '{sheet_name}'")
         return
 
+    # Añadir ESTADO y FECHA_BAJA si no existen
+    if 'ESTADO' not in old_df.columns:
+        old_df['ESTADO'] = ''
+    if 'FECHA_BAJA' not in old_df.columns:
+        old_df['FECHA_BAJA'] = ''
+
+    # Columnas de impuestos: extraer tasa de cada columna
+    tax_cols = [c for c in old_df.columns if c.startswith('impuesto')]
+    tax_col_rates = {}
+    for tc in tax_cols:
+        m = _re.search(r'\((\d+)%\)', tc)
+        if m:
+            tax_col_rates[int(m.group(1))] = tc
+
+    categories = categories or {}
+    taxes_by_id = taxes_by_id or {}
+
+    # Construir dict de artículos API por SKU
     api_items = {}
     for item in new_items_raw:
+        cat_name = categories.get(item.get('category_id', ''), '')
         for v in item.get('variants', []):
             sku = v.get('sku', '')
             if sku:
+                # Tasas IVA del artículo
+                item_tax_rates = set()
+                for tid in (item.get('tax_ids') or []):
+                    tax_info = taxes_by_id.get(tid)
+                    if tax_info:
+                        rate = tax_info.get('rate', 0)
+                        item_tax_rates.add(int(rate) if rate >= 1 else int(rate * 100))
+
                 api_items[str(sku)] = {
                     'cost': v.get('cost'),
                     'price': v.get('default_price'),
+                    'handle': item.get('handle', ''),
+                    'name': item.get('item_name', ''),
+                    'category': cat_name,
+                    'description': _strip_html(item.get('description', '')),
+                    'sold_by_weight': item.get('sold_by_weight', False),
+                    'track_stock': item.get('track_stock', False),
+                    'barcode': v.get('barcode', '') or '',
+                    'option1_name': item.get('option1_name', '') or '',
+                    'option1_value': v.get('option1_value', '') or '',
+                    'option2_name': item.get('option2_name', '') or '',
+                    'option2_value': v.get('option2_value', '') or '',
+                    'option3_name': item.get('option3_name', '') or '',
+                    'option3_value': v.get('option3_value', '') or '',
+                    'tax_rates': item_tax_rates,
                 }
 
-    cambios = 0
+    # Seguridad: si la API devuelve muy pocos artículos, no marcar BAJAS
+    refs_excel = set()
+    for _, row in old_df.iterrows():
+        ref = str(row.get('REF', '')).strip()
+        if ref:
+            refs_excel.add(ref)
+
+    marcar_bajas = len(api_items) >= len(refs_excel) * 0.5
+
+    # Contadores
+    hoy = datetime.now().strftime('%Y-%m-%d')
+    cambios_precio = []
+    altas = 0
+    bajas = 0
+    precios_actualizados = 0
+    subidas_coste = 0
+    bajadas_coste = 0
+    subidas_pvp = 0
+    bajadas_pvp = 0
+    reactivados = 0
+
+    # === 1. ACTUALIZAR existentes + detectar BAJAS ===
     for idx, row in old_df.iterrows():
         ref = str(row.get('REF', '')).strip()
+        if not ref:
+            continue
+        estado_actual = str(row.get('ESTADO', '') or '').strip()
+
         if ref in api_items:
             api = api_items[ref]
-            cambio = False
-            if api.get('cost') is not None and api['cost'] != row.get('Coste'):
-                old_df.at[idx, 'Coste'] = api['cost']
-                cambio = True
-            if api.get('price') is not None and api['price'] != row.get(col_precio):
-                old_df.at[idx, col_precio] = api['price']
-                cambio = True
-            if cambio:
-                cambios += 1
 
-    if cambios > 0:
+            # Reactivar si era BAJA
+            if estado_actual == 'BAJA':
+                old_df.at[idx, 'ESTADO'] = ''
+                old_df.at[idx, 'FECHA_BAJA'] = ''
+                reactivados += 1
+
+            # Comprobar cambios de precio (convertir a float por si Excel tiene strings)
+            coste_old = row.get('Coste')
+            precio_old = row.get(col_precio)
+            try:
+                coste_old = float(coste_old) if pd.notna(coste_old) else None
+            except (ValueError, TypeError):
+                coste_old = None
+            try:
+                precio_old = float(precio_old) if pd.notna(precio_old) else None
+            except (ValueError, TypeError):
+                precio_old = None
+
+            if api.get('cost') is not None and api['cost'] != coste_old:
+                old_df.at[idx, 'Coste'] = api['cost']
+                if coste_old is not None and coste_old > 0:
+                    var_pct = round((api['cost'] - coste_old) / coste_old * 100, 1)
+                    cambios_precio.append({
+                        'Fecha': hoy, 'REF': ref,
+                        'Nombre': row.get('Nombre', ''), 'Tienda': sheet_name,
+                        'Campo': 'Coste', 'Anterior': round(coste_old, 4),
+                        'Nuevo': round(api['cost'], 4), 'Variacion%': var_pct,
+                    })
+                    if api['cost'] > coste_old:
+                        subidas_coste += 1
+                    else:
+                        bajadas_coste += 1
+                precios_actualizados += 1
+
+            if api.get('price') is not None and api['price'] != precio_old:
+                old_df.at[idx, col_precio] = api['price']
+                if precio_old is not None and precio_old > 0:
+                    var_pct = round((api['price'] - precio_old) / precio_old * 100, 1)
+                    cambios_precio.append({
+                        'Fecha': hoy, 'REF': ref,
+                        'Nombre': row.get('Nombre', ''), 'Tienda': sheet_name,
+                        'Campo': 'Precio', 'Anterior': round(precio_old, 2),
+                        'Nuevo': round(api['price'], 2), 'Variacion%': var_pct,
+                    })
+                    if api['price'] > precio_old:
+                        subidas_pvp += 1
+                    else:
+                        bajadas_pvp += 1
+                precios_actualizados += 1
+        else:
+            # No está en API → BAJA (si no lo estaba ya)
+            if marcar_bajas and estado_actual != 'BAJA':
+                old_df.at[idx, 'ESTADO'] = 'BAJA'
+                old_df.at[idx, 'FECHA_BAJA'] = hoy
+                bajas += 1
+
+    # === 2. ALTAS: artículos nuevos ===
+    new_rows = []
+    for sku, api in api_items.items():
+        if sku not in refs_excel:
+            row_data = {
+                'Handle': api['handle'],
+                'REF': sku,
+                'Nombre': api['name'],
+                'Categoria': api['category'],
+                'Vendido por peso': 'Y' if api['sold_by_weight'] else 'N',
+                'Coste': api['cost'],
+                'Codigo de barras': api['barcode'],
+                'REF del componente': None,
+                'Cantidad del componente': None,
+                'Seguir el Inventario': 'Y' if api['track_stock'] else 'N',
+                col_precio: api['price'],
+                'ESTADO': '',
+                'FECHA_BAJA': '',
+            }
+
+            # Columna Descripción (buscar nombre exacto en DataFrame)
+            col_desc = next((c for c in old_df.columns if 'escripci' in c), None)
+            if col_desc:
+                row_data[col_desc] = api['description']
+
+            # Opciones
+            for i in range(1, 4):
+                col_on = next((c for c in old_df.columns if c.startswith(f'Opci') and f'{i} nombre' in c), None)
+                col_ov = next((c for c in old_df.columns if c.startswith(f'Opci') and f'{i} valor' in c), None)
+                if col_on:
+                    row_data[col_on] = api.get(f'option{i}_name', '')
+                if col_ov:
+                    row_data[col_ov] = api.get(f'option{i}_value', '')
+
+            if col_disponible:
+                row_data[col_disponible] = 'Y'
+            if col_inventario:
+                row_data[col_inventario] = None
+            if col_existencias:
+                row_data[col_existencias] = None
+
+            # Impuestos
+            for rate, col_name in tax_col_rates.items():
+                row_data[col_name] = 'Y' if rate in api['tax_rates'] else 'N'
+
+            new_rows.append(row_data)
+            altas += 1
+
+    if new_rows:
+        new_df = pd.DataFrame(new_rows)
+        old_df = pd.concat([old_df, new_df], ignore_index=True)
+
+    # === 3. GUARDAR ===
+    hubo_cambios = altas > 0 or bajas > 0 or precios_actualizados > 0 or reactivados > 0
+
+    # Leer historial existente antes de abrir el writer
+    df_old_hist = pd.DataFrame()
+    if cambios_precio:
+        try:
+            df_old_hist = pd.read_excel(path, sheet_name='Historial_Precios')
+        except Exception:
+            pass
+
+    if hubo_cambios or cambios_precio:
         with pd.ExcelWriter(path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-            old_df.to_excel(writer, sheet_name=sheet_name, index=False)
-        print(f"  📝 {sheet_name}: {cambios} artículos actualizados (coste/precio)")
+            if hubo_cambios:
+                old_df.to_excel(writer, sheet_name=sheet_name, index=False)
+            if cambios_precio:
+                df_hist = pd.concat([df_old_hist, pd.DataFrame(cambios_precio)], ignore_index=True)
+                df_hist.to_excel(writer, sheet_name='Historial_Precios', index=False)
+
+    # === 4. RESUMEN CONSOLA ===
+    parts = []
+    if altas:
+        parts.append(f"{altas} altas")
+    if bajas:
+        parts.append(f"{bajas} bajas")
+    if reactivados:
+        parts.append(f"{reactivados} reactivados")
+    if precios_actualizados:
+        det = []
+        if subidas_coste:
+            det.append(f"{subidas_coste} subidas coste")
+        if bajadas_coste:
+            det.append(f"{bajadas_coste} bajadas coste")
+        if subidas_pvp:
+            det.append(f"{subidas_pvp} subidas PVP")
+        if bajadas_pvp:
+            det.append(f"{bajadas_pvp} bajadas PVP")
+        parts.append(f"{precios_actualizados} precios ({', '.join(det)})")
+
+    if parts:
+        print(f"  📝 {sheet_name}: {', '.join(parts)}")
     else:
-        print(f"  ✅ {sheet_name}: sin cambios de precio")
+        print(f"  ✅ {sheet_name}: sin cambios")
 
 
 def main():
@@ -490,9 +717,30 @@ def main():
 
         # 3. ACTUALIZAR ARTÍCULOS (siempre)
         sheet_articulos = "Tasca" if name == "Tasca" else "Comestibles"
+        print(f"  📦 Descargando artículos e impuestos...")
         items_list = fetch_loyverse(token, "items")
+        taxes_raw = fetch_loyverse(token, "taxes")
+        taxes_by_id = {}
+        for t in taxes_raw:
+            taxes_by_id[t['id']] = {'name': t.get('name', ''), 'rate': t.get('rate', 0)}
         if items_list:
-            update_articles_history(items_list, PATH_ARTICULOS, sheet_articulos)
+            update_articles_history(items_list, PATH_ARTICULOS, sheet_articulos,
+                                    categories=lookups['categories'],
+                                    taxes_by_id=taxes_by_id)
+
+    # 4. REGENERAR DASHBOARD COMESTIBLES
+    dashboard_mensual = "--dashboard-mensual" in sys.argv
+    try:
+        from ventas_semana.generar_dashboard import main as generar_dashboard
+        generar_dashboard(
+            abrir_navegador=False,
+            solo_meses_cerrados=dashboard_mensual,
+            enviar_email=dashboard_mensual,
+        )
+        print("Dashboard Comestibles regenerado"
+              + (" (mensual + email)" if dashboard_mensual else ""))
+    except Exception as e:
+        print(f"Error regenerando dashboard: {e}")
 
     print()
     print("--- Proceso Finalizado ---")
