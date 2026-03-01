@@ -1,7 +1,7 @@
 # 📐 ESQUEMA PROYECTO GESTIÓN-FACTURAS
 
 **Versión:** 3.0
-**Fecha:** 28/02/2026
+**Fecha:** 01/03/2026
 **Estado:** DEFINITIVO - Base para desarrollo
 
 ---
@@ -318,16 +318,20 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   │   ├── EXTRACTORES_COMPLETO.xlsx
 │   │   └── emails_procesados.json   ← Control duplicados Gmail
 │   │
+│   ├── alerta_fallo.py              ← Email alerta si tarea programada falla
+│   ├── requirements.txt             ← 14 dependencias fijadas (pip install -r)
+│   ├── .gitignore                   ← Excluye credenciales, outputs, tokens
 │   ├── estadisticas.py              ← Generador estadísticas facturas (OK/SIN_LINEAS/SIN_CUADRAR)
 │   ├── clasificador.py              ← Clasificador movimientos v2.0 (N43 + Excel interactivo)
 │   ├── procesador_jpg.py            ← Procesador fallback JPG (extrae datos del nombre)
 │   │
-│   └── outputs\                     ← Archivos generados
+│   └── outputs\                     ← Archivos generados (NO versionados, .gitignore)
 │       ├── Cuadre_*.xlsx            ← Cuadres generados
 │       ├── PAGOS_Gmail_XTxx.xlsx
 │       ├── PROVEEDORES_NUEVOS_*.txt
 │       ├── ⚠️_IBANS_SUGERIDOS_*.xlsx
-│       ├── logs_gmail\
+│       ├── logs_gmail\              ← Logs ejecución Gmail
+│       ├── logs_barea\              ← Logs ejecución Ventas/Dashboard
 │       └── backups\
 │
 └── _archivo\                        ← Histórico/backup
@@ -829,6 +833,37 @@ C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD\
 
 ---
 
+## 13. SEGURIDAD Y ROBUSTEZ
+
+### 13.1 Credenciales protegidas (.gitignore)
+
+| Archivo | Contenido | Excluido |
+|---------|-----------|----------|
+| `ventas_semana/.env` | API keys WooCommerce + Loyverse | ✅ |
+| `gmail/config_local.py` | App password Gmail | ✅ |
+| `gmail/credentials.json` | OAuth2 client secret | ✅ |
+| `gmail/token.json` | OAuth2 refresh token | ✅ |
+| `outputs/*.xlsx` | Datos financieros (IBANs, totales) | ✅ |
+| `outputs/backups/` | Backups con datos sensibles | ✅ |
+
+### 13.2 Dependencias (requirements.txt)
+
+14 paquetes con versiones fijadas. Instalar: `pip install -r requirements.txt`
+
+### 13.3 Protección de datos (save_to_excel)
+
+`script_barea.py` lee el Excel existente ANTES de abrir el writer. Si la lectura falla (fichero abierto, corrupto), **aborta** la escritura en vez de sobreescribir con datos vacíos.
+
+### 13.4 Alertas de fallo (alerta_fallo.py)
+
+Tanto `gmail_auto.bat` como `barea_auto.bat` envían email a `jaimefermo@gmail.com` si el script Python termina con exit code ≠ 0. Usa Gmail API (OAuth2 existente).
+
+### 13.5 Timeouts HTTP
+
+Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` para evitar cuelgues indefinidos en tareas programadas.
+
+---
+
 ## CHANGELOG
 
 ### v3.0 (28/02/2026)
@@ -860,6 +895,22 @@ C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD\
   - 1er lunes del mes (día ≤ 7): `--dashboard-mensual` → meses cerrados + email socios
   - `script_barea.py`: nuevo flag `--dashboard-mensual` integrado
 - ✅ **VENTAS subido a v3.0** (antes v2.0, 80% → 90%)
+- ✅ **HARDENING: 6 mejoras de robustez del proyecto**
+  - H1 `.gitignore` completo: excluye `.env`, `config_local.py`, `credentials.json`,
+    `token.json`, `outputs/*.xlsx`, `outputs/*.json`, `outputs/backups/`, `outputs/logs_*/`
+  - H2 `requirements.txt` creado: 14 dependencias con versiones fijadas (pandas==2.3.0, etc.)
+  - H3 Fix `save_to_excel()` en `script_barea.py`: lee datos existentes ANTES de abrir el writer;
+    si la lectura falla (Excel abierto, fichero corrupto), ABORTA en vez de sobreescribir con datos vacíos
+    (antes: `except Exception` destruía silenciosamente todo el histórico)
+  - H4 `timeout=30` en todas las llamadas HTTP: `requests.get()` Loyverse + WooCommerce API.
+    Evita cuelgues indefinidos si la API no responde
+  - H5 `alerta_fallo.py` (nuevo): envía email de alerta a jaimefermo@gmail.com cuando una tarea
+    programada falla. Integrado en `gmail_auto.bat` y `barea_auto.bat` (si exit code ≠ 0).
+    Fix captura exit code en `barea_auto.bat` (`set EXIT_CODE=%ERRORLEVEL%` inmediato)
+  - H6 Rutas relativas en todos los `.bat`: `%~dp0` + `for %%i in ("%~dp0\..") do set PROJECT_ROOT=%%~fi`
+    en vez de rutas absolutas hardcodeadas. Portabilidad: mover el proyecto no requiere editar .bat
+- ✅ **Outputs eliminados del tracking git** — ficheros financieros (Excel con IBANs, backups, logs)
+  ya no se versionan; quedan solo en local
 
 ### v2.9 (28/02/2026)
 - ✅ **SISTEMA PROFORMA implementado** — Detección y marcado automático de proformas
@@ -1026,4 +1077,4 @@ C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD\
 **Documento de referencia para todas las sesiones futuras.**
 
 ✅ **APROBADO POR:** Tasca
-📅 **FECHA:** 28/02/2026
+📅 **FECHA:** 01/03/2026
