@@ -1,6 +1,6 @@
 # 📐 ESQUEMA PROYECTO GESTIÓN-FACTURAS
 
-**Versión:** 4.0
+**Versión:** 4.1
 **Fecha:** 01/03/2026
 **Estado:** DEFINITIVO - Base para desarrollo
 
@@ -178,7 +178,7 @@ SALIDA:        - Ventas Barea 2026.xlsx (5 pestañas):
                  index.html (landing page) + comestibles.html + tasca.html
 INICIO:        AUTOMÁTICO (lunes 03:00) o MANUAL
 FRECUENCIA:    Semanal (ventas) + Mensual (dashboard cerrado + email + PDF)
-ESTADO:        ✅ v4.0 - Dual dashboard + PDF + email segmentado + GitHub Pages
+ESTADO:        ✅ v4.1 - Dual dashboard + PDF profesional + email segmentado + GitHub Pages
 NOVEDADES v4.0 (01/03/2026):
                DASHBOARD TASCA (NUEVO):
                - Template: dashboard_tasca_template.html con 5 placeholders
@@ -192,14 +192,17 @@ NOVEDADES v4.0 (01/03/2026):
                COMESTIBLES ACTUALIZADO:
                - Reducido a 2 años: 2025 + 2026 (eliminado 2024 por volumen bajo)
                - Template y CSS limpiados de referencias a 2024
-               PDF RESUMEN MENSUAL (NUEVO):
+               PDF RESUMEN MENSUAL (v4.1 - rediseño profesional):
                - matplotlib (3 gráficos línea) + reportlab (composición A4)
-               - PDF completo: logos + KPIs + 3 gráficos (Tasca, Comestibles, Conjunto)
-                 + categorías por mes y acumulado YTD + links dashboards
+               - Cabecera con banda azul/verde, logos y línea dorada de acento
+               - KPIs como tarjetas lado a lado con números grandes y flechas ▲▼ de color
+               - Gráficos mejorados: área sombreada, etiquetas de valor, años semitransparentes
+               - Tablas categorías con filas alternadas y cabeceras temáticas
+               - Pie de página con fecha + número de página en cada hoja
+               - PDF completo (3 págs): KPIs+Comparativa / Evolución / Categorías
                - PDF Comestibles: versión reducida solo Comestibles
-               - KPIs: ventas, tickets, ticket medio, variación interanual,
-                 top 3 productos, día de la semana más fuerte
-               - Fuente Calibri, tono informal
+               - Helpers: _setup_pdf_fonts(), _kpi_card(), _tabla_categorias_pdf()
+               - Fuente Calibri, DPI 180
                EMAIL SEGMENTADO (NUEVO):
                - EMAILS_FULL (3 socios): email completo Tasca+Comestibles
                  + PDF completo + ambos dashboards HTML adjuntos
@@ -874,6 +877,18 @@ Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` p
 
 ## CHANGELOG
 
+### v4.1 (01/03/2026)
+- ✅ **Rediseño profesional PDF** — Informes mensuales con diseño visual mejorado
+  - Cabecera: banda azul oscuro (#1B2A4A) con título blanco, logos y línea dorada de acento
+  - PDF Comestibles: banda verde (#1B5E20) con acento verde claro
+  - KPIs como tarjetas lado a lado con número grande, flechas ▲▼ de color para variación
+  - Gráficos matplotlib: fondo sutil, área sombreada bajo línea actual, etiquetas de valor,
+    años anteriores semitransparentes, sin bordes superior/derecho, DPI 180
+  - Tablas categorías con filas alternadas (#F7F8FA), cabeceras temáticas por negocio
+  - Pie de página en cada hoja: línea separadora + fecha generación + número de página
+  - Estructura 3 páginas (PDF completo): KPIs+Comparativa / Evolución / Categorías
+  - Helpers extraídos: `_setup_pdf_fonts()`, `_kpi_card()`, `_tabla_categorias_pdf()`
+
 ### v4.0 (01/03/2026)
 - ✅ **DASHBOARD TASCA implementado** — Dashboard interactivo Tasca con Chart.js (4 años: 2023-2026)
   - `dashboard_tasca_template.html`: 5 placeholders (`{{RAW_DATA}}`, `{{PBM_DATA}}`, etc.)
@@ -885,12 +900,10 @@ Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` p
   - `YEAR_LIST` de `["2024","2025","2026"]` → `["2025","2026"]`
   - `cargar_datos()`: eliminada lectura de hojas `ComestiblesItem24`/`ComestiblesRecibos24`
   - Template CSS limpiado de `--c24`, `.year-tab[data-yr="2024"]`
-- ✅ **PDF resumen mensual** — matplotlib + reportlab
+- ✅ **PDF resumen mensual** — matplotlib + reportlab (rediseñado en v4.1)
   - `generar_pdf_resumen()`: PDF completo A4 (Tasca + Comestibles)
-    - Logos, 3 gráficos línea (Tasca, Comestibles, Conjunto), KPIs, categorías
-    - KPIs: ventas, tickets, ticket medio, variación interanual, top 3 productos, día fuerte
-    - Fuente Calibri, tono informal
   - `generar_pdf_comestibles()`: PDF solo Comestibles (para socios parciales)
+  - Ver changelog v4.1 para detalle del diseño actual
 - ✅ **Email segmentado** — Dos grupos de destinatarios
   - `EMAILS_FULL` (3 socios): Roberto, Benjamín, Jaime → email completo + PDF completo
     + ambos dashboards HTML adjuntos + links GitHub Pages Tasca + Comestibles
