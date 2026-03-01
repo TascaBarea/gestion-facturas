@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tasca Barea · Dashboard Ventas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0f0e0c; --bg2:#1a1916; --bg3:#242220; --border:#2e2c28;
+  --accent:#c9a84c; --accent2:#e8c97a; --text:#f0ece4; --text2:#9a9488; --text3:#5a5650;
+  --c23:#7eb5e8; --c24:#e87e7e; --c25:#7ed9a0; --c26:#e8c97a;
+  --bebida:#4a90d9; --comida:#e8734a; --vinos:#9b4f8a; --molletes:#5aaa7a; --otros:#7a7a7a; --promociones:#d4a04a;
+  --r:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5;min-height:100vh;}
+
+/* HEADER */
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:16px;flex-wrap:wrap;}
+.header-left h1{font-family:'DM Serif Display',serif;font-size:20px;color:var(--accent2);}
+.header-left p{color:var(--text2);font-size:11px;font-family:'DM Mono',monospace;}
+.year-tabs{display:flex;gap:4px;background:var(--bg);padding:4px;border-radius:10px;}
+.year-tab{padding:5px 14px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;transition:all .2s;background:transparent;color:var(--text3);}
+.year-tab.active{font-weight:700;color:#0f0e0c;}
+.year-tab[data-yr="2023"].active{background:var(--c23);}
+.year-tab[data-yr="2024"].active{background:var(--c24);}
+.year-tab[data-yr="2025"].active{background:var(--c25);}
+.year-tab[data-yr="2026"].active{background:var(--c26);}
+.year-tab:hover:not(.active){background:var(--bg3);color:var(--text2);}
+
+/* PERIOD BAR */
+.period-bar{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;}
+.period-group{display:flex;align-items:center;gap:8px;}
+.period-label{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;}
+.pill-group{display:flex;gap:3px;background:var(--bg);padding:3px;border-radius:8px;}
+.pill{padding:4px 11px;border-radius:6px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;transition:all .15s;background:transparent;color:var(--text3);}
+.pill:hover:not(.active):not(:disabled){background:var(--bg3);color:var(--text2);}
+.pill.active{background:var(--accent);color:#0f0e0c;font-weight:700;}
+.pill:disabled{opacity:.25;cursor:default;}
+.period-sep{width:1px;height:28px;background:var(--border);}
+
+/* MONTH GRID */
+.month-grid{display:flex;gap:3px;flex-wrap:wrap;}
+.month-pill{padding:3px 9px;border-radius:5px;border:1px solid var(--border);cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;transition:all .15s;background:transparent;color:var(--text3);}
+.month-pill:hover:not(.active):not(:disabled){background:var(--bg3);color:var(--text2);}
+.month-pill.active{background:var(--accent);color:#0f0e0c;border-color:var(--accent);font-weight:700;}
+.month-pill:disabled{opacity:.2;cursor:default;}
+
+/* COMPARE BAR */
+.compare-bar{background:var(--bg3);border-bottom:1px solid var(--border);padding:9px 28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.compare-yr-btn{padding:3px 11px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;transition:all .15s;background:transparent;color:var(--text3);}
+.compare-yr-btn:hover:not(.active){background:var(--bg2);}
+.compare-yr-btn.active{font-weight:700;color:#0f0e0c;}
+.compare-yr-btn[data-yr="2023"].active{background:var(--c23);border-color:var(--c23);}
+.compare-yr-btn[data-yr="2024"].active{background:var(--c24);border-color:var(--c24);}
+.compare-yr-btn[data-yr="2025"].active{background:var(--c25);border-color:var(--c25);}
+.compare-yr-btn[data-yr="2026"].active{background:var(--c26);border-color:var(--c26);}
+.compare-yr-btn[data-yr="none"].active{background:var(--bg2);color:var(--text2);border-color:var(--text3);}
+.period-info{font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;margin-left:auto;}
+
+/* MAIN */
+.main{padding:20px 28px;max-width:1400px;margin:0 auto;}
+.section-title{font-family:'DM Serif Display',serif;font-size:15px;color:var(--accent);margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* KPIs */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);}
+.kpi-label{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;}
+.kpi-value{font-family:'DM Serif Display',serif;font-size:26px;color:var(--text);line-height:1;}
+.kpi-compare{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;}
+.kpi-delta{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-family:'DM Mono',monospace;padding:2px 7px;border-radius:4px;margin-top:4px;}
+.kpi-delta.up{background:rgba(90,170,122,.15);color:#5aaa7a;}
+.kpi-delta.down{background:rgba(220,80,80,.15);color:#dc5050;}
+.kpi-delta.neu{background:rgba(150,150,150,.1);color:var(--text2);}
+
+/* CHARTS */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
+.chart-full{grid-column:1/-1;}
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:18px;}
+.chart-card h3{font-size:11px;color:var(--text2);font-family:'DM Mono',monospace;margin-bottom:14px;text-transform:uppercase;letter-spacing:.08em;}
+.chart-wrap{position:relative;}
+
+/* DONUT */
+.donut-wrap{display:flex;align-items:center;gap:16px;}
+.donut-legend{display:flex;flex-direction:column;gap:7px;flex:1;}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:12px;}
+.legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+.legend-pct{font-family:'DM Mono',monospace;color:var(--accent2);margin-left:auto;}
+
+/* PRODUCTS */
+.prod-controls{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+.select-styled{background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 10px;font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;outline:none;}
+.select-styled:focus{border-color:var(--accent);}
+.prod-tables{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.prod-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.prod-card-header{padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.prod-card-header h3{font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;}
+.badge{font-size:10px;padding:2px 8px;border-radius:20px;font-family:'DM Mono',monospace;}
+.badge-top{background:rgba(201,168,76,.2);color:var(--accent2);}
+.badge-bot{background:rgba(220,80,80,.1);color:#dc8080;}
+table{width:100%;border-collapse:collapse;}
+th{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:7px 12px;text-align:left;border-bottom:1px solid var(--border);}
+th:last-child{text-align:right;}
+td{padding:8px 12px;border-bottom:1px solid rgba(46,44,40,.4);font-size:13px;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,.02);}
+td:last-child{text-align:right;font-family:'DM Mono',monospace;color:var(--accent2);font-size:12px;}
+td:first-child{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);width:24px;}
+.rank-1{color:var(--accent)!important;}
+.bar-bg{background:var(--bg);border-radius:2px;height:3px;margin-top:3px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:2px;background:var(--accent);transition:width .4s ease;}
+.growth{font-size:10px;font-family:'DM Mono',monospace;margin-left:5px;}
+.growth.up{color:#5aaa7a;} .growth.down{color:#dc7070;} .growth.neu{color:var(--text3);} .growth.new{color:var(--text3);}
+
+.kpi-all-wrap{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;}
+.kpi-all-row{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:0;overflow-x:auto;}
+.kpi-all-label{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.1em;width:140px;flex-shrink:0;}
+.kpi-yr-cell{flex:1;min-width:110px;padding:8px 14px;border-left:1px solid var(--border);position:relative;}
+.kpi-yr-cell::before{content:'';position:absolute;top:0;left:0;bottom:0;width:2px;background:var(--yc);}
+.kpi-yr-active{background:rgba(255,255,255,.03);border-radius:0 6px 6px 0;}
+.kpi-yr-label{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:4px;}
+.kpi-yr-value{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text);line-height:1;}
+.kpi-yr-delta{font-size:10px;font-family:'DM Mono',monospace;margin-top:4px;}
+.kpi-yr-delta.up{color:#5aaa7a;} .kpi-yr-delta.down{color:#dc7070;} .kpi-yr-delta.neu{color:var(--text3);}
+
+@media(max-width:900px){
+  .kpi-row{grid-template-columns:repeat(2,1fr);}
+  .charts-grid,.prod-tables{grid-template-columns:1fr;}
+  .chart-full{grid-column:1;}
+  .main{padding:12px;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>Tasca Barea</h1>
+    <p>Dashboard de Ventas · {{SUBTITLE_YEARS}} · act. {{FECHA_ACT}}</p>
+  </div>
+  <div class="year-tabs" id="year-tabs">
+    <button class="year-tab" data-yr="2023" onclick="setYear('2023')">2023</button>
+    <button class="year-tab" data-yr="2024" onclick="setYear('2024')">2024</button>
+    <button class="year-tab" data-yr="2025" onclick="setYear('2025')">2025</button>
+    <button class="year-tab active" data-yr="2026" onclick="setYear('2026')">2026</button>
+  </div>
+</div>
+
+<!-- PERIOD BAR -->
+<div class="period-bar">
+  <div class="period-group">
+    <span class="period-label">Período</span>
+    <div class="pill-group">
+      <button class="pill active" onclick="setPeriodMode('all')">Año completo</button>
+      <button class="pill" onclick="setPeriodMode('month')">Mes</button>
+      <button class="pill" onclick="setPeriodMode('quarter')">Trimestre</button>
+      <button class="pill" onclick="setPeriodMode('range')">Rango</button>
+    </div>
+  </div>
+  <div class="period-sep"></div>
+  <!-- Month selector (hidden by default) -->
+  <div id="month-selector" style="display:none" class="period-group">
+    <div class="month-grid" id="month-grid"></div>
+  </div>
+  <!-- Quarter selector (hidden by default) -->
+  <div id="quarter-selector" style="display:none" class="period-group">
+    <div class="pill-group">
+      <button class="pill" onclick="setQuarter(1)">Q1</button>
+      <button class="pill" onclick="setQuarter(2)">Q2</button>
+      <button class="pill" onclick="setQuarter(3)">Q3</button>
+      <button class="pill" onclick="setQuarter(4)">Q4</button>
+    </div>
+  </div>
+  <!-- Range selector (hidden by default) -->
+  <div id="range-selector" style="display:none" class="period-group" style="gap:8px">
+    <span class="period-label">Desde</span>
+    <select class="select-styled" id="range-from" onchange="setRange()"></select>
+    <span class="period-label">Hasta</span>
+    <select class="select-styled" id="range-to" onchange="setRange()"></select>
+  </div>
+  <span class="period-info" id="period-info"></span>
+</div>
+
+<!-- COMPARE BAR -->
+<div class="compare-bar">
+  <span class="period-label">Comparar con</span>
+  <button class="compare-yr-btn active" data-yr="prev" onclick="setCompare('prev')">Año anterior (auto)</button>
+  <button class="compare-yr-btn" data-yr="2023" onclick="setCompare('2023')">2023</button>
+  <button class="compare-yr-btn" data-yr="2024" onclick="setCompare('2024')">2024</button>
+  <button class="compare-yr-btn" data-yr="2025" onclick="setCompare('2025')">2025</button>
+  <button class="compare-yr-btn" data-yr="2026" onclick="setCompare('2026')">2026</button>
+  <button class="compare-yr-btn" data-yr="none" onclick="setCompare('none')">Sin comparar</button>
+  <button class="compare-yr-btn" data-yr="all" onclick="setCompare('all')">Todos los años</button>
+</div>
+
+<div class="main">
+
+  <!-- KPIs -->
+  <div class="section-title">Métricas principales</div>
+  <div id="kpi-container"></div>
+
+  <!-- EVOLUTION -->
+  <div class="section-title">Evolución mensual</div>
+  <div class="charts-grid">
+    <div class="chart-card chart-full">
+      <h3>Ventas netas (€) por mes</h3>
+      <div class="chart-wrap" style="height:230px"><canvas id="chartEuros"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Nº de tickets por mes</h3>
+      <div class="chart-wrap" style="height:190px"><canvas id="chartTickets"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Ticket medio (€) por mes</h3>
+      <div class="chart-wrap" style="height:190px"><canvas id="chartProm"></canvas></div>
+    </div>
+  </div>
+
+  <!-- CATEGORIES -->
+  <div class="section-title">Categorías</div>
+  <div class="charts-grid">
+    <div class="chart-card">
+      <h3>Participación por categoría · período seleccionado</h3>
+      <div class="donut-wrap">
+        <div style="width:170px;height:170px;flex-shrink:0"><canvas id="chartDonut"></canvas></div>
+        <div class="donut-legend" id="donut-legend"></div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Evolución % categorías por mes</h3>
+      <div class="chart-wrap" style="height:190px"><canvas id="chartCatEvol"></canvas></div>
+    </div>
+  </div>
+
+  <!-- PRODUCTS -->
+  <div class="section-title">Análisis de productos</div>
+  <div class="prod-controls">
+    <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">Categoría:</span>
+    <select class="select-styled" id="cat-select" onchange="renderProducts()"></select>
+    <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">Mostrar:</span>
+    <select class="select-styled" id="top-n-select" onchange="renderProducts()">
+      <option value="5">Top 5</option><option value="10" selected>Top 10</option><option value="15">Top 15</option>
+    </select>
+    <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">Medir por:</span>
+    <div class="pill-group">
+      <button class="pill active" id="metric-euros" onclick="setProdMetric('euros')">€ Euros</button>
+      <button class="pill" id="metric-cant" onclick="setProdMetric('cant')">Uds</button>
+    </div>
+  </div>
+  <div class="prod-tables">
+    <div class="prod-card">
+      <div class="prod-card-header"><h3>Más vendidos</h3><span class="badge badge-top" id="top-badge">Top 10</span></div>
+      <table><thead><tr><th>#</th><th>Producto</th><th id="th-top">Ventas €</th></tr></thead><tbody id="top-table"></tbody></table>
+    </div>
+    <div class="prod-card">
+      <div class="prod-card-header"><h3>Menos vendidos</h3><span class="badge badge-bot" id="bot-badge">Bottom 10</span></div>
+      <table><thead><tr><th>#</th><th>Producto</th><th id="th-bot">Ventas €</th></tr></thead><tbody id="bot-table"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<script>
+const RAW = {{RAW_DATA}};
+const PBM = {{PBM_DATA}};
+
+const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const CAT_COLORS = {BEBIDA:'#4a90d9',COMIDA:'#e8734a',VINOS:'#9b4f8a',MOLLETES:'#5aaa7a',OTROS:'#7a7a7a',PROMOCIONES:'#d4a04a'};
+const YEAR_COLORS = {'2023':'#7eb5e8','2024':'#e87e7e','2025':'#7ed9a0','2026':'#e8c97a'};
+const YEARS = {{YEARS_DATA}};
+const Q_MONTHS = {1:[1,2,3],2:[4,5,6],3:[7,8,9],4:[10,11,12]};
+
+let activeYear = '2026';
+let periodMode = 'all';   // all | month | quarter | range
+let activePeriod = [1,2,3,4,5,6,7,8,9,10,11,12];
+let compareMode = 'prev'; // prev | 2023..2026 | none
+let prodMetric = 'euros';
+let charts = {};
+
+// ── HELPERS ─────────────────────────────────────────────────────────────────
+function availMonths(yr) {
+  return [1,2,3,4,5,6,7,8,9,10,11,12].filter(m => (RAW[yr].mensual[String(m)]?.tickets||0) > 0);
+}
+function getCompareYear() {
+  if (compareMode === 'none' || compareMode === 'all') return null;
+  if (compareMode === 'prev') return activeYear === '2023' ? null : String(Number(activeYear)-1);
+  return compareMode === activeYear ? null : compareMode;
+}
+function getComparePeriod() {
+  const cyr = getCompareYear();
+  if (!cyr) return [];
+  const avail = availMonths(cyr);
+  return activePeriod.filter(m => avail.includes(m));
+}
+function periodLabel() {
+  if (activePeriod.length === 12) return 'Año completo';
+  if (activePeriod.length === 1) return MESES_FULL[activePeriod[0]-1];
+  const q = Object.entries(Q_MONTHS).find(([,m]) => JSON.stringify(m)===JSON.stringify(activePeriod));
+  if (q) return 'Q'+q[0];
+  return MESES[activePeriod[0]-1]+' – '+MESES[activePeriod[activePeriod.length-1]-1];
+}
+function getTotal(yr, field, months) {
+  if (field === 'prom_ticket') {
+    let euros=0, tix=0;
+    months.forEach(m => { const d=RAW[yr].mensual[String(m)]||{}; euros+=d.tickets*(d.prom_ticket||0); tix+=d.tickets||0; });
+    return tix>0 ? euros/tix : 0;
+  }
+  return months.reduce((s,m) => s+(RAW[yr].mensual[String(m)]?.[field]||0), 0);
+}
+function fmtEuros(n) { return n.toLocaleString('es-ES',{minimumFractionDigits:0,maximumFractionDigits:0})+'€'; }
+function delta(curr, prev) {
+  if (!prev || prev===0) return {cls:'neu',txt:'—'};
+  const pct = ((curr-prev)/prev*100);
+  return {cls: pct>=0?'up':'down', txt:(pct>=0?'↑ +':'↓ ')+Math.abs(pct).toFixed(1)+'%'};
+}
+function destroyChart(id) { if(charts[id]){charts[id].destroy();delete charts[id];} }
+function chartBase() {
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{backgroundColor:'#1a1916',borderColor:'#2e2c28',borderWidth:1,titleColor:'#9a9488',bodyColor:'#f0ece4',titleFont:{family:'DM Mono',size:11},bodyFont:{family:'DM Mono',size:12},padding:10}},
+    scales:{
+      x:{grid:{color:'rgba(46,44,40,.6)'},ticks:{color:'#5a5650',font:{family:'DM Mono',size:10}},border:{color:'#2e2c28'}},
+      y:{grid:{color:'rgba(46,44,40,.6)'},ticks:{color:'#5a5650',font:{family:'DM Mono',size:10}},border:{color:'#2e2c28'}}
+    }
+  };
+}
+
+// ── PERIOD CONTROLS ──────────────────────────────────────────────────────────
+function setYear(yr) {
+  activeYear = yr;
+  document.querySelectorAll('.year-tab').forEach(b => b.classList.toggle('active', b.dataset.yr===yr));
+  // Clamp period to available months
+  const avail = availMonths(yr);
+  activePeriod = activePeriod.filter(m => avail.includes(m));
+  if (!activePeriod.length) activePeriod = periodMode==='all' ? avail : [avail[0]];
+  rebuildPeriodUI();
+  renderAll();
+}
+
+function setPeriodMode(mode) {
+  periodMode = mode;
+  document.querySelectorAll('.period-bar .pill').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('month-selector').style.display = mode==='month' ? 'flex' : 'none';
+  document.getElementById('quarter-selector').style.display = mode==='quarter' ? 'flex' : 'none';
+  document.getElementById('range-selector').style.display = mode==='range' ? 'flex' : 'none';
+
+  const avail = availMonths(activeYear);
+  if (mode==='all') activePeriod = avail;
+  else if (mode==='month') { activePeriod = [avail[0]]; highlightMonthPill(avail[0]); }
+  else if (mode==='quarter') { setQuarter(1); return; }
+  else if (mode==='range') { activePeriod = avail.slice(0,2); renderRange(); }
+  renderAll();
+}
+
+function setMonth(m) {
+  activePeriod = [m];
+  highlightMonthPill(m);
+  renderAll();
+}
+function highlightMonthPill(m) {
+  document.querySelectorAll('.month-pill').forEach(b => b.classList.toggle('active', Number(b.dataset.m)===m));
+}
+function setQuarter(q) {
+  const avail = availMonths(activeYear);
+  activePeriod = Q_MONTHS[q].filter(m => avail.includes(m));
+  if (!activePeriod.length) return;
+  document.querySelectorAll('#quarter-selector .pill').forEach((b,i) => b.classList.toggle('active', i+1===q));
+  renderAll();
+}
+function setRange() {
+  const from = parseInt(document.getElementById('range-from').value);
+  const to = parseInt(document.getElementById('range-to').value);
+  const avail = availMonths(activeYear);
+  activePeriod = avail.filter(m => m>=from && m<=to);
+  if (!activePeriod.length) activePeriod = [from];
+  renderAll();
+}
+function setCompare(mode) {
+  compareMode = mode;
+  document.querySelectorAll('.compare-yr-btn').forEach(b => b.classList.toggle('active', b.dataset.yr===mode));
+  renderAll();
+}
+
+function rebuildPeriodUI() {
+  const avail = availMonths(activeYear);
+  // Month pills
+  const grid = document.getElementById('month-grid');
+  grid.innerHTML = MESES.map((name,i) => {
+    const m = i+1;
+    const dis = !avail.includes(m);
+    return `<button class="month-pill${activePeriod.includes(m)?' active':''}" data-m="${m}" onclick="setMonth(${m})" ${dis?'disabled':''}>${name}</button>`;
+  }).join('');
+  // Range dropdowns
+  const makeOpts = sel => avail.map(m => `<option value="${m}"${m===sel?' selected':''}>${MESES_FULL[m-1]}</option>`).join('');
+  document.getElementById('range-from').innerHTML = makeOpts(activePeriod[0]||avail[0]);
+  document.getElementById('range-to').innerHTML = makeOpts(activePeriod[activePeriod.length-1]||avail[avail.length-1]);
+}
+
+// ── RENDER KPIs ──────────────────────────────────────────────────────────────
+function renderKPIs() {
+  const container = document.getElementById('kpi-container');
+  const fields = ['euros','tickets','unidades','prom_ticket'];
+  const labels = ['Ventas netas','Nº Tickets','Unidades vendidas','Ticket medio'];
+  const fmt = [fmtEuros, n=>Math.round(n).toLocaleString('es-ES'), n=>Math.round(n).toLocaleString('es-ES'), n=>n.toFixed(2)+'€'];
+
+  if (compareMode === 'all') {
+    // MULTI-YEAR MODE: one row per metric, one column per year
+    const years = YEARS.filter(yr => availMonths(yr).some(m => activePeriod.includes(m)));
+    const currVals = fields.map(f => getTotal(activeYear, f, activePeriod));
+
+    let html = '<div class="kpi-all-wrap">';
+    fields.forEach((f, fi) => {
+      html += '<div class="kpi-all-row">';
+      html += '<div class="kpi-all-label">'+labels[fi]+'</div>';
+      years.forEach(yr => {
+        const cp = activePeriod.filter(m => availMonths(yr).includes(m));
+        const val = getTotal(yr, f, cp);
+        const isActive = yr === activeYear;
+        const prev = fi > 0 || true ? null : null; // delta vs active year
+        let deltaHtml = '';
+        if (!isActive) {
+          const d = delta(currVals[fi], val);
+          // delta from this year TO active year
+          const d2 = delta(getTotal(activeYear,f,activePeriod), val);
+          const cls = d2.cls; 
+          const pct = val===0 ? '—' : ((getTotal(activeYear,f,activePeriod)-val)/val*100);
+          const sign = typeof pct === 'number' ? (pct>=0?'+':'') : '';
+          const pctStr = typeof pct === 'number' ? sign+Math.round(pct)+'%' : pct;
+          deltaHtml = '<div class="kpi-yr-delta '+cls+'">'+pctStr+' vs '+yr+'</div>';
+        }
+        html += '<div class="kpi-yr-cell'+(isActive?' kpi-yr-active':'')+'" style="--yc:'+YEAR_COLORS[yr]+'">'
+          + '<div class="kpi-yr-label">'+yr+(cp.length<activePeriod.length?' *':'')+'</div>'
+          + '<div class="kpi-yr-value">'+fmt[fi](val)+'</div>'
+          + deltaHtml
+          + '</div>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+
+  } else {
+    // NORMAL MODE: 4 KPI cards
+    const cyr = getCompareYear();
+    const cp = getComparePeriod();
+    let html = '<div class="kpi-row">';
+    fields.forEach((f,i) => {
+      const curr = getTotal(activeYear, f, activePeriod);
+      let deltaHtml = '', cmpHtml = '';
+      if (cyr && cp.length) {
+        const prev = getTotal(cyr, f, cp);
+        const d = delta(curr, prev);
+        deltaHtml = '<div class="kpi-delta '+d.cls+'">'+d.txt+' vs '+cyr+'</div>';
+        cmpHtml = '<div class="kpi-compare">'+fmt[i](prev)+' en '+cyr+(cp.length<activePeriod.length?' (parcial)':'')+'</div>';
+      }
+      html += '<div class="kpi"><div class="kpi-label">'+labels[i]+'</div>'
+        + '<div class="kpi-value">'+fmt[i](curr)+'</div>'
+        + cmpHtml + deltaHtml + '</div>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  }
+}
+
+// ── RENDER EVOLUTION CHARTS ──────────────────────────────────────────────────
+function renderEvolution() {
+  const allMonths = [1,2,3,4,5,6,7,8,9,10,11,12];
+  const labels = MESES;
+  const cyr = getCompareYear();
+  const inPeriod = m => activePeriod.includes(m);
+
+  function makeDS(yr, field) {
+    const avail = availMonths(yr);
+    const color = YEAR_COLORS[yr];
+    const isActive = yr === activeYear;
+    const isCmp = yr === cyr;
+    return {
+      label: yr,
+      data: allMonths.map(m => avail.includes(m) ? (RAW[yr].mensual[String(m)]?.[field]||0) : null),
+      borderColor: isActive||isCmp ? color : color+'55',
+      backgroundColor: isActive ? color+'18' : 'transparent',
+      borderWidth: isActive ? 3 : isCmp ? 2 : 1,
+      pointRadius: allMonths.map(m => inPeriod(m) && isActive ? 5 : 2),
+      pointBackgroundColor: allMonths.map(m => inPeriod(m) && isActive ? color : color+'66'),
+      tension: 0.3, fill: isActive, spanGaps: false,
+      hidden: !isActive && !isCmp && activeYear!==yr,
+    };
+  }
+
+  const shownYears = cyr ? [cyr, activeYear] : [activeYear];
+  // Always show all 4 but dim the non-active ones
+  const allDS_euros = YEARS.map(yr => makeDS(yr, 'euros'));
+
+  destroyChart('euros');
+  charts['euros'] = new Chart(document.getElementById('chartEuros'), {
+    type:'line', data:{labels, datasets:allDS_euros},
+    options:{...chartBase(), plugins:{...chartBase().plugins,
+      legend:{display:true,position:'top',labels:{color:'#c0bab2',font:{family:'DM Mono',size:11},boxWidth:20,boxHeight:3,padding:14}},
+      tooltip:{...chartBase().plugins.tooltip,callbacks:{label:ctx=>` ${ctx.dataset.label}: ${fmtEuros(ctx.raw||0)}`}}
+    }}
+  });
+
+  destroyChart('tickets');
+  charts['tickets'] = new Chart(document.getElementById('chartTickets'), {
+    type:'bar', data:{labels, datasets: shownYears.map(yr => ({
+      label: yr,
+      data: allMonths.map(m => availMonths(yr).includes(m) ? (RAW[yr].mensual[String(m)]?.tickets||0) : null),
+      backgroundColor: allMonths.map(m => inPeriod(m) ? YEAR_COLORS[yr]+'cc' : YEAR_COLORS[yr]+'44'),
+      borderRadius: 3,
+    }))},
+    options:{...chartBase()}
+  });
+
+  destroyChart('prom');
+  charts['prom'] = new Chart(document.getElementById('chartProm'), {
+    type:'line', data:{labels, datasets: shownYears.map(yr => makeDS(yr,'prom_ticket'))},
+    options:{...chartBase(),plugins:{...chartBase().plugins,
+      tooltip:{...chartBase().plugins.tooltip,callbacks:{label:ctx=>` ${ctx.dataset.label}: ${(ctx.raw||0).toFixed(2)}€`}}
+    }}
+  });
+}
+
+// ── RENDER DONUT ─────────────────────────────────────────────────────────────
+function renderDonut() {
+  // Calculate category totals for active period from PBM
+  const catTotals = {};
+  activePeriod.forEach(m => {
+    const mData = PBM[activeYear][String(m)] || {};
+    Object.entries(mData).forEach(([cat, prods]) => {
+      if (!catTotals[cat]) catTotals[cat] = 0;
+      catTotals[cat] += prods.reduce((s,p) => s+p.euros, 0);
+    });
+  });
+  const total = Object.values(catTotals).reduce((s,v)=>s+v,0);
+  const cats = Object.keys(CAT_COLORS).filter(c => catTotals[c]>0);
+  const vals = cats.map(c => Math.round(catTotals[c]/total*1000)/10);
+  const colors = cats.map(c => CAT_COLORS[c]);
+
+  destroyChart('donut');
+  charts['donut'] = new Chart(document.getElementById('chartDonut'), {
+    type:'doughnut',
+    data:{labels:cats,datasets:[{data:vals,backgroundColor:colors,borderColor:'#0f0e0c',borderWidth:3,hoverOffset:5}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a1916',borderColor:'#2e2c28',borderWidth:1,bodyColor:'#f0ece4',callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw}%`}}}}
+  });
+  document.getElementById('donut-legend').innerHTML = cats.map((c,i) =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${colors[i]}"></div><span style="color:var(--text2);font-size:12px">${c}</span><span class="legend-pct">${vals[i]}%</span></div>`
+  ).join('');
+}
+
+// ── RENDER CAT EVOL ──────────────────────────────────────────────────────────
+function renderCatEvol() {
+  const avail = availMonths(activeYear);
+  const cats = ['BEBIDA','COMIDA','VINOS','MOLLETES'];
+  destroyChart('catEvol');
+  charts['catEvol'] = new Chart(document.getElementById('chartCatEvol'), {
+    type:'line',
+    data:{labels:MESES, datasets:cats.map(c => ({
+      label:c,
+      data:[1,2,3,4,5,6,7,8,9,10,11,12].map(m => {
+        const mes = RAW[activeYear].categorias_mes[String(m)];
+        if (!mes||Object.keys(mes).length===0) return null;
+        return mes[c]||0;
+      }),
+      borderColor:CAT_COLORS[c], backgroundColor:'transparent',
+      borderWidth:2, pointRadius:3, tension:0.3, spanGaps:false,
+    }))},
+    options:{...chartBase(),plugins:{...chartBase().plugins,
+      legend:{display:true,labels:{color:'#9a9488',font:{family:'DM Mono',size:10},boxWidth:12,boxHeight:2,padding:10}},
+      tooltip:{...chartBase().plugins.tooltip,callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.raw}%`}}
+    },scales:{...chartBase().scales,
+      y:{...chartBase().scales.y,ticks:{...chartBase().scales.y.ticks,callback:v=>v+'%'}}
+    }}
+  });
+}
+
+// ── RENDER PRODUCTS ──────────────────────────────────────────────────────────
+function renderProducts() {
+  const cat = document.getElementById('cat-select').value;
+  const n = parseInt(document.getElementById('top-n-select').value);
+  const m = prodMetric;
+  document.getElementById('top-badge').textContent = 'Top '+n;
+  document.getElementById('bot-badge').textContent = 'Bottom '+n;
+  document.getElementById('th-top').textContent = m==='euros' ? 'Ventas €' : 'Unidades';
+  document.getElementById('th-bot').textContent = m==='euros' ? 'Ventas €' : 'Unidades';
+
+  // Aggregate products for active period
+  const artMap = {};
+  activePeriod.forEach(mes => {
+    const prods = PBM[activeYear][String(mes)]?.[cat] || [];
+    prods.forEach(p => {
+      if (!artMap[p.art]) artMap[p.art] = {euros:0,cant:0};
+      artMap[p.art].euros += p.euros;
+      artMap[p.art].cant += p.cant;
+    });
+  });
+
+  // Aggregate compare period
+  const cyr = getCompareYear();
+  const cp = getComparePeriod();
+  const cmpMap = {};
+  if (cyr && cp.length) {
+    cp.forEach(mes => {
+      const prods = PBM[cyr][String(mes)]?.[cat] || [];
+      prods.forEach(p => {
+        if (!cmpMap[p.art]) cmpMap[p.art] = {euros:0,cant:0};
+        cmpMap[p.art].euros += p.euros;
+        cmpMap[p.art].cant += p.cant;
+      });
+    });
+  }
+
+  const prods = Object.entries(artMap).filter(([,v])=>v[m]>0).map(([art,v])=>({art,...v}));
+  const sorted = [...prods].sort((a,b)=>b[m]-a[m]);
+  const maxVal = sorted[0]?.[m]||1;
+
+  function growthTag(art) {
+    if (!cyr || !cp.length) return '';
+    const prev = cmpMap[art];
+    if (!prev || prev[m]===0) return '<span class="growth new">(nuevo)</span>';
+    const pct = (artMap[art][m]-prev[m])/prev[m]*100;
+    const cls = pct>=5?'up':pct<=-5?'down':'neu';
+    const sign = pct>=0?'+':'';
+    return `<span class="growth ${cls}">(${sign}${Math.round(pct)}%)</span>`;
+  }
+
+  function makeRows(list, isTop) {
+    return list.map((p,i)=>{
+      const val=p[m], barPct=(val/maxVal*100).toFixed(0);
+      const rank=isTop?i+1:prods.length-list.length+i+1;
+      const dispVal = m==='euros' ? fmtEuros(val) : val.toLocaleString('es-ES')+' uds';
+      return `<tr><td class="${rank===1?'rank-1':''}">${rank}</td><td>
+        <div style="font-size:13px;color:var(--text)">${p.art} ${growthTag(p.art)}</div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${isTop?barPct:Math.max(5,100-barPct)}%"></div></div>
+      </td><td>${dispVal}</td></tr>`;
+    }).join('');
+  }
+
+  document.getElementById('top-table').innerHTML = makeRows(sorted.slice(0,n), true);
+  document.getElementById('bot-table').innerHTML = makeRows(sorted.slice(-n).reverse(), false);
+}
+
+function setProdMetric(m) {
+  prodMetric = m;
+  document.getElementById('metric-euros').classList.toggle('active', m==='euros');
+  document.getElementById('metric-cant').classList.toggle('active', m==='cant');
+  renderProducts();
+}
+
+// ── PERIOD INFO ──────────────────────────────────────────────────────────────
+function updatePeriodInfo() {
+  const cyr = getCompareYear();
+  const label = periodLabel();
+  const cmp = cyr ? ` · comparando con ${cyr} (mismo período)` : '';
+  document.getElementById('period-info').textContent = activeYear+' · '+label+cmp;
+}
+
+// ── POPULATE SELECTS ─────────────────────────────────────────────────────────
+function populateCatSelect() {
+  const sel = document.getElementById('cat-select');
+  sel.innerHTML = ['BEBIDA','COMIDA','VINOS','MOLLETES','OTROS'].map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
+// ── MAIN RENDER ──────────────────────────────────────────────────────────────
+function renderAll() {
+  updatePeriodInfo();
+  rebuildPeriodUI();
+  renderKPIs();
+  renderEvolution();
+  renderDonut();
+  renderCatEvol();
+  renderProducts();
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+Chart.defaults.color = '#5a5650';
+Chart.defaults.plugins.tooltip.callbacks.label = function(ctx) {
+  const v = ctx.raw;
+  if (typeof v === 'number') {
+    return ' ' + ctx.dataset.label + ': ' + v.toLocaleString('es-ES', {minimumFractionDigits:0, maximumFractionDigits:1});
+  }
+  return ' ' + ctx.dataset.label + ': ' + v;
+};
+populateCatSelect();
+activePeriod = availMonths(activeYear);
+renderAll();
+</script>
+</body>
+</html>

@@ -10,7 +10,7 @@
 :root{
   --bg:#0c0f0e;--bg2:#141917;--bg3:#1e2421;--border:#263029;
   --accent:#7ec8a0;--accent2:#a8e8c0;--text:#edf2ef;--text2:#8aa898;--text3:#4a5f54;
-  --c24:#f0b97a;--c25:#7eb5e8;--c26:#a8e8c0;
+  --c25:#7eb5e8;--c26:#a8e8c0;
   --r:8px;
 }
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -21,7 +21,6 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .header-left p{color:var(--text2);font-size:11px;font-family:'DM Mono',monospace;}
 .year-tabs{display:flex;gap:4px;background:var(--bg);padding:4px;border-radius:10px;}
 .year-tab{padding:5px 14px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;transition:all .2s;background:transparent;color:var(--text3);}
-.year-tab[data-yr="2024"].active{background:var(--c24);color:#0c0f0e;font-weight:700;}
 .year-tab[data-yr="2025"].active{background:var(--c25);color:#0c0f0e;font-weight:700;}
 .year-tab[data-yr="2026"].active{background:var(--c26);color:#0c0f0e;font-weight:700;}
 .year-tab:hover:not(.active){background:var(--bg3);color:var(--text2);}
@@ -55,7 +54,6 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .cmp-btn{padding:3px 11px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;transition:all .15s;background:transparent;color:var(--text3);}
 .cmp-btn:hover:not(.active){background:var(--bg2);}
 .cmp-btn[data-yr="prev"].active,.cmp-btn[data-yr="all"].active{background:var(--accent);color:#0c0f0e;border-color:var(--accent);font-weight:700;}
-.cmp-btn[data-yr="2024"].active{background:var(--c24);color:#0c0f0e;border-color:var(--c24);font-weight:700;}
 .cmp-btn[data-yr="2025"].active{background:var(--c25);color:#0c0f0e;border-color:var(--c25);font-weight:700;}
 .cmp-btn[data-yr="2026"].active{background:var(--c26);color:#0c0f0e;border-color:var(--c26);font-weight:700;}
 .cmp-btn[data-yr="none"].active{background:var(--bg2);color:var(--text2);border-color:var(--text3);}
@@ -172,7 +170,6 @@ td:last-child{color:var(--accent2);}
     <p>Dashboard de Ventas · {{SUBTITLE_YEARS}} · act. {{FECHA_ACT}}</p>
   </div>
   <div class="year-tabs" id="year-tabs">
-    <button class="year-tab" data-yr="2024" onclick="setYear('2024')">2024</button>
     <button class="year-tab" data-yr="2025" onclick="setYear('2025')">2025</button>
     <button class="year-tab active" data-yr="2026" onclick="setYear('2026')">2026</button>
   </div>
@@ -214,7 +211,6 @@ td:last-child{color:var(--accent2);}
 <div class="cmp-bar">
   <span class="pl">Comparar con</span>
   <button class="cmp-btn active" data-yr="prev" onclick="setCompare('prev')">Año anterior (auto)</button>
-  <button class="cmp-btn" data-yr="2024" onclick="setCompare('2024')">2024</button>
   <button class="cmp-btn" data-yr="2025" onclick="setCompare('2025')">2025</button>
   <button class="cmp-btn" data-yr="2026" onclick="setCompare('2026')">2026</button>
   <button class="cmp-btn" data-yr="all" onclick="setCompare('all')">Todos los años</button>
@@ -377,7 +373,7 @@ const D = {{D_DATA}};
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const YEARS = {{YEARS_DATA}};
-const YEAR_COLORS = {'2024':'#f0b97a','2025':'#7eb5e8','2026':'#a8e8c0'};
+const YEAR_COLORS = {'2025':'#7eb5e8','2026':'#a8e8c0'};
 const Q_MONTHS = {1:[1,2,3],2:[4,5,6],3:[7,8,9],4:[10,11,12]};
 const CAT_COLORS = {{CAT_COLORS_DATA}};
 
@@ -395,7 +391,7 @@ function availMonths(yr) {
 }
 function getCompareYear() {
   if (compareMode==='none'||compareMode==='all') return null;
-  if (compareMode==='prev') return activeYear==='2024' ? null : String(Number(activeYear)-1);
+  if (compareMode==='prev') return activeYear==='2025' ? null : String(Number(activeYear)-1);
   return compareMode===activeYear ? null : compareMode;
 }
 function getComparePeriod() {

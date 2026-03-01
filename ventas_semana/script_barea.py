@@ -4,7 +4,8 @@ import sys
 
 # --- AUTO-INSTALACIÓN DE LIBRERÍAS ---
 def install_requirements():
-    libs = ["pandas", "openpyxl", "requests", "python-dotenv", "woocommerce"]
+    libs = ["pandas", "openpyxl", "requests", "python-dotenv", "woocommerce",
+            "matplotlib", "reportlab"]
     for lib in libs:
         try:
             module_name = lib.replace("-", "_")
@@ -728,7 +729,7 @@ def main():
                                     categories=lookups['categories'],
                                     taxes_by_id=taxes_by_id)
 
-    # 4. REGENERAR DASHBOARD COMESTIBLES
+    # 4. REGENERAR DASHBOARDS (Comestibles + Tasca)
     dashboard_mensual = "--dashboard-mensual" in sys.argv
     try:
         from ventas_semana.generar_dashboard import main as generar_dashboard
@@ -737,10 +738,10 @@ def main():
             solo_meses_cerrados=dashboard_mensual,
             enviar_email=dashboard_mensual,
         )
-        print("Dashboard Comestibles regenerado"
-              + (" (mensual + email)" if dashboard_mensual else ""))
+        print("Dashboards regenerados"
+              + (" (mensual + PDF + email)" if dashboard_mensual else ""))
     except Exception as e:
-        print(f"Error regenerando dashboard: {e}")
+        print(f"Error regenerando dashboards: {e}")
 
     print()
     print("--- Proceso Finalizado ---")

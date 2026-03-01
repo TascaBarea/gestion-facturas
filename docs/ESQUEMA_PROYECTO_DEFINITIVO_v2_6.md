@@ -1,6 +1,6 @@
 # 📐 ESQUEMA PROYECTO GESTIÓN-FACTURAS
 
-**Versión:** 3.0
+**Versión:** 4.0
 **Fecha:** 01/03/2026
 **Estado:** DEFINITIVO - Base para desarrollo
 
@@ -17,7 +17,7 @@
 │   ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐                 │
 │   │    Ⓐ    │    │    Ⓑ    │    │    Ⓒ    │    │    Ⓓ    │                 │
 │   │ PARSEO  │    │  GMAIL  │    │ VENTAS  │    │ CUADRE  │                 │
-│   │  ✅ 85% │    │  ✅ 97% │    │  ✅ 90% │    │  ✅ 75% │                 │
+│   │  ✅ 85% │    │  ✅ 97% │    │  ✅ 95% │    │  ✅ 75% │                 │
 │   └────┬────┘    └────┬────┘    └────┬────┘    └────┬────┘                 │
 │        │              │              │              │                       │
 │        ▼              ▼              ▼              ▼                       │
@@ -159,7 +159,7 @@ NOVEDADES v1.4:
                - Emails marcados como leídos
 ```
 
-### Ⓒ VENTAS (90% - FUNCIONAL) ✅ v3.0
+### Ⓒ VENTAS (95% - FUNCIONAL) ✅ v4.0
 ```
 UBICACIÓN:     gestion-facturas/ventas_semana/
 ENTRADA:       - API Loyverse (TASCA + COMESTIBLES) — recibos + items
@@ -168,52 +168,55 @@ ENTRADA:       - API Loyverse (TASCA + COMESTIBLES) — recibos + items
 SALIDA:        - Ventas Barea 2026.xlsx (5 pestañas):
                  TascaRecibos (19 cols), TascaItems (23 cols),
                  ComesRecibos (19 cols), ComesItems (23 cols), WOOCOMMERCE
-               - Dashboard HTML interactivo (Comestibles):
-                 dashboards/dashboard_comestibles.html
+               - Dashboards HTML interactivos:
+                 dashboards/dashboard_comes.html (Comestibles 2025-2026)
+                 dashboards/dashboard_tasca.html (Tasca 2023-2026)
+               - PDFs resumen mensual:
+                 dashboards/informe_barea_*.pdf (completo: Tasca + Comestibles)
+                 dashboards/informe_comestibles_*.pdf (solo Comestibles)
                - GitHub Pages: https://tascabarea.github.io/barea-dashboard/
+                 index.html (landing page) + comestibles.html + tasca.html
 INICIO:        AUTOMÁTICO (lunes 03:00) o MANUAL
-FRECUENCIA:    Semanal (ventas) + Mensual (dashboard cerrado + email socios)
-ESTADO:        ✅ v3.0 - Dashboard + email + GitHub Pages + automatización
+FRECUENCIA:    Semanal (ventas) + Mensual (dashboard cerrado + email + PDF)
+ESTADO:        ✅ v4.0 - Dual dashboard + PDF + email segmentado + GitHub Pages
+NOVEDADES v4.0 (01/03/2026):
+               DASHBOARD TASCA (NUEVO):
+               - Template: dashboard_tasca_template.html con 5 placeholders
+                 ({{RAW_DATA}}, {{PBM_DATA}}, {{YEARS_DATA}}, {{SUBTITLE_YEARS}}, {{FECHA_ACT}})
+               - 4 años: 2023 + 2024 + 2025 + 2026
+               - Datos: TascaItems/TascaRecibos del Histórico + 2026
+               - Categorías: BEBIDA, COMIDA, VINOS, MOLLETES, OTROS, PROMOCIONES
+               - Chart.js: ventas mensuales, tickets, ticket medio, categorías, productos
+               - Sin rotación ni rentabilidad (solo en Comestibles)
+               - Funciones: cargar_datos_tasca(), calcular_RAW(), calcular_PBM_tasca()
+               COMESTIBLES ACTUALIZADO:
+               - Reducido a 2 años: 2025 + 2026 (eliminado 2024 por volumen bajo)
+               - Template y CSS limpiados de referencias a 2024
+               PDF RESUMEN MENSUAL (NUEVO):
+               - matplotlib (3 gráficos línea) + reportlab (composición A4)
+               - PDF completo: logos + KPIs + 3 gráficos (Tasca, Comestibles, Conjunto)
+                 + categorías por mes y acumulado YTD + links dashboards
+               - PDF Comestibles: versión reducida solo Comestibles
+               - KPIs: ventas, tickets, ticket medio, variación interanual,
+                 top 3 productos, día de la semana más fuerte
+               - Fuente Calibri, tono informal
+               EMAIL SEGMENTADO (NUEVO):
+               - EMAILS_FULL (3 socios): email completo Tasca+Comestibles
+                 + PDF completo + ambos dashboards HTML adjuntos
+               - EMAILS_COMES_ONLY (1 socia): email solo Comestibles
+                 + PDF solo Comestibles + dashboard Comestibles adjunto
+               GITHUB PAGES MULTI-FILE:
+               - Landing page (index.html) con cards a ambos dashboards
+               - comestibles.html + tasca.html publicados automáticamente
+               - Estilo dark, minimal, con fecha de actualización
 NOVEDADES v3.0 (28/02/2026):
-               DASHBOARD COMESTIBLES:
-               - generar_dashboard.py: genera HTML interactivo desde Excel
-               - Template-based: dashboard_comes_template.html con placeholders
-                 ({{D_DATA}}, {{MD_DATA}}, {{YEARS_DATA}}, {{CAT_COLORS_DATA}})
-               - 3 años de datos: 2024 (histórico) + 2025 (histórico) + 2026 (actual)
-               - Gráficas Chart.js: ventas mensuales, categorías, ticket medio
-               - Análisis de rotación: alta/baja/todos con umbral dinámico
-               - Rentabilidad (margen €/kg) por producto
-               - WooCommerce integrado (pedidos online)
-               - Filtrado meses cerrados: --solo-cerrados (excluye mes actual)
-               EMAIL SOCIOS:
-               - Gmail API (OAuth2, reutiliza credentials de Ⓑ GMAIL)
-               - HTML con KPIs: ventas, tickets, ticket medio, top categoría
-               - Comparativa con mismo mes del año anterior
-               - Dashboard HTML adjunto + link GitHub Pages
-               - Destinatarios: 4 socios configurados en EMAILS_DASHBOARD
-               GITHUB PAGES:
-               - Repo: TascaBarea/barea-dashboard
-               - URL: https://tascabarea.github.io/barea-dashboard/
-               - Push automático tras generar dashboard
-               AUTOMATIZACIÓN:
-               - barea_auto.bat: runner Windows Task Scheduler
-               - Anti-suspensión (powercfg), verificaciones (Python, internet)
-               - Cada lunes: descarga ventas + regenera dashboard
-               - 1er lunes del mes (día ≤ 7): dashboard meses cerrados + email
-               - barea_auto_setup.bat: crea tarea Ventas_Barea_Semanal (03:00, WakeToRun)
+               Dashboard Comestibles + email + GitHub Pages + automatización
+               (ver changelog v3.0 para detalle)
 NOVEDADES v2.0 (27/02/2026):
                - Descarga semanal fija (lunes-domingo anterior), no incremental
-               - Todas las columnas Loyverse: TPV, Tienda, Cajero, Cliente, Categoría,
-                 Tipo de pago — resolución de IDs via API adicionales
-               - fetch_lookup_data(): stores, pos_devices, employees, customers,
-                 categories, payment_types, items → dict id→nombre
-               - procesar_recibos(): genera df_recibos (19 cols) + df_items (23 cols)
-               - Dedup estable: unique_id = {receipt_number}_{line_idx}
-               - Acumulación semanal con dedup (no sobreescribe datos anteriores)
-               - WooCommerce con paginación + filtro semanal (after/before)
-               - .env relativo al script (os.path.dirname(__file__))
-               - _COL_RENAMES para normalizar columnas antiguas (tildes)
-               Falta: consolidación trimestral, dashboard Tasca
+               - Todas las columnas Loyverse: TPV, Tienda, Cajero, Cliente, Categoría
+               - fetch_lookup_data(), procesar_recibos(), dedup estable
+               - WooCommerce con paginación + filtro semanal
 ```
 
 ### Ⓓ CUADRE (75% - FUNCIONAL) ✅ v1.5b
@@ -288,12 +291,17 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   │       ├── norma43.py            ← Parser ficheros N43 Sabadell
 │   │       └── archivados\           ← Ficheros N43 procesados
 │   │
-│   ├── ventas_semana\               ← Ⓒ VENTAS + DASHBOARD (✅ v3.0)
+│   ├── ventas_semana\               ← Ⓒ VENTAS + DASHBOARDS (✅ v4.0)
 │   │   ├── script_barea.py          ← Loyverse + WooCommerce API → Excel
-│   │   ├── generar_dashboard.py     ← Generador dashboard HTML + email + GitHub Pages
+│   │   ├── generar_dashboard.py     ← Generador dual: Comestibles + Tasca + PDF + email
 │   │   ├── dashboards\
-│   │   │   ├── dashboard_comes_template.html  ← Template con placeholders
-│   │   │   └── dashboard_comestibles.html     ← Dashboard generado
+│   │   │   ├── dashboard_comes_template.html  ← Template Comestibles (6 placeholders)
+│   │   │   ├── dashboard_tasca_template.html  ← Template Tasca (5 placeholders)
+│   │   │   ├── dashboard_comes.html           ← Dashboard Comestibles generado
+│   │   │   ├── dashboard_tasca.html           ← Dashboard Tasca generado
+│   │   │   └── informe_barea_*.pdf            ← PDF resumen mensual generado
+│   │   ├── LOGO Tasca.jpg            ← Logo Tasca (para PDF)
+│   │   ├── LOGO Comestibles .jpg     ← Logo Comestibles (para PDF)
 │   │   ├── barea_auto.bat           ← Runner tarea programada (anti-suspensión)
 │   │   ├── barea_auto_setup.bat     ← Setup tarea (1 vez, como admin)
 │   │   └── .env                     ← Credenciales API (no commitear)
@@ -741,19 +749,19 @@ Lógica común a transferencias, compra_tarjeta y adeudo_recibo (~40 líneas cad
               │                           │                         │
               ▼                           ▼                         │
       ┌────────────────┐    ┌──────────────────────────┐            │
-      │ Revisar +      │    │ Dashboard Comestibles    │            │
-      │ Pagar TF       │    │ (HTML interactivo)       │            │
+      │ Revisar +      │    │ Dashboards:              │            │
+      │ Pagar TF       │    │ Comestibles + Tasca      │            │
       └───────┬────────┘    └───────┬──────────────────┘            │
               │                     │                               │
               │               1er lunes del mes:                    │
               │                     │                               │
-              │              ┌──────┴──────┐                        │
-              │              ▼             ▼                        │
-              │      ┌────────────┐ ┌────────────┐                  │
-              │      │ Email      │ │ GitHub     │                  │
-              │      │ socios     │ │ Pages      │                  │
-              │      │ (4 emails) │ │ (push)     │                  │
-              │      └────────────┘ └────────────┘                  │
+              │              ┌──────┼──────┐                        │
+              │              ▼      ▼      ▼                        │
+              │      ┌────────┐ ┌──────┐ ┌────────┐                 │
+              │      │ PDF    │ │Email │ │ GitHub │                 │
+              │      │resumen │ │segm. │ │ Pages  │                 │
+              │      │(2 PDF) │ │(2grp)│ │(3 HTML)│                 │
+              │      └────────┘ └──────┘ └────────┘                 │
               │                                                     │
               ▼                                                     ▼
       ┌────────────────┐                                   ┌────────────────┐
@@ -777,8 +785,8 @@ Lógica común a transferencias, compra_tarjeta y adeudo_recibo (~40 líneas cad
 | ~~1️⃣~~ | ~~Ⓑ GMAIL~~ | ~~Descargar + renombrar~~ | ✅ **v1.7** |
 | ~~2️⃣~~ | ~~Extractores PARSEO~~ | ~~Mejorar tasa de éxito (85%→95%)~~ | ✅ **97 extractores** |
 | 3️⃣ | Ⓓ CUADRE integración | Conectar con COMPRAS (ESTADO_PAGO) | 🟡 Pendiente |
-| 4️⃣ | Ⓒ VENTAS | Loyverse + Woocommerce (v2.0 funcional) | ✅ **90%** |
-| ~~5️⃣~~ | ~~Informes~~ | ~~Dashboards y análisis~~ | ✅ **Dashboard Comes** |
+| ~~4️⃣~~ | ~~Ⓒ VENTAS~~ | ~~Loyverse + Woocommerce~~ | ✅ **v4.0 (95%)** |
+| ~~5️⃣~~ | ~~Informes~~ | ~~Dashboards + PDF + email~~ | ✅ **Comes + Tasca** |
 | 6️⃣ | Integrar | Mover PARSEO a gestion-facturas | ❌ Futuro |
 
 ---
@@ -865,6 +873,39 @@ Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` p
 ---
 
 ## CHANGELOG
+
+### v4.0 (01/03/2026)
+- ✅ **DASHBOARD TASCA implementado** — Dashboard interactivo Tasca con Chart.js (4 años: 2023-2026)
+  - `dashboard_tasca_template.html`: 5 placeholders (`{{RAW_DATA}}`, `{{PBM_DATA}}`, etc.)
+  - Creado a partir de `dashboard_tasca_v2.html` (estático) → templatizado
+  - Funciones: `cargar_datos_tasca()`, `calcular_RAW()`, `calcular_PBM_tasca()`, `generar_html_tasca()`
+  - 6 categorías: BEBIDA, COMIDA, VINOS, MOLLETES, OTROS, PROMOCIONES
+  - Sin rotación ni rentabilidad (solo Comestibles tiene esos datos)
+- ✅ **Comestibles reducido a 2025-2026** — Eliminado 2024 por volumen bajo
+  - `YEAR_LIST` de `["2024","2025","2026"]` → `["2025","2026"]`
+  - `cargar_datos()`: eliminada lectura de hojas `ComestiblesItem24`/`ComestiblesRecibos24`
+  - Template CSS limpiado de `--c24`, `.year-tab[data-yr="2024"]`
+- ✅ **PDF resumen mensual** — matplotlib + reportlab
+  - `generar_pdf_resumen()`: PDF completo A4 (Tasca + Comestibles)
+    - Logos, 3 gráficos línea (Tasca, Comestibles, Conjunto), KPIs, categorías
+    - KPIs: ventas, tickets, ticket medio, variación interanual, top 3 productos, día fuerte
+    - Fuente Calibri, tono informal
+  - `generar_pdf_comestibles()`: PDF solo Comestibles (para socios parciales)
+- ✅ **Email segmentado** — Dos grupos de destinatarios
+  - `EMAILS_FULL` (3 socios): Roberto, Benjamín, Jaime → email completo + PDF completo
+    + ambos dashboards HTML adjuntos + links GitHub Pages Tasca + Comestibles
+  - `EMAILS_COMES_ONLY` (1 socia): Elena → email solo Comestibles + PDF solo Comestibles
+    + solo dashboard Comestibles HTML adjunto
+  - Refactorizado: `_conectar_gmail()`, `_enviar_mensaje()`, `_kpis_variacion_html()`
+- ✅ **GitHub Pages multi-file** — Landing page + ambos dashboards
+  - `index.html`: estilo dark con cards a Tasca y Comestibles
+  - `comestibles.html` + `tasca.html`: dashboards publicados
+  - `publicar_github_pages()` reescrito para 3 archivos
+- ✅ **Dependencias actualizadas** — matplotlib==3.10.0 + reportlab==4.4.0 añadidos
+  - `requirements.txt` actualizado (16 dependencias)
+  - `script_barea.py:install_requirements()` actualizado
+  - `NumpyEncoder` para serialización JSON de tipos numpy (int64/float64)
+- ✅ **VENTAS subido a v4.0** (antes v3.0, 90% → 95%)
 
 ### v3.0 (28/02/2026)
 - ✅ **DASHBOARD COMESTIBLES implementado** — Dashboard HTML interactivo con Chart.js

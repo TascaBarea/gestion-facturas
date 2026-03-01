@@ -17,4 +17,6 @@ outputs/logs_gmail/
 outputs/logs_barea/
 
 # Dashboards generados
-ventas_semana/dashboards/dashboard_comestibles.html
+ventas_semana/dashboards/dashboard_comes.html
+ventas_semana/dashboards/dashboard_tasca.html
+ventas_semana/dashboards/informe_barea_*.pdf
