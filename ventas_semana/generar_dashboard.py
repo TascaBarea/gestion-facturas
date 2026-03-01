@@ -790,86 +790,150 @@ def _filtrar_meses_cerrados_tasca(items, recibos):
 # PDF RESUMEN MENSUAL
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _setup_pdf_fonts():
+    """Registra Calibri y devuelve (font_normal, font_bold)."""
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    paths = {
+        "Calibri": "C:/Windows/Fonts/calibri.ttf",
+        "CalibriBold": "C:/Windows/Fonts/calibrib.ttf",
+    }
+    for name, path in paths.items():
+        if os.path.exists(path):
+            try:
+                pdfmetrics.registerFont(TTFont(name, path))
+            except Exception:
+                pass
+    fn = "Calibri" if os.path.exists(paths["Calibri"]) else "Helvetica"
+    fb = "CalibriBold" if os.path.exists(paths["CalibriBold"]) else "Helvetica-Bold"
+    return fn, fb
+
+
 def _generar_graficos_pdf(D, RAW, mes_cerrado, year_actual):
-    """Genera 3 PNGs con graficos de linea y devuelve sus paths."""
+    """Genera 3 PNGs con graficos de linea mejorados."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib.ticker import FuncFormatter
 
     tmp_dir = tempfile.mkdtemp(prefix="barea_pdf_")
+    fmt_euros = FuncFormatter(lambda x, _: f"{x:,.0f}€")
 
-    fmt_euros = FuncFormatter(lambda x, _: f"{x:,.0f}\u20ac")
-    meses_labels = MESES_CORTO
+    plt.rcParams.update({
+        'figure.facecolor': 'white',
+        'axes.facecolor': '#F8F9FA',
+        'axes.spines.top': False,
+        'axes.spines.right': False,
+        'grid.alpha': 0.25,
+        'grid.color': '#CCCCCC',
+        'font.size': 9,
+    })
 
-    def _plot_evolution(ax, data_dict, year_list, year_colors, title, max_month=12):
-        """Dibuja lineas de evolucion mensual por ano."""
+    tasca_colors = {"2023": "#A8C5E2", "2024": "#E8A0A0",
+                    "2025": "#82D9A2", "2026": "#E8C97A"}
+    comes_colors = {"2025": "#7EB5E8", "2026": "#82D9A2"}
+
+    def _plot_modern(ax, data_dict, year_list, yr_colors, title, current_yr):
         for yr in year_list:
             if yr not in data_dict:
                 continue
             mensual = data_dict[yr]["mensual"]
-            vals = []
-            for m in range(1, max_month + 1):
+            xs, vals = [], []
+            for m in range(1, 13):
                 e = mensual.get(str(m), {}).get("euros", 0)
-                vals.append(e if e > 0 else None)
-            ax.plot(range(1, max_month + 1), vals, marker="o", markersize=4,
-                    linewidth=2, label=yr, color=year_colors.get(yr, "#888"))
-
-        ax.set_title(title, fontsize=13, fontweight="bold", pad=10)
-        ax.set_xticks(range(1, max_month + 1))
-        ax.set_xticklabels(meses_labels[:max_month], fontsize=8)
+                if e and e > 0:
+                    xs.append(m)
+                    vals.append(e)
+            if not vals:
+                continue
+            color = yr_colors.get(yr, "#999")
+            is_cur = (yr == current_yr)
+            ax.plot(xs, vals, marker="o",
+                    markersize=6 if is_cur else 3,
+                    linewidth=2.5 if is_cur else 1.5,
+                    label=yr, color=color,
+                    alpha=1.0 if is_cur else 0.45,
+                    zorder=3 if is_cur else 2)
+            if is_cur:
+                ax.fill_between(xs, vals, alpha=0.07, color=color)
+                for x, v in zip(xs, vals):
+                    ax.annotate(f"{v:,.0f}€", (x, v),
+                                textcoords="offset points", xytext=(0, 10),
+                                ha="center", fontsize=7, color=color,
+                                fontweight="bold")
+        ax.set_title(title, fontsize=12, fontweight="bold", pad=12,
+                     color="#1a1a1a")
+        ax.set_xticks(range(1, 13))
+        ax.set_xticklabels(MESES_CORTO, fontsize=8)
         ax.yaxis.set_major_formatter(fmt_euros)
-        ax.legend(fontsize=9, loc="upper left")
-        ax.grid(True, alpha=0.3)
-        ax.set_xlim(0.5, max_month + 0.5)
-
-    tasca_colors = {"2023": "#7eb5e8", "2024": "#e87e7e", "2025": "#7ed9a0", "2026": "#e8c97a"}
-    comes_colors = {"2025": "#7eb5e8", "2026": "#a8e8c0"}
+        ax.tick_params(axis="y", labelsize=8)
+        ax.legend(fontsize=8, loc="upper right", framealpha=0.9,
+                  edgecolor="#DDD")
+        ax.set_xlim(0.5, 12.5)
+        ax.grid(True, axis="y", alpha=0.25)
+        for spine in ("bottom", "left"):
+            ax.spines[spine].set_color("#CCCCCC")
 
     # Grafico 1: Tasca
-    fig1, ax1 = plt.subplots(figsize=(8, 3.5))
-    _plot_evolution(ax1, RAW, TASCA_YEAR_LIST, tasca_colors, "Tasca Barea - Facturación mensual")
-    fig1.tight_layout()
+    fig1, ax1 = plt.subplots(figsize=(9, 3.8))
+    _plot_modern(ax1, RAW, TASCA_YEAR_LIST, tasca_colors,
+                 "Tasca Barea — Facturación mensual", year_actual)
+    fig1.tight_layout(pad=1.5)
     path1 = os.path.join(tmp_dir, "chart_tasca.png")
-    fig1.savefig(path1, dpi=150, bbox_inches="tight")
+    fig1.savefig(path1, dpi=180, bbox_inches="tight")
     plt.close(fig1)
 
     # Grafico 2: Comestibles
-    fig2, ax2 = plt.subplots(figsize=(8, 3.5))
-    _plot_evolution(ax2, D, YEAR_LIST, comes_colors, "Comestibles Barea - Facturación mensual")
-    fig2.tight_layout()
+    fig2, ax2 = plt.subplots(figsize=(9, 3.8))
+    _plot_modern(ax2, D, YEAR_LIST, comes_colors,
+                 "Comestibles Barea — Facturación mensual", year_actual)
+    fig2.tight_layout(pad=1.5)
     path2 = os.path.join(tmp_dir, "chart_comes.png")
-    fig2.savefig(path2, dpi=150, bbox_inches="tight")
+    fig2.savefig(path2, dpi=180, bbox_inches="tight")
     plt.close(fig2)
 
-    # Grafico 3: Conjunto (ultimo ano completo + actual)
-    fig3, ax3 = plt.subplots(figsize=(8, 3.5))
-    # Tasca
-    yr_tasca = year_actual
-    mensual_t = RAW.get(yr_tasca, {}).get("mensual", {})
-    vals_t = [mensual_t.get(str(m), {}).get("euros", 0) or None for m in range(1, 13)]
-    ax3.plot(range(1, 13), vals_t, marker="o", markersize=4, linewidth=2,
-             label=f"Tasca {yr_tasca}", color="#c9a84c")
-    # Comestibles
-    yr_comes = year_actual
-    mensual_c = D.get(yr_comes, {}).get("mensual", {})
-    vals_c = [mensual_c.get(str(m), {}).get("euros", 0) or None for m in range(1, 13)]
-    ax3.plot(range(1, 13), vals_c, marker="s", markersize=4, linewidth=2,
-             label=f"Comestibles {yr_comes}", color="#7ec8a0")
-
-    ax3.set_title(f"Comparativa Tasca vs Comestibles - {yr_tasca}", fontsize=13,
-                  fontweight="bold", pad=10)
+    # Grafico 3: Comparativa
+    fig3, ax3 = plt.subplots(figsize=(9, 3.8))
+    yr = year_actual
+    for lbl, data, color, mkr, off_y in [
+        (f"Tasca {yr}", RAW, "#C9A84C", "o", 10),
+        (f"Comestibles {yr}", D, "#4A9B6F", "s", -14),
+    ]:
+        mensual = data.get(yr, {}).get("mensual", {})
+        xs, vs = [], []
+        for m in range(1, 13):
+            e = mensual.get(str(m), {}).get("euros", 0)
+            if e and e > 0:
+                xs.append(m)
+                vs.append(e)
+        if vs:
+            ax3.plot(xs, vs, marker=mkr, markersize=6, linewidth=2.5,
+                     label=lbl, color=color, zorder=3)
+            ax3.fill_between(xs, vs, alpha=0.07, color=color)
+            for x, v in zip(xs, vs):
+                ax3.annotate(f"{v:,.0f}€", (x, v),
+                             textcoords="offset points", xytext=(0, off_y),
+                             ha="center", fontsize=7, color=color,
+                             fontweight="bold")
+    ax3.set_title(f"Comparativa Tasca vs Comestibles — {yr}",
+                  fontsize=12, fontweight="bold", pad=12, color="#1a1a1a")
     ax3.set_xticks(range(1, 13))
-    ax3.set_xticklabels(meses_labels, fontsize=8)
+    ax3.set_xticklabels(MESES_CORTO, fontsize=8)
     ax3.yaxis.set_major_formatter(fmt_euros)
-    ax3.legend(fontsize=9, loc="upper left")
-    ax3.grid(True, alpha=0.3)
+    ax3.tick_params(axis="y", labelsize=8)
+    ax3.legend(fontsize=8, loc="upper right", framealpha=0.9, edgecolor="#DDD")
+    ax3.grid(True, axis="y", alpha=0.25)
     ax3.set_xlim(0.5, 12.5)
-    fig3.tight_layout()
+    for spine in ("top", "right"):
+        ax3.spines[spine].set_visible(False)
+    for spine in ("bottom", "left"):
+        ax3.spines[spine].set_color("#CCCCCC")
+    fig3.tight_layout(pad=1.5)
     path3 = os.path.join(tmp_dir, "chart_conjunto.png")
-    fig3.savefig(path3, dpi=150, bbox_inches="tight")
+    fig3.savefig(path3, dpi=180, bbox_inches="tight")
     plt.close(fig3)
 
+    plt.rcParams.update(plt.rcParamsDefault)
     return path1, path2, path3, tmp_dir
 
 
@@ -894,7 +958,8 @@ def _calcular_dia_fuerte(items_por_año, year, mes):
     if ventas_dia.empty:
         return "-"
 
-    dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+    dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes",
+            "Sábado", "Domingo"]
     mejor = ventas_dia.idxmax()
     return dias[int(mejor)]
 
@@ -909,32 +974,153 @@ def _top3_productos(pbm_data, mes):
     return [p["art"] for p in all_prods[:3]]
 
 
+def _kpi_card(nombre, data_dict, year, mes, pbm_data, items_dict,
+              color_accent, color_bg, font_name, font_bold):
+    """Genera tabla-card de KPIs para un negocio."""
+    from reportlab.lib.units import mm
+    from reportlab.lib.colors import HexColor, white
+    from reportlab.platypus import Table, TableStyle, Paragraph
+    from reportlab.lib.styles import ParagraphStyle
+
+    d_mes = data_dict.get(year, {}).get("mensual", {}).get(str(mes), {})
+    euros = d_mes.get("euros", 0)
+    tickets = d_mes.get("tickets", 0)
+    prom = d_mes.get("prom_ticket", 0)
+
+    year_ant = str(int(year) - 1)
+    d_ant = data_dict.get(year_ant, {}).get("mensual", {}).get(str(mes), {})
+    euros_ant = d_ant.get("euros", 0)
+    if euros_ant > 0:
+        var_pct = (euros - euros_ant) / euros_ant * 100
+        var_color = "#2E7D32" if var_pct >= 0 else "#C62828"
+        var_arrow = "▲" if var_pct >= 0 else "▼"
+        var_html = (f'<font color="{var_color}"><b>'
+                    f'{var_arrow} {var_pct:+.1f}%</b></font>')
+    else:
+        var_html = '<font color="#999">—</font>'
+
+    top3 = _top3_productos(pbm_data, mes)
+    dia = _calcular_dia_fuerte(items_dict, year, mes)
+
+    uid = nombre.replace(" ", "_")
+    s_hdr = ParagraphStyle(f"kc_h_{uid}", fontName=font_bold, fontSize=11,
+                           textColor=white, leading=14)
+    s_big = ParagraphStyle(f"kc_b_{uid}", fontName=font_bold, fontSize=24,
+                           textColor=HexColor("#1a1a1a"), leading=28)
+    s_var = ParagraphStyle(f"kc_v_{uid}", fontName=font_name, fontSize=10,
+                           textColor=HexColor("#555"), leading=13)
+    s_det = ParagraphStyle(f"kc_d_{uid}", fontName=font_name, fontSize=9,
+                           textColor=HexColor("#444"), leading=13)
+
+    card_w = 82 * mm
+    rows = [
+        [Paragraph(nombre, s_hdr)],
+        [Paragraph(f"{euros:,.0f}€", s_big)],
+        [Paragraph(f"vs año anterior: {var_html}", s_var)],
+        [Paragraph(f"<b>{tickets}</b> tickets &nbsp;·&nbsp; "
+                   f"<b>{prom:.2f}€</b> ticket medio", s_det)],
+        [Paragraph(f"Día fuerte: <b>{dia}</b>", s_det)],
+    ]
+    if top3:
+        items_html = "<br/>".join(f"&nbsp;&nbsp;· {p}" for p in top3)
+        rows.append([Paragraph(f"Top productos:<br/>{items_html}", s_det)])
+
+    t = Table(rows, colWidths=[card_w])
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, 0), HexColor(color_accent)),
+        ("BACKGROUND", (0, 1), (0, -1), HexColor(color_bg)),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 1), (0, 1), 10),
+        ("BOTTOMPADDING", (0, 2), (0, 2), 2),
+        ("BOX", (0, 0), (-1, -1), 1, HexColor(color_accent)),
+        ("LINEBELOW", (0, 0), (0, 0), 1, HexColor(color_accent)),
+    ]))
+    return t
+
+
+def _tabla_categorias_pdf(data_dict, year, mes, mes_nombre, color_header,
+                          font_name, font_bold):
+    """Genera tabla de categorias con filas alternadas."""
+    from reportlab.lib.units import mm
+    from reportlab.lib.colors import HexColor, white
+    from reportlab.platypus import Table, TableStyle
+
+    if "categorias_mes" in data_dict.get(year, {}):
+        cats_mes = data_dict[year]["categorias_mes"].get(str(mes), {})
+    else:
+        cats_mes = data_dict.get(year, {}).get("mensual", {}).get(
+            str(mes), {}).get("cats", {})
+    euros_mes = data_dict.get(year, {}).get("mensual", {}).get(
+        str(mes), {}).get("euros", 0)
+
+    cats_ytd = defaultdict(float)
+    total_ytd = 0
+    for m in range(1, mes + 1):
+        m_euros = data_dict.get(year, {}).get("mensual", {}).get(
+            str(m), {}).get("euros", 0)
+        total_ytd += m_euros
+        if "categorias_mes" in data_dict.get(year, {}):
+            cm = data_dict[year]["categorias_mes"].get(str(m), {})
+        else:
+            cm = data_dict.get(year, {}).get("mensual", {}).get(
+                str(m), {}).get("cats", {})
+        for cat, pct in cm.items():
+            cats_ytd[cat] += pct / 100 * m_euros
+
+    all_cats = sorted(set(list(cats_mes.keys()) + list(cats_ytd.keys())))
+    rows = [["Categoría", mes_nombre, "% mes", "Acum. YTD", "% YTD"]]
+    for cat in all_cats:
+        pct_m = cats_mes.get(cat, 0)
+        e_m = pct_m / 100 * euros_mes if euros_mes > 0 else 0
+        e_ytd = cats_ytd.get(cat, 0)
+        p_ytd = (e_ytd / total_ytd * 100) if total_ytd > 0 else 0
+        rows.append([cat, f"{e_m:,.0f}€", f"{pct_m:.1f}%",
+                     f"{e_ytd:,.0f}€", f"{p_ytd:.1f}%"])
+    rows.append(["TOTAL", f"{euros_mes:,.0f}€", "100%",
+                 f"{total_ytd:,.0f}€", "100%"])
+
+    t = Table(rows, colWidths=[38*mm, 22*mm, 14*mm, 24*mm, 14*mm])
+    cmds = [
+        ("FONTNAME", (0, 0), (-1, 0), font_bold),
+        ("FONTNAME", (0, 1), (-1, -1), font_name),
+        ("FONTNAME", (0, -1), (-1, -1), font_bold),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("BACKGROUND", (0, 0), (-1, 0), HexColor(color_header)),
+        ("TEXTCOLOR", (0, 0), (-1, 0), white),
+        ("BACKGROUND", (0, -1), (-1, -1), HexColor("#EEEEEE")),
+        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+        ("GRID", (0, 0), (-1, -1), 0.4, HexColor("#DDDDDD")),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+    ]
+    for i in range(1, len(rows) - 1):
+        if i % 2 == 0:
+            cmds.append(("BACKGROUND", (0, i), (-1, i), HexColor("#F7F8FA")))
+    t.setStyle(TableStyle(cmds))
+    return t
+
+
 def generar_pdf_resumen(D, RAW, PBM_tasca, comes_items, tasca_items):
     """Genera PDF A4 con resumen mensual de ambos negocios."""
     try:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import mm
-        from reportlab.lib.colors import HexColor, black, white
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Image,
-                                         Table, TableStyle, PageBreak)
-        from reportlab.pdfbase import pdfmetrics
-        from reportlab.pdfbase.ttfonts import TTFont
+        from reportlab.lib.colors import HexColor, white
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                        Image, Table, TableStyle, PageBreak)
     except ImportError:
         print("  Aviso: reportlab no instalado, no se genera PDF")
         return None
 
-    # Registrar Calibri
-    calibri_path = "C:/Windows/Fonts/calibri.ttf"
-    calibri_bold = "C:/Windows/Fonts/calibrib.ttf"
-    if os.path.exists(calibri_path):
-        pdfmetrics.registerFont(TTFont("Calibri", calibri_path))
-    if os.path.exists(calibri_bold):
-        pdfmetrics.registerFont(TTFont("CalibriBold", calibri_bold))
-    font_name = "Calibri" if os.path.exists(calibri_path) else "Helvetica"
-    font_bold = "CalibriBold" if os.path.exists(calibri_bold) else "Helvetica-Bold"
+    font_name, font_bold = _setup_pdf_fonts()
+    W, H = A4
 
-    # Determinar mes cerrado
     mes_cerrado = datetime.now().month - 1
     year_actual = YEAR_LIST[-1]
     if mes_cerrado < 1:
@@ -942,233 +1128,148 @@ def generar_pdf_resumen(D, RAW, PBM_tasca, comes_items, tasca_items):
         year_actual = str(int(year_actual) - 1)
     mes_nombre = MESES_FULL[mes_cerrado - 1]
 
-    # Generar graficos
-    chart_tasca, chart_comes, chart_conjunto, tmp_dir = _generar_graficos_pdf(
-        D, RAW, mes_cerrado, year_actual)
+    chart_tasca, chart_comes, chart_conjunto, tmp_dir = \
+        _generar_graficos_pdf(D, RAW, mes_cerrado, year_actual)
 
-    # Path del PDF
     pdf_name = f"informe_barea_{mes_nombre.lower()}_{year_actual}.pdf"
     pdf_path = os.path.join(_SCRIPT_DIR, "dashboards", pdf_name)
 
-    doc = SimpleDocTemplate(pdf_path, pagesize=A4,
-                            leftMargin=20*mm, rightMargin=20*mm,
-                            topMargin=15*mm, bottomMargin=15*mm)
+    # ── Canvas callbacks ──
+    def _on_first_page(canvas, doc):
+        canvas.saveState()
+        # Banda cabecera azul oscuro
+        canvas.setFillColor(HexColor("#1B2A4A"))
+        canvas.rect(0, H - 30*mm, W, 30*mm, fill=1, stroke=0)
+        # Linea dorada
+        canvas.setStrokeColor(HexColor("#C9A84C"))
+        canvas.setLineWidth(2)
+        canvas.line(0, H - 30*mm, W, H - 30*mm)
+        # Titulo
+        canvas.setFillColor(white)
+        canvas.setFont(font_bold, 18)
+        canvas.drawCentredString(W / 2, H - 15*mm, "Informe Mensual")
+        canvas.setFont(font_name, 13)
+        canvas.setFillColor(HexColor("#B0BEC5"))
+        canvas.drawCentredString(W / 2, H - 23*mm,
+                                 f"{mes_nombre} {year_actual}")
+        # Logos
+        try:
+            if os.path.exists(PATH_LOGO_TASCA):
+                canvas.drawImage(PATH_LOGO_TASCA, 12*mm, H - 28*mm,
+                                 22*mm, 22*mm, preserveAspectRatio=True)
+        except Exception:
+            pass
+        try:
+            if os.path.exists(PATH_LOGO_COMES):
+                canvas.drawImage(PATH_LOGO_COMES, W - 34*mm, H - 28*mm,
+                                 22*mm, 22*mm, preserveAspectRatio=True)
+        except Exception:
+            pass
+        _draw_footer(canvas, doc)
+        canvas.restoreState()
 
+    def _on_later_pages(canvas, doc):
+        canvas.saveState()
+        canvas.setStrokeColor(HexColor("#1B2A4A"))
+        canvas.setLineWidth(1.5)
+        canvas.line(15*mm, H - 10*mm, W - 15*mm, H - 10*mm)
+        canvas.setFont(font_bold, 8)
+        canvas.setFillColor(HexColor("#1B2A4A"))
+        canvas.drawString(15*mm, H - 8*mm,
+                          f"Informe Mensual — {mes_nombre} {year_actual}")
+        _draw_footer(canvas, doc)
+        canvas.restoreState()
+
+    def _draw_footer(canvas, doc):
+        canvas.setStrokeColor(HexColor("#CCCCCC"))
+        canvas.setLineWidth(0.5)
+        canvas.line(15*mm, 13*mm, W - 15*mm, 13*mm)
+        canvas.setFillColor(HexColor("#999999"))
+        canvas.setFont(font_name, 7)
+        canvas.drawString(
+            15*mm, 8*mm,
+            f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+        canvas.drawRightString(W - 15*mm, 8*mm,
+                               f"Página {doc.page}")
+
+    doc = SimpleDocTemplate(pdf_path, pagesize=A4,
+                            leftMargin=15*mm, rightMargin=15*mm,
+                            topMargin=15*mm, bottomMargin=18*mm)
     elements = []
 
     # Estilos
-    styles = getSampleStyleSheet()
-    s_title = ParagraphStyle("Title2", parent=styles["Title"],
-                             fontName=font_bold, fontSize=20, spaceAfter=2*mm,
-                             textColor=HexColor("#1a1a1a"))
-    s_subtitle = ParagraphStyle("Subtitle2", parent=styles["Normal"],
-                                fontName=font_name, fontSize=12,
-                                textColor=HexColor("#666666"), spaceAfter=6*mm)
-    s_heading = ParagraphStyle("Heading2b", parent=styles["Heading2"],
-                               fontName=font_bold, fontSize=14,
-                               textColor=HexColor("#1F4E79"), spaceBefore=6*mm,
-                               spaceAfter=3*mm)
-    s_body = ParagraphStyle("Body2", parent=styles["Normal"],
-                            fontName=font_name, fontSize=10,
-                            textColor=HexColor("#333333"), leading=14)
-    s_small = ParagraphStyle("Small2", parent=styles["Normal"],
-                             fontName=font_name, fontSize=8,
-                             textColor=HexColor("#999999"))
+    s_heading = ParagraphStyle(
+        "pr_h", fontName=font_bold, fontSize=14,
+        textColor=HexColor("#1B2A4A"), spaceBefore=4*mm, spaceAfter=3*mm)
+    s_body = ParagraphStyle(
+        "pr_b", fontName=font_name, fontSize=10,
+        textColor=HexColor("#333"), leading=14)
+    s_section = ParagraphStyle(
+        "pr_s", fontName=font_bold, fontSize=11,
+        textColor=HexColor("#1B2A4A"), spaceBefore=2*mm, spaceAfter=2*mm)
 
-    # ── CABECERA CON LOGOS ──
-    logo_data = []
-    if os.path.exists(PATH_LOGO_TASCA):
-        logo_data.append(Image(PATH_LOGO_TASCA, width=30*mm, height=30*mm))
-    else:
-        logo_data.append("")
-    logo_data.append(Paragraph(
-        f"<b>Informe Mensual</b><br/>"
-        f"<font size=16>{mes_nombre} {year_actual}</font><br/>"
-        f"<font size=9 color='#888'>Cómo nos ha ido este mes</font>",
-        ParagraphStyle("header_text", parent=s_title, fontSize=12, alignment=1)
-    ))
-    if os.path.exists(PATH_LOGO_COMES):
-        logo_data.append(Image(PATH_LOGO_COMES, width=30*mm, height=30*mm))
-    else:
-        logo_data.append("")
-
-    header_table = Table([logo_data], colWidths=[35*mm, 100*mm, 35*mm])
-    header_table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (1, 0), (1, 0), "CENTER"),
-    ]))
-    elements.append(header_table)
-    elements.append(Spacer(1, 6*mm))
-
-    # ── KPIs DE AMBOS NEGOCIOS ──
+    # ── PAGINA 1: KPIs + Comparativa ──
+    elements.append(Spacer(1, 20*mm))
     elements.append(Paragraph("Resumen del mes", s_heading))
 
-    def _kpi_row(nombre, data_dict, year, mes, pbm_data, items_dict):
-        d_mes = data_dict.get(year, {}).get("mensual", {}).get(str(mes), {})
-        euros = d_mes.get("euros", 0)
-        tickets = d_mes.get("tickets", 0)
-        prom = d_mes.get("prom_ticket", 0)
-
-        # Variacion interanual
-        year_ant = str(int(year) - 1)
-        d_ant = data_dict.get(year_ant, {}).get("mensual", {}).get(str(mes), {})
-        euros_ant = d_ant.get("euros", 0)
-        if euros_ant > 0:
-            var = f"{(euros - euros_ant) / euros_ant * 100:+.1f}%"
-        else:
-            var = "-"
-
-        # Top 3
-        top3 = _top3_productos(pbm_data, mes)
-        top3_str = ", ".join(top3) if top3 else "-"
-
-        # Dia fuerte
-        dia = _calcular_dia_fuerte(items_dict, year, mes)
-
-        return [nombre, f"{euros:,.0f}\u20ac", str(tickets),
-                f"{prom:.2f}\u20ac", var, dia, top3_str]
-
-    # PBM Comestibles: D[year]["pbm"]
     comes_pbm = D.get(year_actual, {}).get("pbm", {})
-    row_tasca = _kpi_row("Tasca", RAW, year_actual, mes_cerrado,
-                         PBM_tasca.get(year_actual, {}), tasca_items)
-    row_comes = _kpi_row("Comestibles", D, year_actual, mes_cerrado,
-                         comes_pbm, comes_items)
-
-    kpi_headers = ["", "Ventas", "Tickets", "Ticket\nmedio", "Var.\ninteranual",
-                   "Día\nfuerte", "Top 3 productos"]
-    kpi_table = Table([kpi_headers, row_tasca, row_comes],
-                      colWidths=[22*mm, 20*mm, 16*mm, 16*mm, 16*mm, 18*mm, 62*mm])
-    kpi_table.setStyle(TableStyle([
-        ("FONTNAME", (0, 0), (-1, 0), font_bold),
-        ("FONTNAME", (0, 1), (-1, -1), font_name),
-        ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ("BACKGROUND", (0, 0), (-1, 0), HexColor("#1F4E79")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), white),
-        ("BACKGROUND", (0, 1), (0, 1), HexColor("#FFF3E0")),
-        ("BACKGROUND", (0, 2), (0, 2), HexColor("#E8F5E9")),
-        ("FONTNAME", (0, 1), (0, -1), font_bold),
-        ("ALIGN", (1, 0), (-2, -1), "CENTER"),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#CCCCCC")),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("LEFTPADDING", (0, 0), (-1, -1), 3),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 3),
-    ]))
-    elements.append(kpi_table)
+    card_t = _kpi_card("TASCA BAREA", RAW, year_actual, mes_cerrado,
+                       PBM_tasca.get(year_actual, {}), tasca_items,
+                       "#8B6914", "#FFF8E7", font_name, font_bold)
+    card_c = _kpi_card("COMESTIBLES BAREA", D, year_actual, mes_cerrado,
+                       comes_pbm, comes_items,
+                       "#2E7D32", "#E8F5E9", font_name, font_bold)
+    cards = Table([[card_t, "", card_c]], colWidths=[84*mm, 6*mm, 84*mm])
+    cards.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
+    elements.append(cards)
     elements.append(Spacer(1, 6*mm))
 
-    # ── GRAFICOS ──
-    elements.append(Paragraph("Evolución de facturación", s_heading))
+    elements.append(Paragraph("Comparativa", s_heading))
+    elements.append(Image(chart_conjunto, width=170*mm, height=62*mm))
 
-    img_w = 160 * mm
-    img_h = 55 * mm
-    elements.append(Image(chart_tasca, width=img_w, height=img_h))
-    elements.append(Spacer(1, 3*mm))
-    elements.append(Image(chart_comes, width=img_w, height=img_h))
-    elements.append(Spacer(1, 3*mm))
-    elements.append(Image(chart_conjunto, width=img_w, height=img_h))
-
-    # ── PAGINA 2: CATEGORIAS ──
+    # ── PAGINA 2: Evolucion por negocio ──
     elements.append(PageBreak())
     elements.append(Paragraph(
-        f"Ventas por categoría - {mes_nombre} {year_actual}", s_heading))
+        "Evolución de facturación", s_heading))
+    elements.append(Spacer(1, 2*mm))
+    elements.append(Image(chart_tasca, width=170*mm, height=65*mm))
+    elements.append(Spacer(1, 8*mm))
+    elements.append(Image(chart_comes, width=170*mm, height=65*mm))
 
-    def _tabla_categorias(nombre, data_dict, year, mes, color_bg):
-        """Genera tabla de categorias: ultimo mes + acumulado YTD."""
-        # Datos del mes
-        if "categorias_mes" in data_dict.get(year, {}):
-            # Tasca: usa categorias_mes
-            cats_mes = data_dict[year]["categorias_mes"].get(str(mes), {})
-        else:
-            # Comestibles: usa mensual.cats
-            cats_mes = data_dict.get(year, {}).get("mensual", {}).get(
-                str(mes), {}).get("cats", {})
-        euros_mes = data_dict.get(year, {}).get("mensual", {}).get(
-            str(mes), {}).get("euros", 0)
-
-        # Acumulado YTD
-        cats_ytd = defaultdict(float)
-        total_ytd = 0
-        for m in range(1, mes + 1):
-            m_euros = data_dict.get(year, {}).get("mensual", {}).get(
-                str(m), {}).get("euros", 0)
-            total_ytd += m_euros
-            if "categorias_mes" in data_dict.get(year, {}):
-                cm = data_dict[year]["categorias_mes"].get(str(m), {})
-            else:
-                cm = data_dict.get(year, {}).get("mensual", {}).get(
-                    str(m), {}).get("cats", {})
-            for cat, pct in cm.items():
-                cats_ytd[cat] += pct / 100 * m_euros
-
-        # Construir filas
-        all_cats = sorted(set(list(cats_mes.keys()) + list(cats_ytd.keys())))
-        rows = [["Categoría", f"{mes_nombre}", "% mes", "Acum. YTD", "% YTD"]]
-        for cat in all_cats:
-            pct_mes = cats_mes.get(cat, 0)
-            euros_cat_mes = pct_mes / 100 * euros_mes if euros_mes > 0 else 0
-            euros_cat_ytd = cats_ytd.get(cat, 0)
-            pct_ytd = (euros_cat_ytd / total_ytd * 100) if total_ytd > 0 else 0
-            rows.append([
-                cat,
-                f"{euros_cat_mes:,.0f}\u20ac",
-                f"{pct_mes:.1f}%",
-                f"{euros_cat_ytd:,.0f}\u20ac",
-                f"{pct_ytd:.1f}%",
-            ])
-        # Totales
-        rows.append(["TOTAL", f"{euros_mes:,.0f}\u20ac", "100%",
-                      f"{total_ytd:,.0f}\u20ac", "100%"])
-
-        t = Table(rows, colWidths=[35*mm, 25*mm, 15*mm, 25*mm, 15*mm])
-        t.setStyle(TableStyle([
-            ("FONTNAME", (0, 0), (-1, 0), font_bold),
-            ("FONTNAME", (0, 1), (-1, -1), font_name),
-            ("FONTNAME", (0, -1), (-1, -1), font_bold),
-            ("FONTSIZE", (0, 0), (-1, -1), 8),
-            ("BACKGROUND", (0, 0), (-1, 0), HexColor(color_bg)),
-            ("TEXTCOLOR", (0, 0), (-1, 0), white),
-            ("BACKGROUND", (0, -1), (-1, -1), HexColor("#F5F5F5")),
-            ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-            ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#CCCCCC")),
-            ("TOPPADDING", (0, 0), (-1, -1), 3),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ]))
-        return t
+    # ── PAGINA 3: Categorias ──
+    elements.append(PageBreak())
+    elements.append(Paragraph(
+        f"Ventas por categoría — {mes_nombre} {year_actual}",
+        s_heading))
 
     elements.append(Paragraph("Tasca Barea", ParagraphStyle(
-        "cat_h", parent=s_body, fontName=font_bold, fontSize=11,
-        textColor=HexColor("#c9a84c"))))
-    elements.append(Spacer(1, 2*mm))
-    elements.append(_tabla_categorias("Tasca", RAW, year_actual, mes_cerrado, "#8B6914"))
+        "pr_ct", parent=s_section, textColor=HexColor("#8B6914"))))
+    elements.append(Spacer(1, 1*mm))
+    elements.append(_tabla_categorias_pdf(
+        RAW, year_actual, mes_cerrado, mes_nombre,
+        "#8B6914", font_name, font_bold))
     elements.append(Spacer(1, 6*mm))
 
     elements.append(Paragraph("Comestibles Barea", ParagraphStyle(
-        "cat_h2", parent=s_body, fontName=font_bold, fontSize=11,
-        textColor=HexColor("#2E7D32"))))
-    elements.append(Spacer(1, 2*mm))
-    elements.append(_tabla_categorias("Comestibles", D, year_actual, mes_cerrado, "#1F4E79"))
+        "pr_cc", parent=s_section, textColor=HexColor("#2E7D32"))))
+    elements.append(Spacer(1, 1*mm))
+    elements.append(_tabla_categorias_pdf(
+        D, year_actual, mes_cerrado, mes_nombre,
+        "#1F4E79", font_name, font_bold))
     elements.append(Spacer(1, 8*mm))
 
-    # Links a dashboards
     if GITHUB_PAGES_URL:
-        url_comes = GITHUB_PAGES_URL + "comestibles.html"
-        url_tasca = GITHUB_PAGES_URL + "tasca.html"
+        url_c = GITHUB_PAGES_URL + "comestibles.html"
+        url_t = GITHUB_PAGES_URL + "tasca.html"
         elements.append(Paragraph(
-            f"<b>Dashboards interactivos:</b><br/>"
-            f'<a href="{url_comes}" color="blue">{url_comes}</a><br/>'
-            f'<a href="{url_tasca}" color="blue">{url_tasca}</a>',
+            f'<b>Dashboards interactivos:</b><br/>'
+            f'<a href="{url_c}" color="#1565C0">{url_c}</a><br/>'
+            f'<a href="{url_t}" color="#1565C0">{url_t}</a>',
             s_body))
-        elements.append(Spacer(1, 4*mm))
 
-    elements.append(Paragraph(
-        f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}", s_small))
+    doc.build(elements, onFirstPage=_on_first_page,
+              onLaterPages=_on_later_pages)
 
-    doc.build(elements)
-
-    # Limpiar temporales
     try:
         shutil.rmtree(tmp_dir)
     except Exception:
@@ -1179,16 +1280,14 @@ def generar_pdf_resumen(D, RAW, PBM_tasca, comes_items, tasca_items):
 
 
 def generar_pdf_comestibles(D, comes_items):
-    """Genera PDF A4 con resumen mensual SOLO de Comestibles."""
+    """Genera PDF A4 solo Comestibles - diseño profesional."""
     try:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import mm
         from reportlab.lib.colors import HexColor, white
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Image,
-                                         Table, TableStyle)
-        from reportlab.pdfbase import pdfmetrics
-        from reportlab.pdfbase.ttfonts import TTFont
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                        Image, Table, TableStyle)
     except ImportError:
         print("  Aviso: reportlab no instalado, no se genera PDF Comestibles")
         return None
@@ -1198,21 +1297,8 @@ def generar_pdf_comestibles(D, comes_items):
     import matplotlib.pyplot as plt
     from matplotlib.ticker import FuncFormatter
 
-    # Registrar Calibri
-    calibri_path = "C:/Windows/Fonts/calibri.ttf"
-    calibri_bold = "C:/Windows/Fonts/calibrib.ttf"
-    if os.path.exists(calibri_path):
-        try:
-            pdfmetrics.registerFont(TTFont("Calibri", calibri_path))
-        except Exception:
-            pass
-    if os.path.exists(calibri_bold):
-        try:
-            pdfmetrics.registerFont(TTFont("CalibriBold", calibri_bold))
-        except Exception:
-            pass
-    font_name = "Calibri" if os.path.exists(calibri_path) else "Helvetica"
-    font_bold = "CalibriBold" if os.path.exists(calibri_bold) else "Helvetica-Bold"
+    font_name, font_bold = _setup_pdf_fonts()
+    W, H = A4
 
     mes_cerrado = datetime.now().month - 1
     year_actual = YEAR_LIST[-1]
@@ -1221,171 +1307,211 @@ def generar_pdf_comestibles(D, comes_items):
         year_actual = str(int(year_actual) - 1)
     mes_nombre = MESES_FULL[mes_cerrado - 1]
 
-    # Generar grafico solo Comestibles
+    # Grafico con estilo mejorado
     tmp_dir = tempfile.mkdtemp(prefix="barea_pdf_comes_")
-    fmt_euros = FuncFormatter(lambda x, _: f"{x:,.0f}\u20ac")
-    comes_colors = {"2025": "#7eb5e8", "2026": "#a8e8c0"}
+    fmt_euros = FuncFormatter(lambda x, _: f"{x:,.0f}€")
+    comes_colors = {"2025": "#7EB5E8", "2026": "#82D9A2"}
 
-    fig, ax = plt.subplots(figsize=(8, 4))
+    plt.rcParams.update({
+        'figure.facecolor': 'white',
+        'axes.facecolor': '#F8F9FA',
+        'axes.spines.top': False,
+        'axes.spines.right': False,
+        'grid.alpha': 0.25,
+        'font.size': 9,
+    })
+
+    fig, ax = plt.subplots(figsize=(9, 4))
     for yr in YEAR_LIST:
         if yr not in D:
             continue
         mensual = D[yr]["mensual"]
-        vals = [mensual.get(str(m), {}).get("euros", 0) or None for m in range(1, 13)]
-        ax.plot(range(1, 13), vals, marker="o", markersize=4, linewidth=2,
-                label=yr, color=comes_colors.get(yr, "#888"))
-    ax.set_title("Comestibles Barea - Facturación mensual", fontsize=13,
-                 fontweight="bold", pad=10)
+        xs, vals = [], []
+        for m in range(1, 13):
+            e = mensual.get(str(m), {}).get("euros", 0)
+            if e and e > 0:
+                xs.append(m)
+                vals.append(e)
+        if not vals:
+            continue
+        color = comes_colors.get(yr, "#999")
+        is_cur = (yr == year_actual)
+        ax.plot(xs, vals, marker="o",
+                markersize=6 if is_cur else 3,
+                linewidth=2.5 if is_cur else 1.5,
+                label=yr, color=color,
+                alpha=1.0 if is_cur else 0.45,
+                zorder=3 if is_cur else 2)
+        if is_cur:
+            ax.fill_between(xs, vals, alpha=0.07, color=color)
+            for x, v in zip(xs, vals):
+                ax.annotate(f"{v:,.0f}€", (x, v),
+                            textcoords="offset points", xytext=(0, 10),
+                            ha="center", fontsize=7, color=color,
+                            fontweight="bold")
+    ax.set_title("Comestibles Barea — Facturación mensual",
+                 fontsize=12, fontweight="bold", pad=12, color="#1a1a1a")
     ax.set_xticks(range(1, 13))
     ax.set_xticklabels(MESES_CORTO, fontsize=8)
     ax.yaxis.set_major_formatter(fmt_euros)
-    ax.legend(fontsize=9)
-    ax.grid(True, alpha=0.3)
+    ax.tick_params(axis="y", labelsize=8)
+    ax.legend(fontsize=8, loc="upper right", framealpha=0.9, edgecolor="#DDD")
+    ax.grid(True, axis="y", alpha=0.25)
     ax.set_xlim(0.5, 12.5)
-    fig.tight_layout()
+    for spine in ("bottom", "left"):
+        ax.spines[spine].set_color("#CCCCCC")
+    fig.tight_layout(pad=1.5)
     chart_path = os.path.join(tmp_dir, "chart_comes.png")
-    fig.savefig(chart_path, dpi=150, bbox_inches="tight")
+    fig.savefig(chart_path, dpi=180, bbox_inches="tight")
     plt.close(fig)
+    plt.rcParams.update(plt.rcParamsDefault)
 
-    # PDF
+    # ── PDF ──
     pdf_name = f"informe_comestibles_{mes_nombre.lower()}_{year_actual}.pdf"
     pdf_path = os.path.join(_SCRIPT_DIR, "dashboards", pdf_name)
 
+    def _on_first_page(canvas, doc):
+        canvas.saveState()
+        canvas.setFillColor(HexColor("#1B5E20"))
+        canvas.rect(0, H - 30*mm, W, 30*mm, fill=1, stroke=0)
+        canvas.setStrokeColor(HexColor("#81C784"))
+        canvas.setLineWidth(2)
+        canvas.line(0, H - 30*mm, W, H - 30*mm)
+        canvas.setFillColor(white)
+        canvas.setFont(font_bold, 18)
+        canvas.drawCentredString(W / 2, H - 15*mm, "Comestibles Barea")
+        canvas.setFont(font_name, 13)
+        canvas.setFillColor(HexColor("#A5D6A7"))
+        canvas.drawCentredString(W / 2, H - 23*mm,
+                                 f"Informe {mes_nombre} {year_actual}")
+        try:
+            if os.path.exists(PATH_LOGO_COMES):
+                canvas.drawImage(PATH_LOGO_COMES, 12*mm, H - 28*mm,
+                                 22*mm, 22*mm, preserveAspectRatio=True)
+        except Exception:
+            pass
+        _draw_footer_c(canvas, doc)
+        canvas.restoreState()
+
+    def _on_later_pages(canvas, doc):
+        canvas.saveState()
+        canvas.setStrokeColor(HexColor("#2E7D32"))
+        canvas.setLineWidth(1.5)
+        canvas.line(15*mm, H - 10*mm, W - 15*mm, H - 10*mm)
+        canvas.setFont(font_bold, 8)
+        canvas.setFillColor(HexColor("#2E7D32"))
+        canvas.drawString(15*mm, H - 8*mm,
+                          f"Comestibles Barea — {mes_nombre} {year_actual}")
+        _draw_footer_c(canvas, doc)
+        canvas.restoreState()
+
+    def _draw_footer_c(canvas, doc):
+        canvas.setStrokeColor(HexColor("#CCCCCC"))
+        canvas.setLineWidth(0.5)
+        canvas.line(15*mm, 13*mm, W - 15*mm, 13*mm)
+        canvas.setFillColor(HexColor("#999"))
+        canvas.setFont(font_name, 7)
+        canvas.drawString(
+            15*mm, 8*mm,
+            f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+        canvas.drawRightString(W - 15*mm, 8*mm,
+                               f"Página {doc.page}")
+
     doc = SimpleDocTemplate(pdf_path, pagesize=A4,
-                            leftMargin=20*mm, rightMargin=20*mm,
-                            topMargin=15*mm, bottomMargin=15*mm)
+                            leftMargin=15*mm, rightMargin=15*mm,
+                            topMargin=15*mm, bottomMargin=18*mm)
     elements = []
 
-    styles = getSampleStyleSheet()
-    s_heading = ParagraphStyle("Heading2c", parent=styles["Heading2"],
-                               fontName=font_bold, fontSize=14,
-                               textColor=HexColor("#1F4E79"), spaceBefore=6*mm,
-                               spaceAfter=3*mm)
-    s_body = ParagraphStyle("Body2c", parent=styles["Normal"],
-                            fontName=font_name, fontSize=10,
-                            textColor=HexColor("#333333"), leading=14)
-    s_small = ParagraphStyle("Small2c", parent=styles["Normal"],
-                             fontName=font_name, fontSize=8,
-                             textColor=HexColor("#999999"))
+    s_heading = ParagraphStyle(
+        "pc_h", fontName=font_bold, fontSize=14,
+        textColor=HexColor("#1B5E20"), spaceBefore=4*mm, spaceAfter=3*mm)
+    s_body = ParagraphStyle(
+        "pc_b", fontName=font_name, fontSize=10,
+        textColor=HexColor("#333"), leading=14)
+    s_det = ParagraphStyle(
+        "pc_det", fontName=font_name, fontSize=10,
+        textColor=HexColor("#444"), leading=14)
 
-    # Cabecera con logo
-    header_data = []
-    if os.path.exists(PATH_LOGO_COMES):
-        header_data.append(Image(PATH_LOGO_COMES, width=30*mm, height=30*mm))
-    else:
-        header_data.append("")
-    header_data.append(Paragraph(
-        f"<b>Comestibles Barea</b><br/>"
-        f"<font size=16>Informe {mes_nombre} {year_actual}</font><br/>"
-        f"<font size=9 color='#888'>Cómo nos ha ido este mes</font>",
-        ParagraphStyle("hdr", parent=styles["Title"], fontSize=12, alignment=1)
-    ))
-    ht = Table([header_data], colWidths=[35*mm, 135*mm])
-    ht.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN", (1, 0), (1, 0), "CENTER"),
-    ]))
-    elements.append(ht)
-    elements.append(Spacer(1, 6*mm))
-
-    # KPIs
+    elements.append(Spacer(1, 20*mm))
     elements.append(Paragraph("Resumen del mes", s_heading))
-    d_mes = D.get(year_actual, {}).get("mensual", {}).get(str(mes_cerrado), {})
+
+    # KPIs como card unica
+    d_mes = D.get(year_actual, {}).get("mensual", {}).get(
+        str(mes_cerrado), {})
     euros = d_mes.get("euros", 0)
     tickets = d_mes.get("tickets", 0)
     prom = d_mes.get("prom_ticket", 0)
 
     year_ant = str(int(year_actual) - 1)
-    d_ant = D.get(year_ant, {}).get("mensual", {}).get(str(mes_cerrado), {})
+    d_ant = D.get(year_ant, {}).get("mensual", {}).get(
+        str(mes_cerrado), {})
     euros_ant = d_ant.get("euros", 0)
-    var_str = f"{(euros - euros_ant) / euros_ant * 100:+.1f}%" if euros_ant > 0 else "-"
+    if euros_ant > 0:
+        var_pct = (euros - euros_ant) / euros_ant * 100
+        var_color = "#2E7D32" if var_pct >= 0 else "#C62828"
+        var_arrow = "▲" if var_pct >= 0 else "▼"
+        var_html = (f'<font color="{var_color}"><b>'
+                    f'{var_arrow} {var_pct:+.1f}%</b></font>')
+    else:
+        var_html = '<font color="#999">—</font>'
 
     comes_pbm = D.get(year_actual, {}).get("pbm", {})
     top3 = _top3_productos(comes_pbm, mes_cerrado)
-    top3_str = ", ".join(top3) if top3 else "-"
     dia = _calcular_dia_fuerte(comes_items, year_actual, mes_cerrado)
 
-    kpi_headers = ["Ventas", "Tickets", "Ticket medio", "Var. interanual",
-                   "Día fuerte", "Top 3 productos"]
-    kpi_row = [f"{euros:,.0f}\u20ac", str(tickets), f"{prom:.2f}\u20ac",
-               var_str, dia, top3_str]
-    kpi_t = Table([kpi_headers, kpi_row],
-                  colWidths=[22*mm, 18*mm, 20*mm, 20*mm, 20*mm, 70*mm])
+    s_big = ParagraphStyle("pc_big", fontName=font_bold, fontSize=28,
+                           textColor=HexColor("#1a1a1a"), leading=32)
+    s_var = ParagraphStyle("pc_var", fontName=font_name, fontSize=11,
+                           textColor=HexColor("#555"), leading=14)
+
+    kpi_rows = [
+        [Paragraph(f"{euros:,.0f}€", s_big),
+         Paragraph(f"vs año anterior: {var_html}", s_var)],
+        [Paragraph(
+            f"<b>{tickets}</b> tickets &nbsp;·&nbsp; "
+            f"<b>{prom:.2f}€</b> ticket medio &nbsp;·&nbsp; "
+            f"Día fuerte: <b>{dia}</b>", s_det), ""],
+    ]
+    if top3:
+        items_str = " &nbsp;·&nbsp; ".join(top3)
+        kpi_rows.append([Paragraph(
+            f"Top productos: <b>{items_str}</b>", s_det), ""])
+
+    kpi_t = Table(kpi_rows, colWidths=[100*mm, 70*mm])
     kpi_t.setStyle(TableStyle([
-        ("FONTNAME", (0, 0), (-1, 0), font_bold),
-        ("FONTNAME", (0, 1), (-1, -1), font_name),
-        ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ("BACKGROUND", (0, 0), (-1, 0), HexColor("#1F4E79")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), white),
-        ("ALIGN", (0, 0), (-2, -1), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#CCCCCC")),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("BACKGROUND", (0, 0), (-1, -1), HexColor("#E8F5E9")),
+        ("BOX", (0, 0), (-1, -1), 1, HexColor("#2E7D32")),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
     ]))
     elements.append(kpi_t)
     elements.append(Spacer(1, 6*mm))
 
     # Grafico
-    elements.append(Paragraph("Evolución de facturación", s_heading))
-    elements.append(Image(chart_path, width=160*mm, height=65*mm))
+    elements.append(Paragraph(
+        "Evolución de facturación", s_heading))
+    elements.append(Image(chart_path, width=170*mm, height=68*mm))
     elements.append(Spacer(1, 6*mm))
 
     # Categorias
-    elements.append(Paragraph(f"Ventas por categoría - {mes_nombre} {year_actual}", s_heading))
-    cats_mes = D.get(year_actual, {}).get("mensual", {}).get(
-        str(mes_cerrado), {}).get("cats", {})
-    euros_mes = d_mes.get("euros", 0)
-
-    cats_ytd = defaultdict(float)
-    total_ytd = 0
-    for m in range(1, mes_cerrado + 1):
-        m_euros = D.get(year_actual, {}).get("mensual", {}).get(str(m), {}).get("euros", 0)
-        total_ytd += m_euros
-        cm = D.get(year_actual, {}).get("mensual", {}).get(str(m), {}).get("cats", {})
-        for cat, pct in cm.items():
-            cats_ytd[cat] += pct / 100 * m_euros
-
-    all_cats = sorted(set(list(cats_mes.keys()) + list(cats_ytd.keys())))
-    cat_rows = [["Categoría", f"{mes_nombre}", "% mes", "Acum. YTD", "% YTD"]]
-    for cat in all_cats:
-        pct_mes = cats_mes.get(cat, 0)
-        e_cat_mes = pct_mes / 100 * euros_mes if euros_mes > 0 else 0
-        e_cat_ytd = cats_ytd.get(cat, 0)
-        pct_ytd = (e_cat_ytd / total_ytd * 100) if total_ytd > 0 else 0
-        cat_rows.append([cat, f"{e_cat_mes:,.0f}\u20ac", f"{pct_mes:.1f}%",
-                         f"{e_cat_ytd:,.0f}\u20ac", f"{pct_ytd:.1f}%"])
-    cat_rows.append(["TOTAL", f"{euros_mes:,.0f}\u20ac", "100%",
-                      f"{total_ytd:,.0f}\u20ac", "100%"])
-
-    ct = Table(cat_rows, colWidths=[35*mm, 25*mm, 15*mm, 25*mm, 15*mm])
-    ct.setStyle(TableStyle([
-        ("FONTNAME", (0, 0), (-1, 0), font_bold),
-        ("FONTNAME", (0, 1), (-1, -1), font_name),
-        ("FONTNAME", (0, -1), (-1, -1), font_bold),
-        ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ("BACKGROUND", (0, 0), (-1, 0), HexColor("#1F4E79")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), white),
-        ("BACKGROUND", (0, -1), (-1, -1), HexColor("#F5F5F5")),
-        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-        ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#CCCCCC")),
-        ("TOPPADDING", (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-    ]))
-    elements.append(ct)
+    elements.append(Paragraph(
+        f"Ventas por categoría — {mes_nombre} {year_actual}",
+        s_heading))
+    elements.append(_tabla_categorias_pdf(
+        D, year_actual, mes_cerrado, mes_nombre,
+        "#1F4E79", font_name, font_bold))
     elements.append(Spacer(1, 8*mm))
 
     if GITHUB_PAGES_URL:
-        url_comes = GITHUB_PAGES_URL + "comestibles.html"
+        url_c = GITHUB_PAGES_URL + "comestibles.html"
         elements.append(Paragraph(
-            f'<b>Dashboard interactivo:</b> <a href="{url_comes}" color="blue">{url_comes}</a>',
-            s_body))
-        elements.append(Spacer(1, 4*mm))
+            f'<b>Dashboard interactivo:</b> '
+            f'<a href="{url_c}" color="#1565C0">{url_c}</a>', s_body))
 
-    elements.append(Paragraph(
-        f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}", s_small))
-
-    doc.build(elements)
+    doc.build(elements, onFirstPage=_on_first_page,
+              onLaterPages=_on_later_pages)
 
     try:
         shutil.rmtree(tmp_dir)
@@ -1394,6 +1520,7 @@ def generar_pdf_comestibles(D, comes_items):
 
     print(f"  PDF Comestibles generado: {pdf_path}")
     return pdf_path
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1477,7 +1604,7 @@ def _kpis_variacion_html(data_dict, year, mes, color):
           <tr>
             <td style="padding:10px;background:white;border:1px solid #eee;text-align:center;width:33%">
               <div style="font-size:10px;color:#888;text-transform:uppercase">Ventas</div>
-              <div style="font-size:20px;font-weight:bold;color:{color}">{euros:,.0f}\u20ac</div>
+              <div style="font-size:20px;font-weight:bold;color:{color}">{euros:,.0f}€</div>
             </td>
             <td style="padding:10px;background:white;border:1px solid #eee;text-align:center;width:33%">
               <div style="font-size:10px;color:#888;text-transform:uppercase">Tickets</div>
@@ -1485,7 +1612,7 @@ def _kpis_variacion_html(data_dict, year, mes, color):
             </td>
             <td style="padding:10px;background:white;border:1px solid #eee;text-align:center;width:33%">
               <div style="font-size:10px;color:#888;text-transform:uppercase">Ticket medio</div>
-              <div style="font-size:20px;font-weight:bold;color:{color}">{prom:.2f}\u20ac</div>
+              <div style="font-size:20px;font-weight:bold;color:{color}">{prom:.2f}€</div>
             </td>
           </tr>
         </table>
