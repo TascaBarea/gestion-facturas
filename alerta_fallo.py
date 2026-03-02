@@ -9,7 +9,7 @@ import base64
 from email.mime.text import MIMEText
 from pathlib import Path
 
-ALERTA_EMAIL = "jaimefermo@gmail.com"
+ALERTA_EMAIL = "tascabarea@gmail.com"
 
 def enviar_alerta(nombre_tarea, exit_code, log_file):
     proyecto = Path(__file__).parent

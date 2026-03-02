@@ -2,6 +2,12 @@ import os
 import subprocess
 import sys
 
+# Forzar UTF-8 en stdout/stderr (Windows cp1252 no soporta emojis)
+if sys.stdout.encoding != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if sys.stderr.encoding != "utf-8":
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 # --- AUTO-INSTALACIÓN DE LIBRERÍAS ---
 def install_requirements():
     libs = ["pandas", "openpyxl", "requests", "python-dotenv", "woocommerce",
@@ -732,6 +738,10 @@ def main():
     # 4. REGENERAR DASHBOARDS (Comestibles + Tasca)
     dashboard_mensual = "--dashboard-mensual" in sys.argv
     try:
+        # Asegurar que el proyecto raiz esta en sys.path para el import
+        _project_root = os.path.dirname(_script_dir)
+        if _project_root not in sys.path:
+            sys.path.insert(0, _project_root)
         from ventas_semana.generar_dashboard import main as generar_dashboard
         generar_dashboard(
             abrir_navegador=False,
