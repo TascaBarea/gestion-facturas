@@ -790,7 +790,8 @@ Lógica común a transferencias, compra_tarjeta y adeudo_recibo (~40 líneas cad
 | 3️⃣ | Ⓓ CUADRE integración | Conectar con COMPRAS (ESTADO_PAGO) | 🟡 Pendiente |
 | ~~4️⃣~~ | ~~Ⓒ VENTAS~~ | ~~Loyverse + Woocommerce~~ | ✅ **v4.0 (95%)** |
 | ~~5️⃣~~ | ~~Informes~~ | ~~Dashboards + PDF + email~~ | ✅ **Comes + Tasca** |
-| 6️⃣ | Integrar | Mover PARSEO a gestion-facturas | ❌ Futuro |
+| 6️⃣ | Limpiar WooCommerce | Reducir 69→10 columnas en pestaña WOOCOMMERCE (Ventas Barea) | 🟡 Pendiente |
+| 7️⃣ | Integrar | Mover PARSEO a gestion-facturas | ❌ Futuro |
 
 ---
 
