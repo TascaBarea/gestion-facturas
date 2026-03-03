@@ -91,12 +91,12 @@ class Config:
     # RUTA EXTRACTORES v1.4 (CORREGIDA)
     EXTRACTORES_PATH: str = r"C:\_ARCHIVOS\TRABAJO\Facturas\Parseo\extractores"
     
-    # IBANs propios (para pestaña SEPA) v1.4
-    IBAN_TASCA: str = "REDACTED_IBAN"
-    IBAN_COMESTIBLES: str = "REDACTED_IBAN"
-    BIC_ORDENANTE: str = "REDACTED_BIC"
-    NIF_SUFIJO: str = "REDACTED_NIF"
-    NOMBRE_ORDENANTE: str = "TASCA BAREA S.L.L."
+    # IBANs propios (cargados de config/datos_sensibles.py)
+    IBAN_TASCA: str = ""
+    IBAN_COMESTIBLES: str = ""
+    BIC_ORDENANTE: str = ""
+    NIF_SUFIJO: str = ""
+    NOMBRE_ORDENANTE: str = ""
     
     # Archivos
     MAESTRO_PATH: str = field(default="")
@@ -143,6 +143,19 @@ class Config:
     ])
     
     def __post_init__(self):
+        # Cargar datos sensibles (IBANs, NIF, BIC)
+        try:
+            from config.datos_sensibles import (
+                IBAN_TASCA, IBAN_COMESTIBLES, BIC_ORDENANTE,
+                NIF_SUFIJO, NOMBRE_ORDENANTE,
+            )
+            self.IBAN_TASCA = IBAN_TASCA
+            self.IBAN_COMESTIBLES = IBAN_COMESTIBLES
+            self.BIC_ORDENANTE = BIC_ORDENANTE
+            self.NIF_SUFIJO = NIF_SUFIJO
+            self.NOMBRE_ORDENANTE = NOMBRE_ORDENANTE
+        except ImportError:
+            print("AVISO: config/datos_sensibles.py no encontrado. IBANs no disponibles.")
         self.MAESTRO_PATH = os.path.join(self.BASE_PATH, "datos", "MAESTRO_PROVEEDORES.xlsx")
         self.JSON_PATH = os.path.join(self.BASE_PATH, "datos", "emails_procesados.json")
         self.OUTPUT_PATH = os.path.join(self.BASE_PATH, "outputs")

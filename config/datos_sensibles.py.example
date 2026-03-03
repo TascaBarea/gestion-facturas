@@ -1,0 +1,47 @@
+"""
+DATOS SENSIBLES - PLANTILLA
+================================
+Copiar a datos_sensibles.py y rellenar con los datos reales.
+datos_sensibles.py esta en .gitignore y NUNCA se sube a git.
+"""
+
+# =============================================================================
+# DATOS DE LA EMPRESA
+# =============================================================================
+
+CIF_PROPIO = ""           # Ej: "B12345678"
+NOMBRE_ORDENANTE = ""     # Ej: "MI EMPRESA S.L."
+NIF_SUFIJO = ""           # Ej: "B12345678000"
+BIC_ORDENANTE = ""        # Ej: "REDACTED_BIC"
+
+# IBANs propios
+IBAN_TASCA = ""           # Ej: "ES00 0000 0000 0000 0000 0000"
+IBAN_COMESTIBLES = ""     # Ej: "ES00 0000 0000 0000 0000 0000"
+
+# =============================================================================
+# EMAILS DE SOCIOS (destinatarios dashboards)
+# =============================================================================
+
+EMAILS_FULL = [
+    # "socio1@email.com",
+    # "socio2@email.com",
+]
+EMAILS_COMES_ONLY = [
+    # "socio3@email.com",
+]
+
+# =============================================================================
+# PROVEEDORES CONOCIDOS (CIF e IBAN)
+# =============================================================================
+
+PROVEEDORES_CONOCIDOS = {
+    # 'NOMBRE_PROVEEDOR': {'cif': 'X12345678', 'iban': 'ES00 0000 0000 0000 0000 0000'},
+}
+
+# =============================================================================
+# DICCIONARIO INVERSO CIF -> PROVEEDOR
+# =============================================================================
+
+CIF_A_PROVEEDOR = {
+    # 'X12345678': 'NOMBRE_PROVEEDOR',
+}

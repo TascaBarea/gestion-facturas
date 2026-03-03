@@ -11,12 +11,16 @@ from pathlib import Path
 
 ALERTA_EMAIL = "tascabarea@gmail.com"
 
+# Scope minimo: solo enviar emails
+SCOPES = ["https://www.googleapis.com/auth/gmail.send"]
+
+
 def enviar_alerta(nombre_tarea, exit_code, log_file):
     proyecto = Path(__file__).parent
     gmail_dir = proyecto / "gmail"
 
-    # Cargar credenciales Gmail
     from google.oauth2.credentials import Credentials
+    from google.auth.transport.requests import Request
     from googleapiclient.discovery import build
 
     token_path = gmail_dir / "token.json"
@@ -24,10 +28,22 @@ def enviar_alerta(nombre_tarea, exit_code, log_file):
         print(f"No se puede enviar alerta: {token_path} no existe")
         return
 
-    creds = Credentials.from_authorized_user_file(
-        str(token_path),
-        scopes=["https://www.googleapis.com/auth/gmail.modify"]
-    )
+    creds = Credentials.from_authorized_user_file(str(token_path), scopes=SCOPES)
+
+    # Refrescar token si ha expirado
+    if creds and creds.expired and creds.refresh_token:
+        try:
+            creds.refresh(Request())
+            with open(token_path, "w") as f:
+                f.write(creds.to_json())
+        except Exception as e:
+            print(f"Error refrescando token: {e}")
+            return
+
+    if not creds or not creds.valid:
+        print("Token invalido y no se puede refrescar. Requiere re-autorizacion manual.")
+        return
+
     service = build("gmail", "v1", credentials=creds)
 
     # Leer ultimas 30 lineas del log

@@ -47,16 +47,10 @@ Por:
 self.EXTRACTORES_PATH = r"C:\_ARCHIVOS\TRABAJO\Facturas\Parseo\extractores"
 ```
 
-#### 2.2 Añadir IBANs propios (después de EXTRACTORES_PATH)
+#### 2.2 Datos de empresa (IBANs, BIC, NIF)
 
-```python
-# IBANs propios (para pestaña SEPA)
-IBAN_TASCA: str = "REDACTED_IBAN"
-IBAN_COMESTIBLES: str = "REDACTED_IBAN"
-BIC_ORDENANTE: str = "REDACTED_BIC"
-NIF_SUFIJO: str = "REDACTED_NIF"
-NOMBRE_ORDENANTE: str = "TASCA BAREA S.L.L."
-```
+Los datos sensibles se cargan automaticamente de `config/datos_sensibles.py`.
+Ver `config/datos_sensibles.py.example` para la plantilla.
 
 #### 2.3 Marcar correos como leídos
 

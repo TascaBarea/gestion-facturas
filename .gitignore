@@ -1,17 +1,33 @@
 __pycache__/
 *.pyc
 ~$*
+desktop.ini
 
 # Credenciales y tokens (NUNCA commitear)
 .env
 config_local.py
 credentials.json
 token.json
+datos_sensibles.py
+
+# Datos financieros (Excel, banco, JSON procesados)
+datos/Movimientos*.xlsx
+datos/MAESTRO_PROVEEDORES.xlsx
+datos/emails_procesados.json
+datos/Ventas*.xlsx
+datos/Articulos*.xlsx
+
+# Extractos bancarios (Norma 43)
+*.n43
+norma43/archivados/
+cuadre/norma43/archivados/
 
 # Outputs generados (datos financieros, IBANs, etc.)
 outputs/*.xlsx
 outputs/*.json
 outputs/*.txt
+outputs/*.tsv
+outputs/*.csv
 outputs/backups/
 outputs/logs_gmail/
 outputs/logs_barea/

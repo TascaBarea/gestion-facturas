@@ -175,7 +175,7 @@ def extraer_cif(texto: str) -> Optional[str]:
         CIF normalizado o None si no se encuentra
     """
     # CIF propio a excluir
-    CIF_PROPIO = 'B87760575'
+    from config.datos_sensibles import CIF_PROPIO
     
     # Patrones de CIF
     patrones = [

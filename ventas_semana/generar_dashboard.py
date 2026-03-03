@@ -73,16 +73,12 @@ MESES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun",
                "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
 
 # ── Configuracion email y GitHub Pages ────────────────────────────────────────
-# Destinatarios: informe completo (Tasca + Comestibles)
-EMAILS_FULL = [
-    "REDACTED_EMAIL",
-    "REDACTED_EMAIL",
-    "jaimefermo@gmail.com",
-]
-# Destinatarios: solo Comestibles
-EMAILS_COMES_ONLY = [
-    "REDACTED_EMAIL",
-]
+# Destinatarios: cargados de config/datos_sensibles.py
+try:
+    from config.datos_sensibles import EMAILS_FULL, EMAILS_COMES_ONLY
+except ImportError:
+    EMAILS_FULL = []
+    EMAILS_COMES_ONLY = []
 
 GITHUB_PAGES_URL = "https://tascabarea.github.io/barea-dashboard/"
 GITHUB_PAGES_REPO = os.path.expanduser("~/barea-dashboard")

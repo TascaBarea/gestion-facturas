@@ -39,14 +39,28 @@ import glob
 @dataclass
 class ConfigSEPA:
     """Configuración para generación SEPA"""
-    # Datos del ordenante
-    NOMBRE_ORDENANTE: str = "TASCA BAREA S.L.L."
-    NIF_SUFIJO: str = "REDACTED_NIF"
-    BIC_ORDENANTE: str = "REDACTED_BIC"
-    
+    # Datos del ordenante (cargados de config/datos_sensibles.py)
+    NOMBRE_ORDENANTE: str = ""
+    NIF_SUFIJO: str = ""
+    BIC_ORDENANTE: str = ""
+
     # IBANs disponibles
-    IBAN_TASCA: str = "REDACTED_IBAN"
-    IBAN_COMESTIBLES: str = "REDACTED_IBAN"
+    IBAN_TASCA: str = ""
+    IBAN_COMESTIBLES: str = ""
+
+    def __post_init__(self):
+        try:
+            from config.datos_sensibles import (
+                NOMBRE_ORDENANTE, NIF_SUFIJO, BIC_ORDENANTE,
+                IBAN_TASCA, IBAN_COMESTIBLES,
+            )
+            self.NOMBRE_ORDENANTE = NOMBRE_ORDENANTE
+            self.NIF_SUFIJO = NIF_SUFIJO
+            self.BIC_ORDENANTE = BIC_ORDENANTE
+            self.IBAN_TASCA = IBAN_TASCA
+            self.IBAN_COMESTIBLES = IBAN_COMESTIBLES
+        except ImportError:
+            print("ERROR: config/datos_sensibles.py no encontrado. SEPA no funcionara.")
     
     # Rutas
     OUTPUT_PATH: str = r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\outputs"
