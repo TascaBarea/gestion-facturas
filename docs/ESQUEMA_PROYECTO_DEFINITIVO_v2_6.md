@@ -1,6 +1,6 @@
 # 📐 ESQUEMA PROYECTO GESTIÓN-FACTURAS
 
-**Versión:** 4.2
+**Versión:** 4.3
 **Fecha:** 03/03/2026
 **Estado:** DEFINITIVO - Base para desarrollo
 
@@ -178,7 +178,14 @@ SALIDA:        - Ventas Barea 2026.xlsx (5 pestañas):
                  Pendiente buscar alternativa (Netlify, Vercel, servidor propio)
 INICIO:        AUTOMÁTICO (lunes 03:00) o MANUAL
 FRECUENCIA:    Semanal (ventas) + Mensual (dashboard cerrado + email + PDF)
-ESTADO:        ✅ v4.1 - Dual dashboard + PDF profesional + email segmentado (GitHub Pages desactivado)
+ESTADO:        ✅ v4.2 - Dual dashboard + PDF profesional + email segmentado (GitHub Pages desactivado)
+CATEGORÍAS COMESTIBLES (13):
+               ACEITES Y VINAGRES, BAZAR, BOCADILLOS, BODEGA, CHACINAS,
+               CONSERVAS, CUPÓN REGALO, DESPENSA, DULCES, EXPERIENCIAS,
+               OTROS, QUESOS, VINOS
+               Mapeo Loyverse→simplificadas en CAT_MAP (generar_dashboard.py):
+               APERITIVOS/SALAZONES/SALSAS→DESPENSA, CONSERVAS MAR/MONTAÑA/VEGETALES→CONSERVAS,
+               BODEGA Y CERVEZAS/LICORES Y VERMÚS→BODEGA, CACHARRERIA→BAZAR, OTROS COMESTIBLES→OTROS
 NOVEDADES v4.0 (01/03/2026):
                DASHBOARD TASCA (NUEVO):
                - Template: dashboard_tasca_template.html con 5 placeholders
@@ -912,6 +919,17 @@ Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` p
 ---
 
 ## CHANGELOG
+
+### v4.3 (03/03/2026) — CATEGORÍAS SIMPLIFICADAS
+- ✅ **Categorías Comestibles reducidas de 21 a 13** — Mapeo en `generar_dashboard.py`
+  - Nuevo `CAT_MAP`: diccionario de 10 categorías Loyverse que se fusionan al cargar datos
+  - Nueva función `_remapear_categorias(df)`: aplica `CAT_MAP` a columna Categoria
+  - Llamada en `cargar_datos()` para datos 2025 (histórico) y 2026 (actual)
+  - Fusiones: APERITIVOS/SALAZONES/SALSAS→DESPENSA, CONSERVAS MAR/MONTAÑA/VEGETALES→CONSERVAS,
+    BODEGA Y CERVEZAS/LICORES Y VERMÚS→BODEGA, CACHARRERIA→BAZAR, OTROS COMESTIBLES→OTROS
+  - `CAT_COLORS` actualizado: 22 entradas → 13 (colores heredados de categoría principal)
+  - Loyverse no se toca: el mapeo se aplica solo al generar dashboards
+  - Tasca no afectada (tiene sus propias categorías)
 
 ### v4.2 (03/03/2026) — AUDITORÍA DE SEGURIDAD
 - ✅ **Datos sensibles externalizados** — Creado `config/datos_sensibles.py` (gitignored)
