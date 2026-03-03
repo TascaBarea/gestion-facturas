@@ -56,16 +56,40 @@ TASCA_YEAR_LIST = ["2023", "2024", "2025", "2026"]
 
 # Colores por categoría Comestibles
 CAT_COLORS = {
-    "QUESOS": "#e8c97a", "CHACINAS": "#e87e7e", "VINOS": "#9b4f8a",
-    "CONSERVAS MAR": "#4a90d9", "CONSERVAS MONTAÑA": "#7ab87a",
-    "CONSERVAS VEGETALES": "#5aaa7a", "ACEITES Y VINAGRES": "#c8a060",
-    "APERITIVOS": "#e8734a", "DULCES": "#d470a0", "DESPENSA": "#8a9a7a",
-    "BODEGA Y CERVEZAS": "#7a5a9a", "LICORES Y VERMÚS": "#c06070",
-    "SALAZONES": "#6aa0b8", "SALSAS": "#a8c060", "EXPERIENCIAS": "#70d0c8",
-    "BAZAR": "#9a8070", "BOCADILLOS": "#c89060", "CACHARRERIA": "#7a8090",
-    "CUPÓN REGALO": "#d4a0d0", "OTROS COMESTIBLES": "#8a8a8a",
-    "CONSERVAS": "#6090a8", "OTROS": "#7a7a7a",
+    "ACEITES Y VINAGRES": "#c8a060",
+    "DESPENSA": "#e8734a",
+    "BAZAR": "#9a8070",
+    "BOCADILLOS": "#c89060",
+    "BODEGA": "#7a5a9a",
+    "CHACINAS": "#e87e7e",
+    "CONSERVAS": "#4a90d9",
+    "CUPÓN REGALO": "#d4a0d0",
+    "DULCES": "#d470a0",
+    "EXPERIENCIAS": "#70d0c8",
+    "OTROS": "#8a8a8a",
+    "QUESOS": "#e8c97a",
+    "VINOS": "#9b4f8a",
 }
+
+# Mapeo de categorías Loyverse → categorías simplificadas
+CAT_MAP = {
+    "APERITIVOS": "DESPENSA",
+    "SALAZONES": "DESPENSA",
+    "SALSAS": "DESPENSA",
+    "CACHARRERIA": "BAZAR",
+    "BODEGA Y CERVEZAS": "BODEGA",
+    "LICORES Y VERMÚS": "BODEGA",
+    "CONSERVAS MAR": "CONSERVAS",
+    "CONSERVAS MONTAÑA": "CONSERVAS",
+    "CONSERVAS VEGETALES": "CONSERVAS",
+    "OTROS COMESTIBLES": "OTROS",
+}
+
+def _remapear_categorias(df):
+    """Aplica CAT_MAP a la columna Categoria del DataFrame."""
+    if "Categoria" in df.columns:
+        df["Categoria"] = df["Categoria"].replace(CAT_MAP)
+    return df
 
 MESES_FULL = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
               "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
@@ -226,6 +250,7 @@ def cargar_datos():
             continue
 
         df_i, df_r = _normalizar_df(df_i, df_r)
+        df_i = _remapear_categorias(df_i)
         items[year] = df_i
         recibos[year] = df_r
 
@@ -233,6 +258,7 @@ def cargar_datos():
     try:
         df_i_26 = pd.read_excel(PATH_VENTAS, sheet_name="ComesItems")
         df_r_26 = pd.read_excel(PATH_VENTAS, sheet_name="ComesRecibos")
+        df_i_26 = _remapear_categorias(df_i_26)
         items["2026"] = df_i_26
         recibos["2026"] = df_r_26
     except Exception as e:
