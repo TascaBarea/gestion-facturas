@@ -1,7 +1,7 @@
 # 📐 ESQUEMA PROYECTO GESTIÓN-FACTURAS
 
-**Versión:** 4.1
-**Fecha:** 01/03/2026
+**Versión:** 4.2
+**Fecha:** 03/03/2026
 **Estado:** DEFINITIVO - Base para desarrollo
 
 ---
@@ -174,11 +174,11 @@ SALIDA:        - Ventas Barea 2026.xlsx (5 pestañas):
                - PDFs resumen mensual:
                  dashboards/informe_barea_*.pdf (completo: Tasca + Comestibles)
                  dashboards/informe_comestibles_*.pdf (solo Comestibles)
-               - GitHub Pages: https://tascabarea.github.io/barea-dashboard/
-                 index.html (landing page) + comestibles.html + tasca.html
+               - GitHub Pages: DESACTIVADO (repo ahora PRIVATE, no funciona en plan gratuito)
+                 Pendiente buscar alternativa (Netlify, Vercel, servidor propio)
 INICIO:        AUTOMÁTICO (lunes 03:00) o MANUAL
 FRECUENCIA:    Semanal (ventas) + Mensual (dashboard cerrado + email + PDF)
-ESTADO:        ✅ v4.1 - Dual dashboard + PDF profesional + email segmentado + GitHub Pages
+ESTADO:        ✅ v4.1 - Dual dashboard + PDF profesional + email segmentado (GitHub Pages desactivado)
 NOVEDADES v4.0 (01/03/2026):
                DASHBOARD TASCA (NUEVO):
                - Template: dashboard_tasca_template.html con 5 placeholders
@@ -265,16 +265,16 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   ├── gmail\                       ← Ⓑ GMAIL (✅ v1.8)
 │   │   ├── gmail.py                 ← Módulo principal v1.9 (~2180 líneas)
 │   │   ├── config.py                ← Configuración (rutas, umbrales, trimestres)
-│   │   ├── config_local.py          ← Overrides locales
+│   │   ├── config_local.py          ← Overrides locales (gitignored)
 │   │   ├── auth.py                  ← Autenticación Gmail API
 │   │   ├── descargar.py             ← Descarga adjuntos
 │   │   ├── identificar.py           ← Identificación proveedores
 │   │   ├── renombrar.py             ← Renombrado de PDFs
 │   │   ├── guardar.py               ← Guardado en Excel
-│   │   ├── generar_sepa.py          ← Generador XML SEPA
-│   │   ├── credentials.json         ← OAuth Google
-│   │   ├── token.json               ← Token Gmail (generado)
-│   │   ├── gmail_auto.bat           ← Script automatización (anti-suspensión+powercfg)
+│   │   ├── generar_sepa.py          ← Generador XML SEPA (IBANs de datos_sensibles.py)
+│   │   ├── credentials.json         ← OAuth Google (gitignored)
+│   │   ├── token.json               ← Token Gmail (gitignored)
+│   │   ├── gmail_auto.bat           ← Script automatización v1.7 (curl HTTPS, alertas)
 │   │   └── gmail_auto_setup.bat     ← Setup tarea programada
 │   │
 │   ├── cuadre\                      ← Ⓓ CUADRE (✅ v1.5b)
@@ -322,16 +322,30 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   │   ├── tests\                   ← Tests unitarios
 │   │   └── tools\                   ← Herramientas auxiliares
 │   │
-│   ├── datos\                       ← Documentos maestros
-│   │   ├── MAESTRO_PROVEEDORES.xlsx ← 195 proveedores, ~585 aliases
+│   ├── config\                      ← Configuración del proyecto
+│   │   ├── proveedores.py           ← Lógica proveedores (funciones, alias, método PDF)
+│   │   ├── datos_sensibles.py       ← IBANs, CIFs, DNIs, emails (gitignored, NUNCA commitear)
+│   │   ├── datos_sensibles.py.example ← Plantilla para nuevos despliegues
+│   │   └── settings.py              ← Versión, rutas por defecto
+│   │
+│   ├── datos\                       ← Documentos maestros (gitignored excepto diccionarios)
+│   │   ├── MAESTRO_PROVEEDORES.xlsx ← 195 proveedores, ~585 aliases (gitignored)
 │   │   ├── DiccionarioProveedoresCategoria.xlsx
 │   │   ├── DiccionarioEmisorTitulo.xlsx
 │   │   ├── EXTRACTORES_COMPLETO.xlsx
-│   │   └── emails_procesados.json   ← Control duplicados Gmail
+│   │   └── emails_procesados.json   ← Control duplicados Gmail (gitignored)
 │   │
-│   ├── alerta_fallo.py              ← Email alerta si tarea programada falla
-│   ├── requirements.txt             ← 14 dependencias fijadas (pip install -r)
-│   ├── .gitignore                   ← Excluye credenciales, outputs, tokens
+│   ├── .claude\skills\              ← 6 skills personalizadas Claude Code
+│   │   ├── estado/SKILL.md          ← /estado: resumen proyecto
+│   │   ├── dashboard/SKILL.md       ← /dashboard: generar dashboards
+│   │   ├── log-gmail/SKILL.md       ← /log-gmail: analizar logs
+│   │   ├── extractor/SKILL.md       ← /extractor: crear extractores
+│   │   ├── esquema/SKILL.md         ← /esquema: actualizar ESQUEMA
+│   │   └── ventas/SKILL.md          ← /ventas: descargar ventas
+│   │
+│   ├── alerta_fallo.py              ← Email alerta si fallo (token refresh + scope gmail.send)
+│   ├── requirements.txt             ← 16 dependencias fijadas (pip install -r)
+│   ├── .gitignore                   ← Excluye credenciales, datos, outputs, tokens
 │   ├── estadisticas.py              ← Generador estadísticas facturas (OK/SIN_LINEAS/SIN_CUADRAR)
 │   ├── clasificador.py              ← Clasificador movimientos v2.0 (N43 + Excel interactivo)
 │   ├── procesador_jpg.py            ← Procesador fallback JPG (extrae datos del nombre)
@@ -797,11 +811,9 @@ Lógica común a transferencias, compra_tarjeta y adeudo_recibo (~40 líneas cad
 
 ## 10. CUENTAS BANCARIAS
 
-| Cuenta | IBAN | Empresa | Uso |
-|--------|------|---------|-----|
-| TASCA | REDACTED_IBAN | TASCA BAREA SLL | Bar |
-| COMESTIBLES | REDACTED_IBAN | COMESTIBLES BAREA | Tienda |
-| BIC | REDACTED_BIC | Banco Sabadell | Ambas |
+Datos bancarios almacenados en `config/datos_sensibles.py` (gitignored).
+Incluye: IBAN_TASCA, IBAN_COMESTIBLES, BIC_ORDENANTE, NIF_SUFIJO, CIF_PROPIO.
+Ver `config/datos_sensibles.py.example` para la estructura.
 
 ---
 
@@ -847,36 +859,89 @@ C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD\
 
 ## 13. SEGURIDAD Y ROBUSTEZ
 
-### 13.1 Credenciales protegidas (.gitignore)
+### 13.1 Datos sensibles centralizados
+
+Todos los datos sensibles (IBANs, CIFs, DNIs, emails de socios) están en `config/datos_sensibles.py` (gitignored).
+- **Nunca** commitear este archivo. Usar `config/datos_sensibles.py.example` como plantilla.
+- Los módulos importan desde `datos_sensibles` con fallback `ImportError` graceful.
+- Contiene: `CIF_PROPIO`, `IBAN_TASCA`, `IBAN_COMESTIBLES`, `BIC_ORDENANTE`, `PROVEEDORES_CONOCIDOS` (146), `CIF_A_PROVEEDOR` (67), `EMAILS_FULL`, `EMAILS_COMES_ONLY`.
+
+### 13.2 Credenciales protegidas (.gitignore)
 
 | Archivo | Contenido | Excluido |
 |---------|-----------|----------|
+| `config/datos_sensibles.py` | IBANs, CIFs, DNIs, emails socios | ✅ |
 | `ventas_semana/.env` | API keys WooCommerce + Loyverse | ✅ |
 | `gmail/config_local.py` | App password Gmail | ✅ |
 | `gmail/credentials.json` | OAuth2 client secret | ✅ |
 | `gmail/token.json` | OAuth2 refresh token | ✅ |
+| `datos/*.xlsx` | Datos financieros (MAESTRO, Ventas, Movimientos) | ✅ |
 | `outputs/*.xlsx` | Datos financieros (IBANs, totales) | ✅ |
 | `outputs/backups/` | Backups con datos sensibles | ✅ |
+| `*.n43` | Extractos bancarios Norma 43 | ✅ |
 
-### 13.2 Dependencias (requirements.txt)
+### 13.3 Historial git purgado (03/03/2026)
 
-14 paquetes con versiones fijadas. Instalar: `pip install -r requirements.txt`
+Se ejecutó `git filter-repo` en dos pasadas para eliminar datos sensibles del historial:
+- **Pasada 1** (`--invert-paths`): eliminados 73 archivos binarios/datos (Excel, N43, backups)
+- **Pasada 2** (`--replace-text`): 65 patrones reemplazados (IBANs→REDACTED_IBAN, DNIs→REDACTED_DNI, emails→REDACTED_EMAIL)
+- Force-push a origin/main tras limpieza
+- Verificado: `git log --all -p -S "ES78..."` no devuelve resultados
 
-### 13.3 Protección de datos (save_to_excel)
+### 13.4 Repositorio barea-dashboard PRIVADO
+
+Cambiado de PUBLIC a PRIVATE el 03/03/2026 (contenía datos financieros en dashboards).
+GitHub Pages **no funciona** en repos privados con plan gratuito — pendiente buscar alternativa.
+
+### 13.5 Dependencias (requirements.txt)
+
+16 paquetes con versiones fijadas. Instalar: `pip install -r requirements.txt`
+
+### 13.6 Protección de datos (save_to_excel)
 
 `script_barea.py` lee el Excel existente ANTES de abrir el writer. Si la lectura falla (fichero abierto, corrupto), **aborta** la escritura en vez de sobreescribir con datos vacíos.
 
-### 13.4 Alertas de fallo (alerta_fallo.py)
+### 13.7 Alertas de fallo (alerta_fallo.py)
 
-Tanto `gmail_auto.bat` como `barea_auto.bat` envían email a `jaimefermo@gmail.com` si el script Python termina con exit code ≠ 0. Usa Gmail API (OAuth2 existente).
+Tanto `gmail_auto.bat` como `barea_auto.bat` envían email a `tascabarea@gmail.com` si el script Python termina con exit code ≠ 0. Usa Gmail API con scope mínimo (`gmail.send`) y token refresh automático.
 
-### 13.5 Timeouts HTTP
+### 13.8 Timeouts HTTP
 
 Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` para evitar cuelgues indefinidos en tareas programadas.
 
 ---
 
 ## CHANGELOG
+
+### v4.2 (03/03/2026) — AUDITORÍA DE SEGURIDAD
+- ✅ **Datos sensibles externalizados** — Creado `config/datos_sensibles.py` (gitignored)
+  - IBANs empresa (TASCA, COMESTIBLES), BIC, NIF_SUFIJO, CIF_PROPIO
+  - 146 proveedores con IBAN/CIF/DNI (`PROVEEDORES_CONOCIDOS`)
+  - 67 mapeos CIF→proveedor (`CIF_A_PROVEEDOR`)
+  - Emails socios (`EMAILS_FULL`, `EMAILS_COMES_ONLY`)
+  - Plantilla `datos_sensibles.py.example` para nuevos despliegues
+  - Módulos modificados: `proveedores.py`, `settings.py`, `gmail.py`, `generar_sepa.py`,
+    `parser.py`, `generar_dashboard.py`, `README.md`
+- ✅ **68 archivos financieros desrastreados** — `git rm --cached`
+  - 55+ archivos en `outputs/` (Excel, backups, logs, TSV, CSV, TXT)
+  - Datos maestros: MAESTRO_PROVEEDORES, emails_procesados.json, Ventas, Artículos, Movimientos
+  - `.gitignore` ampliado: `datos/*.xlsx`, `*.n43`, `desktop.ini`, `datos_sensibles.py`
+- ✅ **Historial git purgado** — `git filter-repo` en 2 pasadas
+  - Pasada 1: 73 archivos binarios eliminados del historial
+  - Pasada 2: 65 patrones texto reemplazados (IBANs, DNIs, emails → REDACTED_*)
+  - Force-push a origin/main
+- ✅ **barea-dashboard → PRIVATE** — Repo contenía datos financieros expuestos públicamente
+  - `gh repo edit TascaBarea/barea-dashboard --visibility private`
+  - GitHub Pages desactivado (no funciona en plan gratuito con repo privado)
+- ✅ **alerta_fallo.py mejorado** — Scope reducido + token refresh
+  - Scope: `gmail.modify` → `gmail.send` (principio de menor privilegio)
+  - Token refresh automático con `google.auth.transport.requests.Request`
+  - Email destino: `tascabarea@gmail.com`
+- ✅ **GitHub CLI instalado** — `gh` para gestión repos desde terminal
+  - Autenticado con device flow (browser)
+  - Usado para cambiar visibilidad repo, verificar estado
+- ✅ **6 skills Claude Code creadas** — `.claude/skills/` (estado, dashboard, log-gmail, extractor, esquema, ventas)
+- ✅ **Automatización bat files corregidos** — curl con HTTPS, alertas email, encoding UTF-8
 
 ### v4.1 (01/03/2026)
 - ✅ **Rediseño profesional PDF** — Informes mensuales con diseño visual mejorado
@@ -1132,4 +1197,4 @@ Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` p
 **Documento de referencia para todas las sesiones futuras.**
 
 ✅ **APROBADO POR:** Tasca
-📅 **FECHA:** 01/03/2026
+📅 **FECHA:** 03/03/2026
