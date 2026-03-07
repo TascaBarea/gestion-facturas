@@ -112,7 +112,7 @@ class Config:
     ])
     LABEL_ORIGEN: str = "FACTURAS"
     LABEL_DESTINO: str = "FACTURAS_PROCESADAS"
-    MAX_EMAILS: int = 50
+    MAX_EMAILS: int = 200
     
     # Emails a ignorar (reenvíos)
     EMAILS_IGNORAR: List[str] = field(default_factory=lambda: [
@@ -535,35 +535,42 @@ class MaestroProveedores:
             return self.proveedores.get(nombre.upper())
         return None
 
-    def identificar_por_pdf(self, contenido: bytes, logger=None) -> Optional[Proveedor]:
+    # CIFs propios (cliente) — excluir de identificación por PDF
+    CIFS_PROPIOS = {'B87760575'}
+
+    def identificar_por_pdf(self, contenido: bytes, logger=None, texto_pdf: str = None) -> Optional[Proveedor]:
         """
-        Último recurso: busca CIF o nombre del proveedor en el texto del PDF.
+        Último recurso: busca CIF del proveedor en el texto del PDF.
         Se usa cuando email/alias/fuzzy no identificaron al proveedor.
+        Si se pasa texto_pdf, no vuelve a abrir el PDF.
         """
-        try:
-            import io
-            texto = ""
-            with pdfplumber.open(io.BytesIO(contenido)) as pdf:
-                for page in pdf.pages[:2]:
-                    t = page.extract_text()
-                    if t:
-                        texto += t + "\n"
-        except Exception:
+        if texto_pdf is None:
+            try:
+                import io
+                texto_pdf = ""
+                with pdfplumber.open(io.BytesIO(contenido)) as pdf:
+                    for page in pdf.pages[:2]:
+                        t = page.extract_text()
+                        if t:
+                            texto_pdf += t + "\n"
+            except Exception:
+                return None
+
+        if not texto_pdf:
             return None
 
-        if not texto:
-            return None
-
-        # 1. Buscar CIFs españoles en texto
+        # Buscar CIFs españoles en texto
         #    Formato: letra + 8 dígitos (o viceversa), con espacios opcionales
         #    Ejemplos: B87874327, B 99138372, B99 138 372
-        cifs_raw = re.findall(r'\b([A-Z])\s?(\d[\s\d]{7,11})\b', texto.upper())
+        cifs_raw = re.findall(r'\b([A-Z])\s?(\d[\s\d]{7,11})\b', texto_pdf.upper())
         cifs_encontrados = []
         for letra, digitos in cifs_raw:
             solo_digitos = digitos.replace(' ', '')
             if len(solo_digitos) == 8:
                 cifs_encontrados.append(letra + solo_digitos)
         for cif in cifs_encontrados:
+            if cif in self.CIFS_PROPIOS:
+                continue
             prov = self.buscar_por_cif(cif)
             if prov:
                 if logger:
@@ -991,28 +998,44 @@ class GmailClient:
         for label in labels:
             self.label_ids[label['name']] = label['id']
     
-    def obtener_emails_pendientes(self, max_results: int = 50) -> List[Dict]:
-        """Obtiene emails con etiqueta FACTURAS no procesados"""
+    def obtener_emails_pendientes(self, max_results: int = 200) -> List[Dict]:
+        """
+        Obtiene emails con etiqueta FACTURAS no procesados.
+        v1.12: Paginación — recorre todas las páginas hasta max_results.
+        """
         label_id = self.label_ids.get(CONFIG.LABEL_ORIGEN)
         if not label_id:
             raise ValueError(f"Etiqueta {CONFIG.LABEL_ORIGEN} no encontrada")
-        
-        results = self._api_call(
-            lambda: self.service.users().messages().list(
-                userId='me',
-                labelIds=[label_id],
-                maxResults=max_results
-            ).execute()
-        )
-        
-        messages = results.get('messages', [])
+
+        all_messages = []
+        page_token = None
+
+        while len(all_messages) < max_results:
+            kwargs = {
+                'userId': 'me',
+                'labelIds': [label_id],
+                'maxResults': min(50, max_results - len(all_messages))
+            }
+            if page_token:
+                kwargs['pageToken'] = page_token
+
+            results = self._api_call(
+                lambda: self.service.users().messages().list(**kwargs).execute()
+            )
+
+            messages = results.get('messages', [])
+            all_messages.extend(messages)
+
+            page_token = results.get('nextPageToken')
+            if not page_token:
+                break
+
         emails = []
-        
-        for msg in messages:
+        for msg in all_messages:
             email_data = self._obtener_detalle_email(msg['id'])
             if email_data:
                 emails.append(email_data)
-        
+
         return emails
     
     def _obtener_detalle_email(self, email_id: str) -> Optional[Dict]:
@@ -2045,16 +2068,28 @@ class GmailProcessor:
         
         resultado.hash_pdf = hash_pdf
         
+        # v1.12: Extraer texto del PDF una sola vez para reutilizar
+        texto_pdf_cache = ""
+        try:
+            import io
+            with pdfplumber.open(io.BytesIO(contenido)) as pdf:
+                for page in pdf.pages[:2]:
+                    t = page.extract_text()
+                    if t:
+                        texto_pdf_cache += t + "\n"
+        except Exception:
+            pass
+
         nombre_remitente = resultado.remitente.split("<")[0].strip() if "<" in resultado.remitente else resultado.remitente
         proveedor = self.maestro.identificar_proveedor(
             resultado.remitente,
             nombre_remitente,
             resultado.asunto
         )
-        
-        # v1.10: Si no se identificó por email/alias/fuzzy, intentar por CIF/nombre en PDF
+
+        # v1.10: Si no se identificó por email/alias/fuzzy, intentar por CIF en PDF
         if not proveedor:
-            proveedor = self.maestro.identificar_por_pdf(contenido, logger=self.logger)
+            proveedor = self.maestro.identificar_por_pdf(contenido, logger=self.logger, texto_pdf=texto_pdf_cache)
 
         resultado.proveedor = proveedor
         resultado.proveedor_identificado = proveedor is not None
@@ -2068,7 +2103,7 @@ class GmailProcessor:
 
             # v1.11: Validación CIF — comprobar que el CIF del PDF coincide con el del proveedor
             if proveedor.cif:
-                prov_pdf = self.maestro.identificar_por_pdf(contenido)
+                prov_pdf = self.maestro.identificar_por_pdf(contenido, texto_pdf=texto_pdf_cache)
                 if prov_pdf and prov_pdf.cif:
                     cif_maestro = proveedor.cif.upper().replace(' ', '').replace('-', '')
                     cif_pdf = prov_pdf.cif.upper().replace(' ', '').replace('-', '')
@@ -2118,7 +2153,11 @@ class GmailProcessor:
         else:
             resultado.alerta_roja = True
             resultado.requiere_revision = True
-            resultado.motivo_revision = "🔴 ALERTA ROJA: Total no extraído - REVISIÓN OBLIGATORIA"
+            alerta = "🔴 ALERTA ROJA: Total no extraído - REVISIÓN OBLIGATORIA"
+            if resultado.motivo_revision:
+                resultado.motivo_revision = resultado.motivo_revision + " | " + alerta
+            else:
+                resultado.motivo_revision = alerta
             factura.total = 0.00
             self.logger.error(f"  ↳ 🔴 ALERTA ROJA: No se pudo extraer total del PDF")
         
