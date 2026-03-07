@@ -116,7 +116,9 @@ class Config:
     
     # Emails a ignorar (reenvíos)
     EMAILS_IGNORAR: List[str] = field(default_factory=lambda: [
-        'tascabarea@gmail.com'
+        'tascabarea@gmail.com',
+        'comunidadrodas2@gmail.com',
+        'hola@comestiblesbarea.com'
     ])
     
     # Procesamiento
@@ -389,6 +391,7 @@ class MaestroProveedores:
         self.proveedores: Dict[str, Proveedor] = {}
         self.emails: Dict[str, str] = {}
         self.alias: Dict[str, str] = {}
+        self.cifs: Dict[str, str] = {}  # CIF → nombre proveedor
         self._cargar()
     
     def _cargar(self):
@@ -458,9 +461,22 @@ class MaestroProveedores:
             
             for alias in alias_list:
                 self.alias[alias.upper()] = nombre
-        
+
+            if proveedor.cif:
+                cif_limpio = proveedor.cif.upper().replace(' ', '').replace('-', '')
+                if cif_limpio:
+                    self.cifs[cif_limpio] = nombre
+
         wb.close()
-    
+
+        # Emails hardcoded (dominio no coincide con razón social)
+        _hardcoded = {
+            'manuel@castrolaborda.com': 'PAGOS ALTOS DE ACERED, SL',
+            'manuel@lajas.es': 'PAGOS ALTOS DE ACERED, SL',
+        }
+        for em, nombre_prov in _hardcoded.items():
+            self.emails[em] = nombre_prov
+
     def buscar_por_email(self, email: str) -> Optional[Proveedor]:
         """Busca proveedor por email del remitente"""
         email = email.lower().strip()
@@ -510,7 +526,52 @@ class MaestroProveedores:
         if resultado and resultado[1] >= umbral:
             return (self.proveedores[resultado[0]], resultado[1])
         return None
-    
+
+    def buscar_por_cif(self, cif: str) -> Optional[Proveedor]:
+        """Busca proveedor por CIF"""
+        cif = cif.upper().replace(' ', '').replace('-', '')
+        nombre = self.cifs.get(cif)
+        if nombre:
+            return self.proveedores.get(nombre.upper())
+        return None
+
+    def identificar_por_pdf(self, contenido: bytes, logger=None) -> Optional[Proveedor]:
+        """
+        Último recurso: busca CIF o nombre del proveedor en el texto del PDF.
+        Se usa cuando email/alias/fuzzy no identificaron al proveedor.
+        """
+        try:
+            import io
+            texto = ""
+            with pdfplumber.open(io.BytesIO(contenido)) as pdf:
+                for page in pdf.pages[:2]:
+                    t = page.extract_text()
+                    if t:
+                        texto += t + "\n"
+        except Exception:
+            return None
+
+        if not texto:
+            return None
+
+        # 1. Buscar CIFs españoles en texto
+        #    Formato: letra + 8 dígitos (o viceversa), con espacios opcionales
+        #    Ejemplos: B87874327, B 99138372, B99 138 372
+        cifs_raw = re.findall(r'\b([A-Z])\s?(\d[\s\d]{7,11})\b', texto.upper())
+        cifs_encontrados = []
+        for letra, digitos in cifs_raw:
+            solo_digitos = digitos.replace(' ', '')
+            if len(solo_digitos) == 8:
+                cifs_encontrados.append(letra + solo_digitos)
+        for cif in cifs_encontrados:
+            prov = self.buscar_por_cif(cif)
+            if prov:
+                if logger:
+                    logger.info(f"  \u21b3 Identificado por CIF en PDF: {prov.nombre} ({cif})")
+                return prov
+
+        return None
+
     def identificar_proveedor(self, email: str, nombre_remitente: str, asunto: str) -> Optional[Proveedor]:
         """Cascada de identificación"""
         prov = self.buscar_por_email(email)
@@ -1093,10 +1154,18 @@ class LocalDropboxClient:
         carpeta = os.path.dirname(ruta_completa)
         os.makedirs(carpeta, exist_ok=True)
         
+        # Anti-colisión: si el archivo ya existe, añadir sufijo " 2", " 3", etc.
+        if os.path.exists(ruta_completa):
+            base, ext = os.path.splitext(ruta_completa)
+            n = 2
+            while os.path.exists(f"{base} {n}{ext}"):
+                n += 1
+            ruta_completa = f"{base} {n}{ext}"
+
         # Escribir archivo
         with open(ruta_completa, 'wb') as f:
             f.write(contenido)
-        
+
         return ruta_completa
     
     def archivo_existe(self, ruta_relativa: str) -> bool:
@@ -1275,14 +1344,26 @@ class ExcelGenerator:
 
     def _migrar_si_necesario(self):
         """
-        v1.8: Añade columna CUENTA si no existe.
-        (Migración v1.7 de columna fantasma y FECHA_PROCESO ya aplicada.)
+        Migración acumulativa:
+        - v1.7: Eliminar columna fantasma "FECHA PROCESO" (con espacio)
+        - v1.8: Añadir columna CUENTA si no existe
         """
         if self.ws_facturas is None:
             return
 
         headers = [self.ws_facturas.cell(1, c).value
                    for c in range(1, self.ws_facturas.max_column + 1)]
+
+        # v1.7 fix: Eliminar columna fantasma "FECHA PROCESO" (con espacio)
+        # que causaba desplazamiento de todas las columnas al escribir filas
+        if 'FECHA PROCESO' in headers:
+            col_fantasma = headers.index('FECHA PROCESO') + 1  # 1-based
+            self.ws_facturas.delete_cols(col_fantasma)
+            # Recalcular headers tras borrar
+            headers = [self.ws_facturas.cell(1, c).value
+                       for c in range(1, self.ws_facturas.max_column + 1)]
+
+        # v1.8: Añadir columna CUENTA si no existe
         if 'CUENTA' not in headers:
             font_header = Font(name='Aptos Display', size=10, bold=True, color="FFFFFF")
             fill_header = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
@@ -1971,16 +2052,38 @@ class GmailProcessor:
             resultado.asunto
         )
         
+        # v1.10: Si no se identificó por email/alias/fuzzy, intentar por CIF/nombre en PDF
+        if not proveedor:
+            proveedor = self.maestro.identificar_por_pdf(contenido, logger=self.logger)
+
         resultado.proveedor = proveedor
         resultado.proveedor_identificado = proveedor is not None
-        
+
         if not proveedor:
             resultado.requiere_revision = True
             resultado.motivo_revision = "Proveedor no identificado"
             self.logger.warning(f"  ↳ Proveedor no identificado")
         else:
             self.logger.info(f"  ↳ Proveedor: {proveedor.nombre}")
-        
+
+            # v1.11: Validación CIF — comprobar que el CIF del PDF coincide con el del proveedor
+            if proveedor.cif:
+                prov_pdf = self.maestro.identificar_por_pdf(contenido)
+                if prov_pdf and prov_pdf.cif:
+                    cif_maestro = proveedor.cif.upper().replace(' ', '').replace('-', '')
+                    cif_pdf = prov_pdf.cif.upper().replace(' ', '').replace('-', '')
+                    if cif_maestro != cif_pdf:
+                        self.logger.warning(
+                            f"  ↳ ⚠️ CIF no coincide: identificado={proveedor.nombre} ({cif_maestro})"
+                            f" vs PDF={prov_pdf.nombre} ({cif_pdf})"
+                        )
+                        # Reasignar al proveedor correcto del PDF
+                        proveedor = prov_pdf
+                        resultado.proveedor = proveedor
+                        resultado.requiere_revision = True
+                        resultado.motivo_revision = f"CIF PDF ({cif_pdf}) no coincide con identificación inicial"
+                        self.logger.info(f"  ↳ Reasignado a: {proveedor.nombre}")
+
         # Extraer datos del PDF
         factura = None
         
@@ -2063,6 +2166,11 @@ class GmailProcessor:
                     fecha_proceso
                 )
                 resultado.dropbox_path = ruta_dropbox
+                # Actualizar nombre si Dropbox añadió sufijo anti-colisión
+                nombre_real = os.path.basename(ruta_dropbox)
+                if nombre_real != nombre_generado:
+                    resultado.archivo_generado = nombre_real
+                    self.logger.info(f"  ↳ Renombrado a: {nombre_real} (colisión)")
                 self.logger.info(f"  ↳ Copiado a Dropbox Local")
 
             # Añadir al Excel PAGOS_Gmail

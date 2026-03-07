@@ -125,43 +125,52 @@ def obtener_proveedores_con_alias() -> dict[str, str]:
     return alias_dict
 
 
+# Emails hardcoded (proveedores cuyo dominio no coincide con su razón social)
+_EMAILS_HARDCODED = {
+    'manuel@castrolaborda.com': 'PAGOS ALTOS DE ACERED, SL',
+    'manuel@lajas.es': 'PAGOS ALTOS DE ACERED, SL',
+}
+
+
 def obtener_emails_proveedores() -> dict[str, str]:
     """
-    Obtiene diccionario de email → proveedor del MAESTRO.
-    
+    Obtiene diccionario de email → proveedor del MAESTRO + hardcoded.
+
     Returns:
         Dict {email: nombre_proveedor}
     """
+    # Empezar con hardcoded
+    emails = dict(_EMAILS_HARDCODED)
+
     df = cargar_maestro()
-    
+
     # Buscar columna de email (columna G según diseño)
     columnas_email = ['EMAIL', 'E-MAIL', 'CORREO', 'MAIL']
     columnas_proveedor = ['PROVEEDOR', 'NOMBRE', 'TITULO']
-    
+
     col_email = None
     col_proveedor = None
-    
+
     for col in columnas_email:
         if col in df.columns:
             col_email = col
             break
-    
+
     for col in columnas_proveedor:
         if col in df.columns:
             col_proveedor = col
             break
-    
+
     if col_email is None or col_proveedor is None:
-        return {}
-    
-    emails = {}
+        return emails
+
     for _, row in df.iterrows():
         email = str(row.get(col_email, '')).strip().lower()
         proveedor = str(row.get(col_proveedor, '')).strip()
-        
+
         if email and proveedor and email != 'nan':
             emails[email] = proveedor
-    
+
     return emails
 
 
