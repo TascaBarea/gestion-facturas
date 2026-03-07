@@ -1,7 +1,7 @@
 # 📐 ESQUEMA PROYECTO GESTIÓN-FACTURAS
 
-**Versión:** 4.3
-**Fecha:** 03/03/2026
+**Versión:** 4.4
+**Fecha:** 07/03/2026
 **Estado:** DEFINITIVO - Base para desarrollo
 
 ---
@@ -54,10 +54,10 @@ ENTRADA:       Carpeta con PDFs de facturas + MAESTRO_PROVEEDORES
 SALIDA:        COMPRAS_XTxx.xlsx (Lineas + Facturas)
 INICIO:        MANUAL (menú)
 FRECUENCIA:    Mensual/Trimestral
-ESTADO:        ✅ Funciona - 99 extractores dedicados
+ESTADO:        ✅ Funciona - 101 extractores dedicados
 ```
 
-### Ⓑ GMAIL (98% completado) ✅ v1.9
+### Ⓑ GMAIL (99% completado) ✅ v1.12
 ```
 UBICACIÓN:     C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\gmail\
 ENTRADA:       Gmail (etiqueta FACTURAS) + MAESTRO_PROVEEDORES
@@ -67,7 +67,42 @@ SALIDA:        - PDFs descargados y renombrados en Dropbox local
                - ⚠️_IBANS_SUGERIDOS_*.xlsx (verificación)
 INICIO:        AUTOMÁTICO (viernes 03:00) o MANUAL
 FRECUENCIA:    Semanal
-ESTADO:        ✅ v1.9 - Detección PROFORMA + OBS multi-flag + extractores corregidos
+ESTADO:        ✅ v1.12 - Identificación CIF en PDF + paginación + anti-colisión
+NOVEDADES v1.12 (07/03/2026):
+               P1 - OPTIMIZACIÓN LECTURA PDF:
+               - Texto del PDF se extrae una sola vez y se reutiliza (antes: hasta 3 lecturas)
+               - identificar_por_pdf() acepta parámetro texto_pdf para evitar re-lectura
+               P2 - PAGINACIÓN GMAIL API:
+               - Antes: maxResults=50 sin nextPageToken → emails antiguos nunca se procesaban
+               - Ahora: paginación completa hasta MAX_EMAILS=200
+               - Elimina efecto "cola bloqueada" (emails del 02/02 procesados el 06/03)
+               P3 - EXCLUIR CIF PROPIO:
+               - identificar_por_pdf() excluye CIF B87760575 (Tasca Barea)
+               - Evita falso positivo: PDF contiene CIF cliente + CIF proveedor
+               P4 - MOTIVO_REVISION ACUMULATIVO:
+               - Antes: ALERTA ROJA sobrescribía motivo anterior (ej: FECHA NO DETECTADA)
+               - Ahora: se acumulan con " | " (ej: "FECHA NO DETECTADA | ALERTA ROJA")
+NOVEDADES v1.11 (07/03/2026):
+               P1 - IDENTIFICACIÓN POR CIF EN PDF:
+               - Nuevo fallback en cascada: email → alias → fuzzy → CIF en PDF → REVISAR
+               - MaestroProveedores.identificar_por_pdf(): busca CIFs españoles en texto PDF
+               - Regex flexible: soporta espacios en CIF (ej: "B 99138372")
+               - buscar_por_cif(): nuevo método con diccionario self.cifs
+               P2 - VALIDACIÓN CIF POST-IDENTIFICACIÓN:
+               - Tras identificar por email/alias/fuzzy, compara CIF del MAESTRO vs CIF del PDF
+               - Si no coinciden: reasigna al proveedor correcto y marca REVISAR
+               - Caso real: "La dolorosa" → PABLO RUIZ, pero PDF era de LAUTRE (CIF diferente)
+               P3 - ANTI-COLISIÓN DROPBOX:
+               - subir_archivo() detecta si archivo ya existe → añade sufijo " 2", " 3", etc.
+               - Nombre actualizado se refleja en log y en Excel
+               - Caso real: Som Energia envía 2 facturas/mes, la segunda sobrescribía la primera
+               P4 - EMAILS IGNORADOS AMPLIADOS:
+               - comunidadrodas2@gmail.com (comunidad de vecinos, no proveedor)
+               - hola@comestiblesbarea.com (reenvíos propios)
+NOVEDADES v1.10 (07/03/2026):
+               P1 - CASCADA IDENTIFICACIÓN AMPLIADA:
+               - Añadido paso CIF en PDF como último recurso antes de REVISAR
+               - 2 de 5 facturas REVISAR ahora se auto-identifican (ej: kembetpanaderia)
 NOVEDADES v1.9 (28/02/2026):
                P1 - SISTEMA PROFORMA:
                - Nuevo método es_proforma() en ExtractorBase: detecta \bPROFORMA\b en texto
@@ -371,7 +406,7 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 
 ---
 
-## 5. Ⓐ PARSEO - EXTRACTORES (99 total)
+## 5. Ⓐ PARSEO - EXTRACTORES (101 total)
 
 ### 5.1 Estado de Extractores
 
@@ -383,7 +418,23 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 | **Material** | 12 | 80% | Papelería, envases |
 | **OCR** | 7 | 75% | LA LLILDIRIA, CASA DEL DUQUE... |
 
-### 5.2 Extractores Corregidos (28/02/2026 - v1.9)
+### 5.2 Extractores Corregidos y Nuevos (07/03/2026 - v1.12)
+
+| Extractor | Problema | Solución | Tasa |
+|-----------|----------|----------|------|
+| **QUESOS DE CATI** | `_deduplicar_texto()` convertía "22/12/2025" en "2/12/2025" → fecha no detectada | `extraer_fecha()` busca primero en texto RAW (zona no duplicada), dedup solo como fallback con `\d{1,2}` + zfill | 100% |
+| **QUESOS DE CATI** | `extraer_referencia()` mismo problema potencial con dígitos repetidos | Busca primero en texto RAW, dedup como fallback | 100% |
+| **JULIO GARCIA** | `extraer_fecha()` capturaba "DE FECHA 01/02/2026" del albarán en vez de fecha emisión (L2) | Busca primero fecha sola en línea 2 (`^\d{2}/\d{2}/\d{4}$`), fallback `^FECHA:` anclado a inicio de línea | 100% |
+| **SEGURMA** | Cabecera y valor en líneas separadas → "Fecha de factura:" en L76, "01/03/2026" en L77 | Añadido patrón con `\n` entre etiqueta y valor | 100% |
+| **MOLLETES ARTESANOS** | No estaba en MAESTRO → fuzzy match sin extractor → fecha y total no extraídos | Añadido al MAESTRO con TIENE_EXTRACTOR=SI, ARCHIVO_EXTRACTOR=molletes_artesanos.py | 100% |
+
+**NUEVOS EXTRACTORES (07/03/2026):**
+
+| Extractor | Proveedor | CIF | IVA | Categoría |
+|-----------|-----------|-----|-----|-----------|
+| **lautre.py** | LAUTRE GESTION DE PROYECTOS SL | B81516981 | 21% | GASTOS VARIOS |
+
+### 5.2b Extractores Corregidos (28/02/2026 - v1.9)
 
 | Extractor | Problema | Solución | Tasa |
 |-----------|----------|----------|------|
@@ -526,12 +577,12 @@ class ExtractorBase(ABC):
 }
 ```
 
-### 5.7.5 Estadísticas (99 extractores)
+### 5.7.5 Estadísticas (101 extractores)
 
 | Concepto | Valor |
 |---|---|
-| Total extractores | 99 |
-| Método pdfplumber | 91 (92%) |
+| Total extractores | 101 |
+| Método pdfplumber | 93 (92%) |
 | Método OCR | 6 (6%): fishgourmet, gaditaun, jimeluz, la_cuchara, manipulados_abellan, tirso |
 | Método pdfplumber+fallback_ocr | 1 (1%): la_lleidiria (facturas nuevas=texto, antiguas=imagen) |
 | Método híbrido | 2 (2%): angel_borja, casa_del_duque |
