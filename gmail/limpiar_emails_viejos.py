@@ -14,8 +14,8 @@ import sys
 import json
 from datetime import datetime
 
-# Añadir path del proyecto
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Importar directamente del módulo gmail.py (no del paquete gmail/)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from gmail import GmailClient, ControlDuplicados, CONFIG
 
