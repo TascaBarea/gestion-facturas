@@ -1,6 +1,6 @@
 # 📐 ESQUEMA PROYECTO GESTIÓN-FACTURAS
 
-**Versión:** 4.4
+**Versión:** 4.5
 **Fecha:** 07/03/2026
 **Estado:** DEFINITIVO - Base para desarrollo
 
@@ -57,7 +57,7 @@ FRECUENCIA:    Mensual/Trimestral
 ESTADO:        ✅ Funciona - 101 extractores dedicados
 ```
 
-### Ⓑ GMAIL (99% completado) ✅ v1.12
+### Ⓑ GMAIL (99% completado) ✅ v1.13
 ```
 UBICACIÓN:     C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\gmail\
 ENTRADA:       Gmail (etiqueta FACTURAS) + MAESTRO_PROVEEDORES
@@ -67,7 +67,18 @@ SALIDA:        - PDFs descargados y renombrados en Dropbox local
                - ⚠️_IBANS_SUGERIDOS_*.xlsx (verificación)
 INICIO:        AUTOMÁTICO (viernes 03:00) o MANUAL
 FRECUENCIA:    Semanal
-ESTADO:        ✅ v1.12 - Identificación CIF en PDF + paginación + anti-colisión
+ESTADO:        ✅ v1.13 - Cursor temporal + limpieza backlog
+NOVEDADES v1.13 (07/03/2026):
+               P1 - CURSOR TEMPORAL (after:YYYY/MM/DD):
+               - Solo procesa emails posteriores a la última ejecución exitosa
+               - Fecha guardada en emails_procesados.json como "ultima_ejecucion"
+               - Filtro after: en query Gmail API (servidor) con margen -1 día
+               - Emails del mismo día filtrados por control duplicados (email_id)
+               - Evita reprocesar emails antiguos ya gestionados manualmente
+               P2 - SCRIPT LIMPIEZA (limpiar_emails_viejos.py):
+               - Script one-shot: mueve backlog de FACTURAS a PROCESADAS
+               - Ejecutado 07/03/2026: 500 emails movidos, 0 errores
+               - Establece cursor temporal inicial en el JSON
 NOVEDADES v1.12 (07/03/2026):
                P1 - OPTIMIZACIÓN LECTURA PDF:
                - Texto del PDF se extrae una sola vez y se reutiliza (antes: hasta 3 lecturas)
@@ -304,8 +315,9 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │
 ├── gestion-facturas\                ← PROYECTO UNIFICADO (este repo)
 │   │
-│   ├── gmail\                       ← Ⓑ GMAIL (✅ v1.8)
-│   │   ├── gmail.py                 ← Módulo principal v1.9 (~2180 líneas)
+│   ├── gmail\                       ← Ⓑ GMAIL (✅ v1.13)
+│   │   ├── gmail.py                 ← Módulo principal v1.13 (~2500 líneas)
+│   │   ├── limpiar_emails_viejos.py ← Script one-shot limpieza backlog
 │   │   ├── config.py                ← Configuración (rutas, umbrales, trimestres)
 │   │   ├── config_local.py          ← Overrides locales (gitignored)
 │   │   ├── auth.py                  ← Autenticación Gmail API
