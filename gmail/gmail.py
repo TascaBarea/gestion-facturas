@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GMAIL MODULE v1.7
+GMAIL MODULE v1.13
 Sistema Automatizado de Procesamiento de Facturas
-TASCA BAREA S.L.L. - Febrero 2026
+TASCA BAREA S.L.L. - Marzo 2026
+
+MEJORAS v1.13:
+- CURSOR TEMPORAL: Solo procesa emails posteriores a la última ejecución (after:YYYY/MM/DD)
+- Evita reprocesar emails antiguos que ya se gestionaron manualmente
+- Fecha de última ejecución guardada en emails_procesados.json
 
 MEJORAS v1.6:
 - ANTI-DUPLICADOS: JSON se guarda después de CADA email (no al final)
@@ -617,10 +622,18 @@ class ControlDuplicados:
                     self.datos = json.load(f)
             except json.JSONDecodeError:
                 self.datos = {"emails": {}, "hashes": {}, "facturas": {}}
-        
+
         for key in ["emails", "hashes", "facturas"]:
             if key not in self.datos:
                 self.datos[key] = {}
+
+    def get_ultima_ejecucion(self) -> Optional[str]:
+        """Devuelve la fecha ISO de la última ejecución, o None si no hay."""
+        return self.datos.get("ultima_ejecucion")
+
+    def set_ultima_ejecucion(self, fecha_iso: str):
+        """Guarda la fecha de la última ejecución."""
+        self.datos["ultima_ejecucion"] = fecha_iso
     
     def guardar(self):
         """Guarda el JSON de control (escritura atómica con archivo temporal)"""
@@ -998,10 +1011,11 @@ class GmailClient:
         for label in labels:
             self.label_ids[label['name']] = label['id']
     
-    def obtener_emails_pendientes(self, max_results: int = 200) -> List[Dict]:
+    def obtener_emails_pendientes(self, max_results: int = 200, after_date: Optional[str] = None) -> List[Dict]:
         """
         Obtiene emails con etiqueta FACTURAS no procesados.
         v1.12: Paginación — recorre todas las páginas hasta max_results.
+        v1.13: Filtro after_date (YYYY/MM/DD) para solo traer emails nuevos.
         """
         label_id = self.label_ids.get(CONFIG.LABEL_ORIGEN)
         if not label_id:
@@ -1010,12 +1024,17 @@ class GmailClient:
         all_messages = []
         page_token = None
 
+        # v1.13: Construir query con filtro de fecha
+        q = f"after:{after_date}" if after_date else None
+
         while len(all_messages) < max_results:
             kwargs = {
                 'userId': 'me',
                 'labelIds': [label_id],
                 'maxResults': min(50, max_results - len(all_messages))
             }
+            if q:
+                kwargs['q'] = q
             if page_token:
                 kwargs['pageToken'] = page_token
 
@@ -1868,31 +1887,46 @@ class GmailProcessor:
     def ejecutar(self) -> bool:
         """Ejecuta el procesamiento completo"""
         self.logger.info("=" * 60)
-        self.logger.info(f"GMAIL MODULE v1.7 - {'MODO TEST' if self.modo_test else 'PRODUCCIÓN'}")
+        self.logger.info(f"GMAIL MODULE v1.13 - {'MODO TEST' if self.modo_test else 'PRODUCCIÓN'}")
         self.logger.info("=" * 60)
         
         try:
             self._conectar_servicios()
-            
-            emails = self.gmail.obtener_emails_pendientes(CONFIG.MAX_EMAILS)
+
+            # v1.13: Filtro por fecha — solo emails posteriores a la última ejecución
+            after_date = None
+            ultima = self.control.get_ultima_ejecucion()
+            if ultima:
+                try:
+                    dt = datetime.fromisoformat(ultima)
+                    # Restar 1 día para cubrir posibles desfases horarios
+                    dt_filtro = dt - timedelta(days=1)
+                    after_date = dt_filtro.strftime("%Y/%m/%d")
+                    self.logger.info(f"Filtro fecha: after:{after_date} (última ejecución: {ultima[:10]})")
+                except ValueError:
+                    self.logger.warning(f"Fecha última ejecución inválida: {ultima}, procesando todo")
+
+            emails = self.gmail.obtener_emails_pendientes(CONFIG.MAX_EMAILS, after_date=after_date)
             self.logger.info(f"Emails pendientes: {len(emails)}")
-            
+
             if not emails:
                 self.logger.info("No hay emails para procesar")
                 return True
-            
+
             self._crear_backups()
-            
+
             fecha_proceso = datetime.now()
             for email in emails:
                 self._procesar_email(email, fecha_proceso)
-            
-            # JSON ya se guarda después de cada email en _procesar_email()
-            
+
+            # v1.13: Guardar fecha de esta ejecución como cursor
+            self.control.set_ultima_ejecucion(fecha_proceso.isoformat())
+            self.control.guardar()
+
             self._generar_proveedores_nuevos()
             self._enviar_notificacion()
             self._log_resumen()
-            
+
             return True
             
         except Exception as e:
