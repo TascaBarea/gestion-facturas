@@ -1,9 +1,10 @@
 @echo off
 REM ============================================================================
-REM GMAIL FACTURAS - EJECUCION AUTOMATICA v1.7
+REM GMAIL FACTURAS - EJECUCION AUTOMATICA v1.8
 REM ============================================================================
 REM Cada viernes a las 03:00 via Programador de Tareas
 REM
+REM v1.8: fix reintentos internet (ERRORLEVEL en bloques anidados no se actualizaba)
 REM v1.7: curl HTTPS en vez de ping, espera 60s, 3 reintentos, alerta en bat
 REM v1.6: powercfg anti-suspension, ping wait
 REM ============================================================================
@@ -27,7 +28,7 @@ if not exist "%LOG_PATH%" mkdir "%LOG_PATH%"
 
 REM ---- INICIO ----
 echo ============================================== >> "%LOG_FILE%"
-echo [%date% %time%] INICIO EJECUCION AUTOMATICA v1.7 >> "%LOG_FILE%"
+echo [%date% %time%] INICIO EJECUCION AUTOMATICA v1.8 >> "%LOG_FILE%"
 echo ============================================== >> "%LOG_FILE%"
 
 REM ============================================================================
@@ -75,23 +76,25 @@ if not exist "%SCRIPT_DIR%\token.json" (
 echo [%date% %time%] Credenciales OK >> "%LOG_FILE%"
 
 REM Verificar red (HTTPS, no ping - muchos servidores bloquean ICMP)
+REM v1.8 fix: usar goto en vez de if anidados (ERRORLEVEL no se actualiza dentro de bloques)
 echo [%date% %time%] Verificando conexion a internet... >> "%LOG_FILE%"
-curl -s --max-time 10 -o nul -w "%%{http_code}" https://www.google.com > nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [%date% %time%] Sin internet, esperando 60s... >> "%LOG_FILE%"
-    ping -n 61 127.0.0.1 > nul 2>&1
-    curl -s --max-time 10 -o nul -w "%%{http_code}" https://www.google.com > nul 2>&1
-    if %ERRORLEVEL% NEQ 0 (
-        echo [%date% %time%] Reintento 2 en 60s... >> "%LOG_FILE%"
-        ping -n 61 127.0.0.1 > nul 2>&1
-        curl -s --max-time 10 -o nul -w "%%{http_code}" https://www.google.com > nul 2>&1
-        if %ERRORLEVEL% NEQ 0 (
-            echo [%date% %time%] ERROR: Sin conexion a internet tras 3 intentos >> "%LOG_FILE%"
-            set "EXIT_CODE=6"
-            goto :restaurar
-        )
-    )
+set "RETRY_COUNT=0"
+
+:check_internet
+curl -s --max-time 15 -o nul https://www.google.com > nul 2>&1
+if !ERRORLEVEL! EQU 0 goto :internet_ok
+
+set /a RETRY_COUNT+=1
+if !RETRY_COUNT! GEQ 3 (
+    echo [%date% %time%] ERROR: Sin conexion a internet tras 3 intentos >> "%LOG_FILE%"
+    set "EXIT_CODE=6"
+    goto :restaurar
 )
+echo [%date% %time%] Sin conexion, reintento !RETRY_COUNT! de 3 en 60s... >> "%LOG_FILE%"
+ping -n 61 127.0.0.1 > nul 2>&1
+goto :check_internet
+
+:internet_ok
 echo [%date% %time%] Internet OK >> "%LOG_FILE%"
 
 REM ============================================================================

@@ -1,12 +1,13 @@
 @echo off
 REM ============================================================================
-REM VENTAS BAREA - EJECUCION AUTOMATICA v1.1
+REM VENTAS BAREA - EJECUCION AUTOMATICA v1.2
 REM ============================================================================
 REM Cada lunes a las 03:00 via Programador de Tareas
 REM - Siempre: descarga ventas semana + regenera dashboard
 REM - 1er lunes del mes (dia <= 7): dashboard meses cerrados + email socios
 REM - Alerta por email a tascabarea@gmail.com si falla (cualquier paso)
 REM
+REM v1.2: fix reintentos internet (ERRORLEVEL en bloques anidados no se actualizaba)
 REM v1.1: curl HTTPS en vez de ping, espera 60s, 3 reintentos, alerta en bat
 REM ============================================================================
 
@@ -30,7 +31,7 @@ if not exist "%LOG_PATH%" mkdir "%LOG_PATH%"
 
 REM ---- INICIO ----
 echo ============================================== >> "%LOG_FILE%"
-echo [%date% %time%] INICIO EJECUCION AUTOMATICA v1.1 >> "%LOG_FILE%"
+echo [%date% %time%] INICIO EJECUCION AUTOMATICA v1.2 >> "%LOG_FILE%"
 echo ============================================== >> "%LOG_FILE%"
 
 REM ============================================================================
@@ -65,24 +66,26 @@ if not exist "%SCRIPT_PATH%" (
 )
 
 REM Verificar conexion a internet (HTTPS, no ping - muchos servidores bloquean ICMP)
+REM v1.2 fix: usar goto en vez de if anidados (ERRORLEVEL no se actualiza dentro de bloques)
 echo [%date% %time%] Verificando conexion a internet... >> "%LOG_FILE%"
-curl -s --max-time 10 -o nul -w "%%{http_code}" https://api.loyverse.com > nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [%date% %time%] Sin conexion, reintentando en 60s... >> "%LOG_FILE%"
-    ping -n 61 127.0.0.1 > nul 2>&1
-    curl -s --max-time 10 -o nul -w "%%{http_code}" https://api.loyverse.com > nul 2>&1
-    if %ERRORLEVEL% NEQ 0 (
-        echo [%date% %time%] Reintento 2 en 60s... >> "%LOG_FILE%"
-        ping -n 61 127.0.0.1 > nul 2>&1
-        curl -s --max-time 10 -o nul -w "%%{http_code}" https://api.loyverse.com > nul 2>&1
-        if %ERRORLEVEL% NEQ 0 (
-            echo [%date% %time%] ERROR: Sin conexion a internet tras 3 intentos >> "%LOG_FILE%"
-            set "EXIT_CODE=6"
-            set "ERROR_MSG=Sin conexion a internet tras 3 intentos (WiFi no reconecto)"
-            goto :restaurar
-        )
-    )
+set "RETRY_COUNT=0"
+
+:check_internet
+curl -s --max-time 15 -o nul https://api.loyverse.com > nul 2>&1
+if !ERRORLEVEL! EQU 0 goto :internet_ok
+
+set /a RETRY_COUNT+=1
+if !RETRY_COUNT! GEQ 3 (
+    echo [%date% %time%] ERROR: Sin conexion a internet tras 3 intentos >> "%LOG_FILE%"
+    set "EXIT_CODE=6"
+    set "ERROR_MSG=Sin conexion a internet tras 3 intentos (WiFi no reconecto)"
+    goto :restaurar
 )
+echo [%date% %time%] Sin conexion, reintento !RETRY_COUNT! de 3 en 60s... >> "%LOG_FILE%"
+ping -n 61 127.0.0.1 > nul 2>&1
+goto :check_internet
+
+:internet_ok
 echo [%date% %time%] Conexion OK >> "%LOG_FILE%"
 
 REM ============================================================================
