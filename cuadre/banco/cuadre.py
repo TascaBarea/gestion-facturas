@@ -156,7 +156,7 @@ SUSCRIPCIONES_SIN_FACTURA = [
 
 # Suscripciones CON factura (texto en concepto → título en facturas)
 SUSCRIPCIONES_CON_FACTURA = [
-    {"clave": "MAKE.COM", "titulo": "CELONIS INC.", "aliases": ["CELONIS", "MAKE"]},
+    {"clave": "MAKE.COM", "titulo": "CELONIS INC.", "aliases": ["CELONIS", "MAKE", "ONE WORLD TRADE"]},
     {"clave": "OPENAI", "titulo": "OPENAI LLC", "aliases": ["OPENAI", "CHATGPT"]},
 ]
 

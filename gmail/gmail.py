@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GMAIL MODULE v1.13
+GMAIL MODULE v1.14
 Sistema Automatizado de Procesamiento de Facturas
 TASCA BAREA S.L.L. - Marzo 2026
+
+MEJORAS v1.14:
+- FALLBACK PARCIAL: Si extractor dedicado obtiene fecha pero no total (o viceversa),
+  complementa con extractor genérico en vez de marcar REVISAR directamente
 
 MEJORAS v1.13:
 - CURSOR TEMPORAL: Solo procesa emails posteriores a la última ejecución (after:YYYY/MM/DD)
@@ -2163,7 +2167,19 @@ class GmailProcessor:
         if not factura or not factura.exito:
             extractor = ExtractorPDF(contenido)
             factura = extractor.extraer()
-        
+        elif not factura.fecha or not factura.total:
+            # v1.14: Extractor dedicado obtuvo datos parciales → complementar con genérico
+            extractor = ExtractorPDF(contenido)
+            factura_generica = extractor.extraer()
+            if not factura.fecha and factura_generica.fecha:
+                factura.fecha = factura_generica.fecha
+                self.logger.debug(f"  ↳ Fecha completada por extractor genérico")
+            if not factura.total and factura_generica.total:
+                factura.total = factura_generica.total
+                self.logger.debug(f"  ↳ Total completado por extractor genérico")
+            if not factura.referencia and factura_generica.referencia:
+                factura.referencia = factura_generica.referencia
+
         resultado.factura = factura
         
         if factura.fecha:

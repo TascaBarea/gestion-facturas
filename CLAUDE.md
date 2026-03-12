@@ -79,3 +79,4 @@ gestion-facturas/
 - `/esquema` — Actualizar ESQUEMA DEFINITIVO con cambios de la sesión
 - `/log-gmail` — Analizar logs de ejecución Gmail
 - `/extractor` — Crear nuevo extractor PDF para un proveedor
+- `/revisar` — Analizar REVISAR del cuadre: agrupa, diagnostica y plan de acción
