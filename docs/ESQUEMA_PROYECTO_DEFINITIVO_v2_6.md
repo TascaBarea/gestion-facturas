@@ -57,7 +57,7 @@ FRECUENCIA:    Mensual/Trimestral
 ESTADO:        ✅ Funciona - 101 extractores dedicados
 ```
 
-### Ⓑ GMAIL (99% completado) ✅ v1.13
+### Ⓑ GMAIL (99% completado) ✅ v1.14
 ```
 UBICACIÓN:     C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\gmail\
 ENTRADA:       Gmail (etiqueta FACTURAS) + MAESTRO_PROVEEDORES
@@ -67,7 +67,12 @@ SALIDA:        - PDFs descargados y renombrados en Dropbox local
                - ⚠️_IBANS_SUGERIDOS_*.xlsx (verificación)
 INICIO:        AUTOMÁTICO (viernes 03:00) o MANUAL
 FRECUENCIA:    Semanal
-ESTADO:        ✅ v1.13 - Cursor temporal + limpieza backlog
+ESTADO:        ✅ v1.14 - Fallback parcial extractores
+NOVEDADES v1.14 (12/03/2026):
+               P1 - FALLBACK PARCIAL EXTRACTORES:
+               - Si extractor dedicado obtiene fecha pero no total (o viceversa),
+                 complementa con extractor genérico (incluyendo OCR)
+               - Reduce REVISAR en facturas con formatos variables o escaneadas
 NOVEDADES v1.13 (07/03/2026):
                P1 - CURSOR TEMPORAL (after:YYYY/MM/DD):
                - Solo procesa emails posteriores a la última ejecución exitosa
@@ -323,8 +328,8 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │
 ├── gestion-facturas\                ← PROYECTO UNIFICADO (este repo)
 │   │
-│   ├── gmail\                       ← Ⓑ GMAIL (✅ v1.13)
-│   │   ├── gmail.py                 ← Módulo principal v1.13 (~2500 líneas)
+│   ├── gmail\                       ← Ⓑ GMAIL (✅ v1.14)
+│   │   ├── gmail.py                 ← Módulo principal v1.14 (~2500 líneas)
 │   │   ├── limpiar_emails_viejos.py ← Script one-shot limpieza backlog
 │   │   ├── config.py                ← Configuración (rutas, umbrales, trimestres)
 │   │   ├── config_local.py          ← Overrides locales (gitignored)
@@ -995,7 +1000,10 @@ Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` p
 
 ## CHANGELOG
 
-### v4.9 (12/03/2026) — CUADRE v1.6: CLASIFICADORES MEJORADOS
+### v4.9 (12/03/2026) — CUADRE v1.6 + GMAIL v1.14
+- ✅ **GMAIL actualizado a v1.14** — Fallback parcial: si extractor dedicado obtiene datos parciales, complementa con genérico (+ OCR)
+- ✅ **Skill /revisar** — Analiza movimientos REVISAR del cuadre: agrupa, diagnostica y genera plan de acción
+- ✅ **CUADRE v1.6** — Alias "ONE WORLD TRADE" para MAKE.COM/CELONIS
 - ✅ **CUADRE actualizado a v1.6** — 4 clasificadores mejorados, 27 movimientos rescatados (590→563 REVISAR)
   - Yoigo: regex flexible `Y?(C\d{9,})` detecta facturas con/sin prefijo Y + fuzzy ≥90% fallback
   - Suscripciones ampliadas: SPOTIFY/NETFLIX/AMAZON PRIME (sin factura) + MAKE.COM→CELONIS/OPENAI→OPENAI LLC (con factura vinculada por mes)
