@@ -1,7 +1,7 @@
 # 📐 ESQUEMA PROYECTO GESTIÓN-FACTURAS
 
-**Versión:** 4.5
-**Fecha:** 07/03/2026
+**Versión:** 4.8
+**Fecha:** 12/03/2026
 **Estado:** DEFINITIVO - Base para desarrollo
 
 ---
@@ -38,10 +38,10 @@
 | ① | **COMPRAS** | COMPRAS_1T26v1.xlsx | Lineas + Facturas | Ⓐ PARSEO | Ⓓ CUADRE |
 | ② | **PAGOS_GMAIL** | PAGOS_Gmail_1T26.xlsx | FACTURAS (15 cols) + SEPA | Ⓑ GMAIL | Control pagos |
 | ②b | **FACTURAS_PROV** | Facturas 1T26 Provisional.xlsx | Facturas | Ⓑ GMAIL | Gestoría |
-| ③ | **VENTAS** | Ventas Barea 2026.xlsx | TascaRecibos + TascaItems + ComesRecibos + ComesItems + WOO | Ⓒ VENTAS | Informes |
+| ③ | **VENTAS** | Ventas Barea 2026.xlsx | TascaRecibos + TascaItems + ComesRecibos + ComesItems + WOO + GoogleBusiness | Ⓒ VENTAS | Informes |
 | ④ | **PROVEEDORES** | MAESTRO_PROVEEDORES.xlsx | 1 | MANUAL | Ⓐ Ⓑ Ⓓ |
 | ⑤ | **MOVIMIENTOS_BANCO** | MOV_BANCO_1T26.xlsx | TASCA + COMESTIBLES | NORMA43/Excel Sabadell | Ⓓ CUADRE |
-| ⑥ | **ARTICULOS** | ARTICULOS.xlsx | 1-2 | LOYVERSE (manual) | Ⓒ VENTAS |
+| ⑥ | **ARTICULOS** | Articulos 26.xlsx | Comestibles (572) + Tasca (87) + Historial_Precios + Hoja1 | LOYVERSE (automático semanal) | Ⓒ VENTAS |
 
 ---
 
@@ -211,9 +211,10 @@ UBICACIÓN:     gestion-facturas/ventas_semana/
 ENTRADA:       - API Loyverse (TASCA + COMESTIBLES) — recibos + items
                - API Woocommerce (cursos online)
                - ARTICULOS.xlsx (catálogo, actualizado automáticamente)
-SALIDA:        - Ventas Barea 2026.xlsx (5 pestañas):
+SALIDA:        - Ventas Barea 2026.xlsx (6 pestañas):
                  TascaRecibos (19 cols), TascaItems (23 cols),
-                 ComesRecibos (19 cols), ComesItems (23 cols), WOOCOMMERCE
+                 ComesRecibos (19 cols), ComesItems (23 cols), WOOCOMMERCE,
+                 GoogleBusiness (21 cols, métricas GBP mensuales)
                - Dashboards HTML interactivos:
                  dashboards/dashboard_comes.html (Comestibles 2025-2026)
                  dashboards/dashboard_tasca.html (Tasca 2023-2026)
@@ -223,8 +224,8 @@ SALIDA:        - Ventas Barea 2026.xlsx (5 pestañas):
                - GitHub Pages: DESACTIVADO (repo ahora PRIVATE, no funciona en plan gratuito)
                  Pendiente buscar alternativa (Netlify, Vercel, servidor propio)
 INICIO:        AUTOMÁTICO (lunes 03:00) o MANUAL
-FRECUENCIA:    Semanal (ventas) + Mensual (dashboard cerrado + email + PDF)
-ESTADO:        ✅ v4.2 - Dual dashboard + PDF profesional + email segmentado (GitHub Pages desactivado)
+FRECUENCIA:    Semanal (ventas + email resumen) + Mensual (dashboard + PDF + GBP)
+ESTADO:        ✅ v4.7 - Dual dashboard + PDF + email semanal + anomalías IVA + Google Business Profile
 CATEGORÍAS COMESTIBLES (13):
                ACEITES Y VINAGRES, BAZAR, BOCADILLOS, BODEGA, CHACINAS,
                CONSERVAS, CUPÓN REGALO, DESPENSA, DULCES, EXPERIENCIAS,
@@ -876,6 +877,8 @@ Lógica común a transferencias, compra_tarjeta y adeudo_recibo (~40 líneas cad
 | ~~5️⃣~~ | ~~Informes~~ | ~~Dashboards + PDF + email~~ | ✅ **Comes + Tasca** |
 | 6️⃣ | Limpiar WooCommerce | Reducir 69→10 columnas en pestaña WOOCOMMERCE (Ventas Barea) | 🟡 Pendiente |
 | 7️⃣ | Integrar | Mover PARSEO a gestion-facturas | ❌ Futuro |
+| 8️⃣ | Cruce Artículos↔Proveedores | Cruzar `Articulos 26.xlsx` con `DiccionarioProveedoresCategoria.xlsx` (pestaña Articulos) para vincular cada artículo Loyverse con su proveedor. Rellenar COD LOYVERSE (solo 83/1282 rellenos). Fuzzy matching por nombre. | 🟡 Pendiente |
+| 9️⃣ | Separar Historial Precios | Mover `Historial_Precios` de `Articulos 26.xlsx` a un Excel independiente (`HISTORIAL_PRECIOS.xlsx`) con hoja por año. Evita riesgo de corrupción cruzada y permite análisis directo (gráficos evolución costes, cruce con facturas proveedores). | 🟡 Posible mejora |
 
 ---
 
@@ -982,6 +985,77 @@ Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` p
 ---
 
 ## CHANGELOG
+
+### v4.8 (12/03/2026) — HARDENING: EXCEPCIONES + PROTECCIÓN EXCEL + CLAUDE.md
+- ✅ **12 bare `except:` eliminados** — Reemplazados por excepciones específicas en 6 archivos
+  - `gmail/gmail.py` (4), `gmail/auth.py` (2), `gmail/generar_sepa.py` (2),
+    `nucleo/parser.py` (2), `cuadre/banco/cuadre.py` (1), `cuadre/banco/clasificadores/compra_tarjeta.py` (1)
+- ✅ **Detección Excel abierto** — `_verificar_archivo_no_abierto()` antes de cada escritura
+  - Integrado en `script_barea.py:save_to_excel()` y `salidas/excel.py` (2 funciones)
+  - Captura `PermissionError` y aborta con mensaje claro en español
+- ✅ **Auto pip install eliminado** de `script_barea.py` — Sustituido por ImportError claro
+- ✅ **requirements.txt actualizado** — Añadido `Pillow==11.2.1` (dependencia de pdf2image/reportlab)
+- ✅ **CLAUDE.md creado** en raíz del proyecto — Contexto, convenciones, reglas y skills para Claude Code
+- ✅ **Plan de mejora documentado** — 4 fases (Quick wins → Estabilidad → Features → Arquitectura)
+- ✅ **Logging en script_barea.py** — ~50 prints reemplazados por `logging` (módulo estándar)
+  - Logger `barea`: archivo (`outputs/logs_ventas/YYYY-MM-DD.log`, DEBUG) + consola (INFO)
+  - Archivo con formato `HH:MM:SS [LEVEL] mensaje`, consola solo mensaje limpio
+  - Niveles: info (progreso), warning (problemas no críticos), error (fallos que abortan)
+- ✅ **Backup automático de Excel** — `_backup_excel()` en `save_to_excel()`
+  - Copia el Excel a `datos/backups/` antes de la primera escritura de cada ejecución
+  - Formato: `NombreArchivo_YYYYMMDD_HHMMSS.xlsx`
+  - Una sola copia por archivo por ejecución (set `_backed_up`)
+- ✅ **Smoke tests** — `tests/test_script_barea.py` con 52 tests (pytest)
+  - Funciones puras: `_to_float`, `_fmt_eur`, `_fmt_num`, `_pct_var`, `_var_html`, `_parse_gbp_num`
+  - Fechas: `calcular_semana_anterior`, `_semana_equivalente_año_anterior`, `parse_fecha`
+  - Lookups: `resolve`
+  - Recibos: `procesar_recibos` (5 casos: normal, vacío, cancelado, columnas)
+  - Excel: `save_to_excel` (4 casos: nuevo, dedup, vacío, sin unique_col)
+  - IVA: `check_iva_anomalies` (5 casos: normal, multi-iva, bajas, vinos-21%, no existe)
+  - Backup: `_backup_excel` (no existe, no duplica)
+
+### v4.7 (10/03/2026) — GOOGLE BUSINESS PROFILE
+- ✅ **Recogida automática datos GBP** — Nuevo paso 5 en `script_barea.py` (1er lunes de mes)
+  - `recoger_google_business(target_year)`: parsea emails mensuales de Google Business Profile
+  - Métricas: interacciones, llamadas, chat, indicaciones, visitas web, vistas perfil, búsquedas, menú
+  - Variaciones % mes a mes para cada métrica principal
+  - Top 3 términos de búsqueda con volumen
+  - Guarda en pestaña `GoogleBusiness` de `Ventas Barea 2026.xlsx` (21 columnas)
+  - Dedup por mes (unique_col="Mes")
+- ✅ **Parser HTML emails GBP** — `_parse_gbp_email()` + `_parse_gbp_num()`
+  - Extrae datos del email mensual "informe de rendimiento" de Google
+  - Limpieza HTML→texto con separadores pipe, regex para cada métrica
+  - Detección automática de mes/año desde el subject del email
+- ✅ **Histórico GBP 2025** — 12 meses guardados en `Ventas Barea Historico.xlsx` → `GoogleBusiness25`
+  - Emails reenviados desde benjaimes@gmail.com → tascabarea@gmail.com (filtro Gmail)
+  - Token OAuth renovado con scope `business.manage` (`renovar_token_business.py`)
+- ✅ **Flujo completo actualizado**: 1.WooCommerce → 2.Loyverse → 3.Artículos → 3b.IVA → 4.Dashboards → 5.GBP → 6.Email semanal
+
+### v4.6 (09/03/2026) — DETECCIÓN ANOMALÍAS IVA + EMAIL RESUMEN SEMANAL
+- ✅ **Email resumen semanal** — Nuevo paso 5 en `script_barea.py` (cada lunes tras dashboards)
+  - `enviar_email_semanal()`: genera y envía HTML con resumen de ventas
+  - KPIs por tienda (Tasca + Comestibles): ventas netas, tickets, ticket medio
+  - Comparativa triple: vs semana anterior + vs misma semana año anterior
+  - YTD acumulado vs mismo periodo año anterior
+  - Top 10 productos por facturación y por unidades, con variaciones
+  - WooCommerce incluido si hubo pedidos
+  - Datos históricos desde `Ventas Barea Historico.xlsx` (2023-2025) + año actual
+  - Manejo formato decimal español (datos 2024 con comas)
+  - Destinatarios en `EMAILS_RESUMEN_SEMANAL` (fácil de ampliar)
+  - HTML profesional: cabecera azul, tablas con flechas ▲▼ coloreadas, filas alternadas
+- ✅ **Detección anomalías IVA** — Nuevo paso 3b en `script_barea.py` (proceso semanal)
+  - `check_iva_anomalies()`: se ejecuta tras `update_articles_history()` para cada tienda
+  - Detecta: artículos con varios IVA simultáneos (MULTI-IVA), IVA al 0%, IVA 21% en categorías no permitidas
+  - Categorías permitidas 21%: VINOS, BODEGA, LICORES, VERMÚS, CACHARRERÍA, BAZAR, EXPERIENCIAS
+  - Resultado en log semanal (warnings o "sin anomalías")
+- ✅ **Prioridades 8 y 9 añadidas** al roadmap (sección 9)
+  - 8️⃣ Cruce Artículos↔Proveedores via `DiccionarioProveedoresCategoria.xlsx` (pendiente)
+  - 9️⃣ Separar Historial_Precios a Excel independiente (posible mejora)
+- ✅ **ARTICULOS documentado** — Tabla documentos actualizada
+  - `Articulos 26.xlsx`: 4 hojas (Comestibles 572, Tasca 87, Historial_Precios, Hoja1)
+  - Columnas clave: Handle, REF, Nombre, Categoria, Coste, Precio, IVA (0/4/10/21%), ESTADO, FECHA_BAJA
+  - Actualización automática semanal via Loyverse API (altas, bajas, cambios precio)
+  - `DiccionarioProveedoresCategoria.xlsx`: 1282 artículos×proveedor (69 proveedores, 131 categorías)
 
 ### v4.3 (03/03/2026) — CATEGORÍAS SIMPLIFICADAS
 - ✅ **Categorías Comestibles reducidas de 21 a 13** — Mapeo en `generar_dashboard.py`

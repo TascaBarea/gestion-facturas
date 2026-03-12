@@ -35,6 +35,19 @@ if TYPE_CHECKING:
     from nucleo.factura import Factura
 
 
+def _verificar_archivo_no_abierto(ruta) -> bool:
+    """Comprueba que el archivo Excel no esté abierto. Devuelve True si está libre."""
+    ruta = Path(ruta)
+    if not ruta.exists():
+        return True
+    try:
+        with open(ruta, 'a'):
+            return True
+    except PermissionError:
+        print(f"  ERROR: El archivo '{ruta.name}' está abierto en Excel. Ciérralo y reintenta.")
+        return False
+
+
 # ==============================================================================
 # GENERACIÓN DE NOMBRE DE SALIDA INTELIGENTE (v5.12)
 # ==============================================================================
@@ -552,11 +565,15 @@ def generar_excel(facturas: List['Factura'], ruta: Path, nombre_hoja: str = 'Lin
     df_lineas = sanitizar_dataframe(df_lineas)
     df_facturas = sanitizar_dataframe(df_facturas)
     
+    if not _verificar_archivo_no_abierto(ruta):
+        print(f"  ABORTANDO escritura — archivo bloqueado.")
+        return 0
+
     with pd.ExcelWriter(ruta, engine='openpyxl') as writer:
         # Orden: Lineas primero, Facturas después (según preferencia B)
         df_lineas.to_excel(writer, index=False, sheet_name='Lineas')
         df_facturas.to_excel(writer, index=False, sheet_name='Facturas')
-    
+
     return len(filas_lineas)
 
 
@@ -664,9 +681,13 @@ def generar_excel_multihoja(facturas: List['Factura'], ruta: Path) -> dict:
         Dict con conteo de filas por hoja
     """
     ruta.parent.mkdir(parents=True, exist_ok=True)
-    
+
+    if not _verificar_archivo_no_abierto(ruta):
+        print(f"  ABORTANDO escritura — archivo bloqueado.")
+        return {}
+
     contador_tmp = 1
-    
+
     with pd.ExcelWriter(ruta, engine='openpyxl') as writer:
         # Hoja 1: Lineas (detalle)
         filas_lineas = []

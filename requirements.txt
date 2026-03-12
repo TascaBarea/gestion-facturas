@@ -26,5 +26,8 @@ pdf2image==1.17.0
 matplotlib==3.10.0
 reportlab==4.4.0
 
+# Imágenes (dependencia de pdf2image y reportlab)
+Pillow==11.2.1
+
 # Fuzzy matching (cuadre)
 rapidfuzz==3.13.0
