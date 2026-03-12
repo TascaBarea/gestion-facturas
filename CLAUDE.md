@@ -67,7 +67,7 @@ gestion-facturas/
 | Módulo | Versión | Header en código | ESQUEMA sección |
 |--------|---------|------------------|-----------------|
 | Parseo | 101 extractores | — | §3 Ⓐ, §5 |
-| Gmail | v1.13 | gmail.py línea ~1 | §3 Ⓑ, §6 |
+| Gmail | v1.14 | gmail.py línea ~1 | §3 Ⓑ, §6 |
 | Ventas | v4.7 | script_barea.py | §3 Ⓒ |
 | Cuadre | v1.6 | cuadre.py línea 8 | §3 Ⓓ, §7 |
 | ESQUEMA | v4.9 | docs/ESQUEMA...md línea 3 | — |
