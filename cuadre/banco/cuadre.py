@@ -5,7 +5,7 @@ r"""
 CUADRE.PY - Clasificador de Movimientos Bancarios
 ================================================================================
 
-Versión: 1.5
+Versión: 1.6
 Fecha: Marzo 2026
 Autor: TASCA BAREA S.L.L.
 
@@ -14,7 +14,7 @@ DESCRIPCIÓN:
 Clasifica movimientos bancarios de un archivo Excel (con hojas Tasca, Comestibles
 y Facturas) rellenando las columnas Categoria_Tipo y Categoria_Detalle.
 
-CAMBIOS v1.5:
+CAMBIOS v1.6:
 -------------
 - Yoigo mejorado: regex Y?C\d{9,} + filtro XFERA/YOIGO/MASMOVIL + fuzzy fallback ≥90%
 - Alquiler mejorado: busca las 2 facturas (Ortega + Fernández) del mes del movimiento
@@ -221,7 +221,7 @@ def guardar_log(ruta_salida: Path):
     try:
         with open(ruta_log, "w", encoding="utf-8") as f:
             f.write("=" * 80 + "\n")
-            f.write("LOG DE DECISIONES - CUADRE v1.5\n")
+            f.write("LOG DE DECISIONES - CUADRE v1.6\n")
             f.write(f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write("=" * 80 + "\n\n")
             
@@ -685,7 +685,7 @@ def clasificar_comunidad_vecinos(concepto: str, fecha_valor=None, df_fact=None) 
     """
     Clasifica gastos de comunidad de vecinos y asigna facturas ISTA.
 
-    v1.5: Busca las 2 facturas ISTA METERING más cercanas en fecha.
+    v1.6: Busca las 2 facturas ISTA METERING más cercanas en fecha.
     El pago de comunidad incluye gastos de agua (ISTA).
 
     Returns:
@@ -1089,7 +1089,7 @@ def clasificar_yoigo(concepto: str, df_fact: pd.DataFrame) -> Tuple[Optional[str
     """
     Clasifica facturas de Yoigo.
 
-    v1.5: Regex flexible Y?C + filtro XFERA/YOIGO/MASMOVIL + fuzzy fallback 90%
+    v1.6: Regex flexible Y?C + filtro XFERA/YOIGO/MASMOVIL + fuzzy fallback 90%
 
     Returns:
         (Categoria_Tipo, Categoria_Detalle) o (None, None) si no aplica
@@ -1429,14 +1429,14 @@ def main():
     """Punto de entrada principal."""
     
     print("=" * 70)
-    print("CUADRE.PY v1.5 - Clasificador de Movimientos Bancarios")
+    print("CUADRE.PY v1.6 - Clasificador de Movimientos Bancarios")
     print("=" * 70)
     print()
     
     # Inicializar estado global al inicio
     reset_estado_global_inicio()
     
-    log("CUADRE.PY v1.5")
+    log("CUADRE.PY v1.6")
     log(f"Fecha ejecución: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     # 1. Seleccionar archivo de entrada
