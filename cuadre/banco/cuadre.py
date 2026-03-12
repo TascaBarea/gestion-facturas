@@ -5,14 +5,21 @@ r"""
 CUADRE.PY - Clasificador de Movimientos Bancarios
 ================================================================================
 
-Versión: 1.4
-Fecha: Enero 2026
+Versión: 1.5
+Fecha: Marzo 2026
 Autor: TASCA BAREA S.L.L.
 
 DESCRIPCIÓN:
 ------------
 Clasifica movimientos bancarios de un archivo Excel (con hojas Tasca, Comestibles
 y Facturas) rellenando las columnas Categoria_Tipo y Categoria_Detalle.
+
+CAMBIOS v1.5:
+-------------
+- Yoigo mejorado: regex Y?C\d{9,} + filtro XFERA/YOIGO/MASMOVIL + fuzzy fallback ≥90%
+- Alquiler mejorado: busca las 2 facturas (Ortega + Fernández) del mes del movimiento
+- Suscripciones ampliadas: SPOTIFY/NETFLIX/AMAZON (sin factura), MAKE.COM/OPENAI (con factura)
+- Comunidad mejorada: asigna las 2 facturas ISTA METERING más cercanas en fecha
 
 CAMBIOS v1.4:
 -------------
@@ -139,9 +146,18 @@ REGLAS_ESPECIALES_TARJETA = [
     {"clave": "AY MADRE LA FRUTA", "titulo": "GARCIA VIVAS JULIO"},
 ]
 
-# NUEVO v1.2: Suscripciones sin factura
+# Suscripciones sin factura (no generan factura fiscal)
 SUSCRIPCIONES_SIN_FACTURA = [
     {"clave": "LOYVERSE", "tipo": "LOYVERSE", "detalle": "Sin factura"},
+    {"clave": "SPOTIFY", "tipo": "GASTOS VARIOS", "detalle": "Sin factura"},
+    {"clave": "NETFLIX", "tipo": "GASTOS VARIOS", "detalle": "Sin factura"},
+    {"clave": "AMAZON PRIME", "tipo": "GASTOS VARIOS", "detalle": "Sin factura"},
+]
+
+# Suscripciones CON factura (texto en concepto → título en facturas)
+SUSCRIPCIONES_CON_FACTURA = [
+    {"clave": "MAKE.COM", "titulo": "CELONIS INC.", "aliases": ["CELONIS", "MAKE"]},
+    {"clave": "OPENAI", "titulo": "OPENAI LLC", "aliases": ["OPENAI", "CHATGPT"]},
 ]
 
 # NUEVO v1.2: Umbral de fuzzy para asignación automática
@@ -205,7 +221,7 @@ def guardar_log(ruta_salida: Path):
     try:
         with open(ruta_log, "w", encoding="utf-8") as f:
             f.write("=" * 80 + "\n")
-            f.write("LOG DE DECISIONES - CUADRE v1.4\n")
+            f.write("LOG DE DECISIONES - CUADRE v1.5\n")
             f.write(f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write("=" * 80 + "\n\n")
             
@@ -665,38 +681,109 @@ def formatear_detalle_factura(cod, titulo: str, score: float, es_fuzzy: bool = F
 # CLASIFICADORES ESPECIALES (NUEVO v1.2)
 # ==============================================================================
 
-def clasificar_comunidad_vecinos(concepto: str) -> Tuple[Optional[str], Optional[str]]:
+def clasificar_comunidad_vecinos(concepto: str, fecha_valor=None, df_fact=None) -> Tuple[Optional[str], Optional[str]]:
     """
-    Clasifica gastos de comunidad de vecinos.
-    
-    Detecta: "ADEUDO RECIBO COM PROP ..."
-    
+    Clasifica gastos de comunidad de vecinos y asigna facturas ISTA.
+
+    v1.5: Busca las 2 facturas ISTA METERING más cercanas en fecha.
+    El pago de comunidad incluye gastos de agua (ISTA).
+
     Returns:
         (Categoria_Tipo, Categoria_Detalle) o (None, None) si no aplica
     """
+    global facturas_usadas
     concepto_upper = str(concepto).upper().strip()
-    
-    if "COM PROP" in concepto_upper or "COMUNIDAD PROP" in concepto_upper:
-        log(f"  → COMUNIDAD DE VECINOS detectada")
-        return "COMUNIDAD DE VECINOS", ""
-    
-    return None, None
+
+    if "COM PROP" not in concepto_upper and "COMUNIDAD PROP" not in concepto_upper:
+        return None, None
+
+    # Buscar facturas ISTA METERING para vincular
+    if df_fact is not None and fecha_valor is not None:
+        df_ista = df_fact[
+            df_fact["Título"].str.upper().str.contains("ISTA METERING", na=False)
+        ].copy()
+
+        if not df_ista.empty:
+            df_ista["Fec.Fac."] = pd.to_datetime(df_ista["Fec.Fac."], errors="coerce", dayfirst=True)
+            fecha_mov = pd.to_datetime(fecha_valor, errors="coerce", dayfirst=True)
+
+            if pd.notna(fecha_mov):
+                df_disponibles = df_ista[~df_ista["Cód."].isin(facturas_usadas)].copy()
+                if not df_disponibles.empty:
+                    df_disponibles["dist"] = abs((df_disponibles["Fec.Fac."] - fecha_mov).dt.days)
+                    df_disponibles = df_disponibles.sort_values("dist")
+
+                    facturas_asignadas = []
+                    for _, fila in df_disponibles.head(2).iterrows():
+                        cod = fila["Cód."]
+                        facturas_usadas.add(cod)
+                        facturas_asignadas.append(f"#{cod}")
+
+                    if facturas_asignadas:
+                        detalle = ", ".join(facturas_asignadas)
+                        log(f"  → COMUNIDAD DE VECINOS: {detalle}")
+                        return "COMUNIDAD DE VECINOS", detalle
+
+    log(f"  → COMUNIDAD DE VECINOS detectada")
+    return "COMUNIDAD DE VECINOS", ""
 
 
-def clasificar_suscripciones(concepto: str) -> Tuple[Optional[str], Optional[str]]:
+def clasificar_suscripciones(concepto: str, fecha_valor=None, df_fact=None) -> Tuple[Optional[str], Optional[str]]:
     """
-    Clasifica suscripciones sin factura (LOYVERSE, etc.)
-    
+    Clasifica suscripciones: sin factura (SPOTIFY, NETFLIX, LOYVERSE, AMAZON PRIME)
+    y con factura (MAKE.COM→CELONIS, OPENAI→OPENAI LLC).
+
     Returns:
         (Categoria_Tipo, Categoria_Detalle) o (None, None) si no aplica
     """
+    global facturas_usadas
     concepto_upper = str(concepto).upper()
-    
+
+    # --- Sin factura ---
     for suscripcion in SUSCRIPCIONES_SIN_FACTURA:
         if suscripcion["clave"] in concepto_upper:
             log(f"  → Suscripción detectada: {suscripcion['tipo']}")
             return suscripcion["tipo"], suscripcion["detalle"]
-    
+
+    # --- Con factura (buscar por mes) ---
+    if df_fact is not None and fecha_valor is not None:
+        for suscripcion in SUSCRIPCIONES_CON_FACTURA:
+            if suscripcion["clave"] in concepto_upper:
+                titulo = suscripcion["titulo"]
+                patron = "|".join([titulo.upper()] + [a.upper() for a in suscripcion["aliases"]])
+                df_prov = df_fact[
+                    df_fact["Título"].str.upper().str.contains(patron, na=False, regex=True)
+                ].copy()
+
+                if df_prov.empty:
+                    log(f"  → REVISAR: No hay facturas de {titulo}")
+                    return "REVISAR", f"No hay facturas de {titulo}"
+
+                fecha_v = pd.to_datetime(fecha_valor, errors="coerce", dayfirst=True)
+                if pd.isna(fecha_v):
+                    log(f"  → REVISAR: {titulo} - fecha inválida")
+                    return "REVISAR", f"{titulo} - fecha inválida"
+
+                df_prov["Fec.Fac."] = pd.to_datetime(df_prov["Fec.Fac."], errors="coerce", dayfirst=True)
+                mismo_mes = df_prov[
+                    (df_prov["Fec.Fac."].dt.month == fecha_v.month) &
+                    (df_prov["Fec.Fac."].dt.year == fecha_v.year) &
+                    (~df_prov["Cód."].isin(facturas_usadas))
+                ]
+
+                if not mismo_mes.empty:
+                    cod = mismo_mes.iloc[0]["Cód."]
+                    facturas_usadas.add(cod)
+                    es_anul = "ANUL" in concepto_upper
+                    detalle = f"#{cod} {titulo}"
+                    if es_anul:
+                        detalle = f"ANULACIÓN - {detalle}"
+                    log(f"  → Suscripción {titulo}: {detalle}")
+                    return titulo, detalle
+
+                log(f"  → REVISAR: Sin factura de {titulo} para {fecha_v.strftime('%m/%Y')}")
+                return "REVISAR", f"Sin factura de {titulo} para {fecha_v.strftime('%m/%Y')}"
+
     return None, None
 
 
@@ -796,10 +883,38 @@ def clasificar_transferencia(concepto: str, importe: float, fecha_valor, fecha_o
     concepto_orig = concepto
     concepto = concepto.upper().strip()
     
-    # Caso especial: alquiler
-    if concepto == "TRANSFERENCIA A BENJAMIN ORTEGA Y JAIME FDEZ M":
-        log(f"  → ALQUILER: Local")
-        return "ALQUILER", "Local"
+    # Caso especial: alquiler — buscar las 2 facturas de los propietarios
+    if "BENJAMIN ORTEGA Y JAIME" in concepto:
+        fecha_v = pd.to_datetime(fecha_valor, errors="coerce", dayfirst=True)
+        facturas_encontradas = []
+        for titulos in [["ORTEGA ALONSO BENJAMIN", "BENJAMIN ORTEGA"],
+                        ["FERNANDEZ MORENO JAIME", "JAIME FERNANDEZ"]]:
+            patron = "|".join([t.upper() for t in titulos])
+            df_prop = df_fact[
+                df_fact["Título"].str.upper().str.contains(patron, na=False, regex=True)
+            ].copy()
+            if not df_prop.empty and pd.notna(fecha_v):
+                df_prop["Fec.Fac."] = pd.to_datetime(df_prop["Fec.Fac."], errors="coerce", dayfirst=True)
+                mismo_mes = df_prop[
+                    (df_prop["Fec.Fac."].dt.month == fecha_v.month) &
+                    (df_prop["Fec.Fac."].dt.year == fecha_v.year) &
+                    (~df_prop["Cód."].isin(facturas_usadas))
+                ]
+                if not mismo_mes.empty:
+                    cod = mismo_mes.iloc[0]["Cód."]
+                    facturas_usadas.add(cod)
+                    facturas_encontradas.append(f"#{cod}")
+        if facturas_encontradas:
+            detalle = ", ".join(facturas_encontradas)
+            if len(facturas_encontradas) < 2:
+                mes_str = fecha_v.strftime("%m/%Y") if pd.notna(fecha_v) else "?"
+                detalle += f" (falta 1 factura {mes_str})"
+            log(f"  → ALQUILER: {detalle}")
+            return "ALQUILER", detalle
+        else:
+            mes_str = fecha_v.strftime("%m/%Y") if pd.notna(fecha_v) else "?"
+            log(f"  → ALQUILER: Sin facturas para {mes_str}")
+            return "ALQUILER", f"Sin facturas para {mes_str}"
     
     if not concepto.startswith("TRANSFERENCIA A"):
         return None, None
@@ -836,8 +951,8 @@ def clasificar_compra_tarjeta(concepto: str, importe: float, fecha_valor, fecha_
     if not concepto_upper.startswith("COMPRA TARJ"):
         return None, None
     
-    # NUEVO v1.2: Detectar suscripciones sin factura (LOYVERSE, etc.)
-    tipo_susc, detalle_susc = clasificar_suscripciones(concepto)
+    # Detectar suscripciones (sin factura: SPOTIFY, NETFLIX... / con factura: OPENAI, MAKE...)
+    tipo_susc, detalle_susc = clasificar_suscripciones(concepto, fecha_valor, df_fact)
     if tipo_susc:
         return tipo_susc, detalle_susc
     
@@ -900,8 +1015,8 @@ def clasificar_adeudo_recibo(concepto: str, importe: float, fecha_valor,
     if not concepto_upper.startswith("ADEUDO RECIBO"):
         return None, None
     
-    # NUEVO v1.2: Detectar comunidad de vecinos
-    tipo_com, detalle_com = clasificar_comunidad_vecinos(concepto)
+    # Detectar comunidad de vecinos + facturas ISTA
+    tipo_com, detalle_com = clasificar_comunidad_vecinos(concepto, fecha_valor, df_fact)
     if tipo_com:
         return tipo_com, detalle_com
     
@@ -973,33 +1088,77 @@ def clasificar_som_energia(concepto: str, importe: float, df_fact: pd.DataFrame)
 def clasificar_yoigo(concepto: str, df_fact: pd.DataFrame) -> Tuple[Optional[str], Optional[str]]:
     """
     Clasifica facturas de Yoigo.
-    
+
+    v1.5: Regex flexible Y?C + filtro XFERA/YOIGO/MASMOVIL + fuzzy fallback 90%
+
     Returns:
         (Categoria_Tipo, Categoria_Detalle) o (None, None) si no aplica
     """
     global facturas_usadas
-    
+
     concepto_upper = str(concepto).upper()
-    
+
     if "YOIGO" not in concepto_upper:
         return None, None
-    
-    # Buscar código de factura (YC + dígitos)
-    match = re.search(r"(YC\d{9,})", concepto_upper)
-    if match:
-        codigo = match.group(1)
-        fila = df_fact[df_fact["Factura"].astype(str).str.upper() == codigo]
-        if not fila.empty:
-            cod = fila.iloc[0]["Cód."]
-            if cod in facturas_usadas:
-                log(f"  → REVISAR: Yoigo #{cod} ya usada")
-                return "REVISAR", f"Posible duplicado con #{cod}"
-            facturas_usadas.add(cod)
-            log(f"  → YOIGO: #{cod} ({codigo})")
-            return "XFERA MOVILES SAU", f"#{cod} ({codigo})"
-    
-    log(f"  → REVISAR: Factura YOIGO no encontrada")
-    return "REVISAR", "Factura YOIGO no encontrada"
+
+    # Regex flexible: captura YCxxxxxxxxxx o Cxxxxxxxxxx
+    match = re.search(r"Y?(C\d{9,})", concepto_upper)
+    if not match:
+        log(f"  → REVISAR: YOIGO sin número de factura en concepto")
+        return "REVISAR", "YOIGO: No se encontró número de factura"
+
+    numero_original = match.group(0)  # Con o sin Y
+    numero_sin_y = match.group(1)     # Solo Cxxxxxxxxxx
+
+    # Filtrar facturas de XFERA/YOIGO/MASMOVIL
+    df_yoigo = df_fact[
+        df_fact["Título"].str.upper().str.contains("XFERA|YOIGO|MASMOVIL", na=False, regex=True)
+    ].copy()
+
+    if df_yoigo.empty:
+        log(f"  → REVISAR: No hay facturas de XFERA/YOIGO ({numero_original})")
+        return "REVISAR", f"YOIGO: No hay facturas XFERA ({numero_original})"
+
+    df_yoigo["Factura_norm"] = df_yoigo["Factura"].astype(str).str.upper().str.strip()
+
+    # PASO 1: Buscar REF exacto (con Y)
+    exacto = df_yoigo[df_yoigo["Factura_norm"] == numero_original]
+    if exacto.empty:
+        # PASO 2: Buscar REF sin la Y
+        exacto = df_yoigo[df_yoigo["Factura_norm"] == numero_sin_y]
+
+    if not exacto.empty:
+        cod = exacto.iloc[0]["Cód."]
+        if cod in facturas_usadas:
+            log(f"  → REVISAR: Yoigo #{cod} ya usada")
+            return "REVISAR", f"Posible duplicado con #{cod}"
+        facturas_usadas.add(cod)
+        ref_encontrada = exacto.iloc[0]["Factura_norm"]
+        log(f"  → YOIGO: #{cod} ({ref_encontrada})")
+        return "XFERA MOVILES SAU", f"#{cod} ({ref_encontrada})"
+
+    # PASO 3: Fuzzy fallback ≥90%
+    mejor_score = 0
+    mejor_fila = None
+    for _, fila in df_yoigo.iterrows():
+        ref_factura = fila["Factura_norm"]
+        score = max(
+            fuzz.ratio(numero_original, ref_factura),
+            fuzz.ratio(numero_sin_y, ref_factura),
+        )
+        if score > mejor_score and fila["Cód."] not in facturas_usadas:
+            mejor_score = score
+            mejor_fila = fila
+
+    if mejor_score >= 90 and mejor_fila is not None:
+        cod = mejor_fila["Cód."]
+        ref_encontrada = mejor_fila["Factura_norm"]
+        facturas_usadas.add(cod)
+        log(f"  → YOIGO: #{cod} ({ref_encontrada}) [fuzzy {mejor_score}%]")
+        return "XFERA MOVILES SAU", f"#{cod} ({ref_encontrada}) [fuzzy {mejor_score}%]"
+
+    log(f"  → REVISAR: Factura YOIGO no encontrada ({numero_original})")
+    return "REVISAR", f"Factura YOIGO no encontrada ({numero_original})"
 
 
 def clasificar_casos_simples(concepto: str) -> Tuple[Optional[str], Optional[str]]:
@@ -1270,14 +1429,14 @@ def main():
     """Punto de entrada principal."""
     
     print("=" * 70)
-    print("CUADRE.PY v1.4 - Clasificador de Movimientos Bancarios")
+    print("CUADRE.PY v1.5 - Clasificador de Movimientos Bancarios")
     print("=" * 70)
     print()
     
     # Inicializar estado global al inicio
     reset_estado_global_inicio()
     
-    log("CUADRE.PY v1.4")
+    log("CUADRE.PY v1.5")
     log(f"Fecha ejecución: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     # 1. Seleccionar archivo de entrada
