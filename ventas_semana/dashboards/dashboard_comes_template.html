@@ -181,6 +181,7 @@ td:last-child{color:var(--accent2);}
   <button class="nav-tab" onclick="setPage('productos')">📦 Productos</button>
   <button class="nav-tab" onclick="setPage('rotacion')">🔄 Rotación</button>
   <button class="nav-tab" onclick="setPage('rentabilidad')">💰 Rentabilidad</button>
+  <button class="nav-tab" onclick="setPage('dias')">📅 Días</button>
 </div>
 
 <div class="period-bar">
@@ -365,6 +366,33 @@ td:last-child{color:var(--accent2);}
   </div>
 
 </div>
+
+<!-- PAGE: DÍAS -->
+<div class="page" id="page-dias">
+
+  <!-- KPIs días -->
+  <div id="dias-kpi-row" class="kpi-row" style="margin-bottom:0"></div>
+
+  <div class="stitle">Ventas por día de la semana</div>
+  <div class="chart-card chart-full" style="margin-bottom:14px">
+    <h3>Ventas € por día · año activo vs comparación</h3>
+    <div style="height:300px"><canvas id="cDias"></canvas></div>
+  </div>
+
+  <div class="stitle">Heatmap · Día × Mes</div>
+  <div class="chart-card chart-full" style="margin-bottom:14px">
+    <h3>Intensidad de ventas por día y mes (€)</h3>
+    <div id="dias-heatmap" style="overflow-x:auto"></div>
+  </div>
+
+  <div class="stitle">Tabla resumen por día</div>
+  <div class="chart-card chart-full">
+    <div style="overflow-x:auto">
+      <table id="dias-tabla" class="rot-table" style="width:100%"></table>
+    </div>
+  </div>
+
+</div>
 </div><!-- /main -->
 
 <script>
@@ -376,6 +404,9 @@ const YEARS = {{YEARS_DATA}};
 const YEAR_COLORS = {'2025':'#7eb5e8','2026':'#a8e8c0'};
 const Q_MONTHS = {1:[1,2,3],2:[4,5,6],3:[7,8,9],4:[10,11,12]};
 const CAT_COLORS = {{CAT_COLORS_DATA}};
+const DIAS = {{DIAS_DATA}};
+const DIAS_NOMBRES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const DIAS_CORTOS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 
 let activeYear = '2026';
 let periodMode = 'all';
@@ -437,7 +468,7 @@ function setPage(p) {
   document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
   document.querySelectorAll('.nav-tab').forEach((b,i) => {
-    const pages = ['overview','canal','productos','rotacion','rentabilidad'];
+    const pages = ['overview','canal','productos','rotacion','rentabilidad','dias'];
     b.classList.toggle('active', pages[i]===p);
   });
   renderCurrentPage();
@@ -797,6 +828,7 @@ function renderCurrentPage() {
   else if(activePage==='productos') renderProducts();
   else if(activePage==='rotacion') renderRotation();
   else if(activePage==='rentabilidad') renderRentabilidad();
+  else if(activePage==='dias') renderDias();
 }
 function renderAll() {
   rebuildPeriodUI();
@@ -1001,6 +1033,157 @@ function renderDescuentos() {
       }
     }
   });
+}
+
+// ── DÍAS DE LA SEMANA ─────────────────────────────────────────────────────────
+function getDiaTotals(yr, months) {
+  const totals = {};
+  for (let d = 0; d < 7; d++) {
+    let euros = 0, tickets = 0;
+    months.forEach(m => {
+      euros += DIAS[yr]?.heatmap?.[String(d)]?.[String(m)] || 0;
+    });
+    // For tickets we need to estimate from the day total proportionally
+    const dayData = DIAS[yr]?.[String(d)] || {};
+    const totalDayEuros = dayData.euros || 0;
+    const totalDayTickets = dayData.tickets || 0;
+    // Sum all heatmap months for this day to get proportion
+    let allMonthsEuros = 0;
+    for (let mm = 1; mm <= 12; mm++) {
+      allMonthsEuros += DIAS[yr]?.heatmap?.[String(d)]?.[String(mm)] || 0;
+    }
+    if (allMonthsEuros > 0 && totalDayTickets > 0) {
+      tickets = Math.round(totalDayTickets * (euros / allMonthsEuros));
+    }
+    const ticket_medio = tickets > 0 ? euros / tickets : 0;
+    totals[d] = { euros: round2(euros), tickets, ticket_medio: round2(ticket_medio) };
+  }
+  return totals;
+}
+
+function renderDias() {
+  if (!DIAS || !DIAS[activeYear]) return;
+  const totals = getDiaTotals(activeYear, activePeriod);
+  const cyr = getCompareYear();
+  const cMonths = getComparePeriod();
+  const cTotals = cyr ? getDiaTotals(cyr, cMonths) : null;
+
+  // Find best/worst day
+  let bestD = 0, worstD = 0, bestE = -1, worstE = Infinity;
+  for (let d = 0; d < 7; d++) {
+    if (totals[d].euros > bestE) { bestE = totals[d].euros; bestD = d; }
+    if (totals[d].euros < worstE && totals[d].euros > 0) { worstE = totals[d].euros; worstD = d; }
+  }
+  if (worstE === Infinity) worstE = 0;
+  const ratio = worstE > 0 ? (bestE / worstE).toFixed(1) : '—';
+  const bestTM = totals[bestD].ticket_medio;
+
+  // KPIs
+  const kpis = [
+    {label:'Mejor día', val:DIAS_NOMBRES[bestD], sub:fmtE(bestE)},
+    {label:'Peor día', val:DIAS_NOMBRES[worstD], sub:fmtE(worstE)},
+    {label:'Ratio mejor/peor', val:ratio+'x', sub:'concentración semanal'},
+    {label:'Ticket medio mejor día', val:fmtE(bestTM), sub:DIAS_NOMBRES[bestD]+' · '+totals[bestD].tickets+' tickets'},
+  ];
+  document.getElementById('dias-kpi-row').innerHTML = kpis.map(k =>
+    `<div class="kpi"><div class="kpi-label">${k.label}</div><div class="kpi-value" style="font-size:22px">${k.val}</div><div class="kpi-compare">${k.sub}</div></div>`
+  ).join('');
+
+  // Bar chart: ventas € por día
+  const labels = DIAS_CORTOS;
+  const vals = Array.from({length:7}, (_,d) => totals[d].euros);
+  const datasets = [{
+    label: activeYear,
+    data: vals,
+    backgroundColor: YEAR_COLORS[activeYear] + '88',
+    borderColor: YEAR_COLORS[activeYear],
+    borderWidth: 1, borderRadius: 4
+  }];
+  if (cTotals) {
+    datasets.push({
+      label: cyr,
+      data: Array.from({length:7}, (_,d) => cTotals[d].euros),
+      backgroundColor: YEAR_COLORS[cyr] + '44',
+      borderColor: YEAR_COLORS[cyr] + 'aa',
+      borderWidth: 1, borderRadius: 4
+    });
+  }
+  destroyChart('cDias');
+  charts['cDias'] = new Chart(document.getElementById('cDias'), {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {...chartBase(),
+      plugins: {...chartBase().plugins,
+        legend: {display: cTotals ? true : false, labels: {color:'#8aa898', font:{family:'DM Mono',size:11}}},
+        tooltip: {...chartBase().plugins.tooltip, callbacks:{label: ctx => ` ${ctx.dataset.label}: ${fmtE(ctx.raw)}`}}
+      },
+      scales: {
+        x: {...chartBase().scales.x},
+        y: {...chartBase().scales.y, ticks:{...chartBase().scales.y.ticks, callback: v => fmtE(v)}}
+      }
+    }
+  });
+
+  // Heatmap: día × mes
+  const hmData = DIAS[activeYear]?.heatmap || {};
+  const avail = availMonths(activeYear);
+  const hmMonths = activePeriod.filter(m => avail.includes(m));
+  let maxVal = 0;
+  for (let d = 0; d < 7; d++) {
+    hmMonths.forEach(m => {
+      const v = hmData[String(d)]?.[String(m)] || 0;
+      if (v > maxVal) maxVal = v;
+    });
+  }
+
+  let hmHtml = '<table style="width:100%;border-collapse:collapse;font-family:\'DM Mono\',monospace;font-size:11px">';
+  hmHtml += '<thead><tr><th style="padding:6px 10px;text-align:left;color:var(--text3);font-weight:500">Día</th>';
+  hmMonths.forEach(m => {
+    hmHtml += `<th style="padding:6px 8px;text-align:center;color:var(--text3);font-weight:500">${MESES[m-1]}</th>`;
+  });
+  hmHtml += '<th style="padding:6px 10px;text-align:right;color:var(--text3);font-weight:500">Total</th></tr></thead><tbody>';
+
+  for (let d = 0; d < 7; d++) {
+    hmHtml += `<tr><td style="padding:6px 10px;color:var(--text);font-weight:500">${DIAS_CORTOS[d]}</td>`;
+    let rowTotal = 0;
+    hmMonths.forEach(m => {
+      const v = hmData[String(d)]?.[String(m)] || 0;
+      rowTotal += v;
+      const intensity = maxVal > 0 ? Math.max(0.08, v / maxVal) : 0;
+      const bg = v > 0 ? `rgba(126,200,160,${intensity.toFixed(2)})` : 'transparent';
+      hmHtml += `<td style="padding:6px 8px;text-align:center;background:${bg};border-radius:3px;color:${intensity>0.5?'#0c0f0e':'var(--text2)'}">${v > 0 ? fmtE(v) : '—'}</td>`;
+    });
+    hmHtml += `<td style="padding:6px 10px;text-align:right;color:var(--accent);font-weight:500">${fmtE(rowTotal)}</td></tr>`;
+  }
+  hmHtml += '</tbody></table>';
+  document.getElementById('dias-heatmap').innerHTML = hmHtml;
+
+  // Tabla resumen
+  const totalEuros = Object.values(totals).reduce((s,v) => s + v.euros, 0);
+  const rows = Array.from({length:7}, (_,d) => ({d, ...totals[d]}))
+    .filter(r => r.euros > 0)
+    .sort((a,b) => b.euros - a.euros);
+
+  let tHtml = '<thead><tr>';
+  ['Día','Ventas €','Tickets','Ticket medio','% del total'].forEach(h => {
+    tHtml += `<th style="padding:8px 12px;text-align:${h==='Día'?'left':'right'};color:var(--text3);font-family:'DM Mono',monospace;font-size:11px;border-bottom:1px solid var(--border)">${h}</th>`;
+  });
+  tHtml += '</tr></thead><tbody>';
+  rows.forEach(r => {
+    const pct = totalEuros > 0 ? (r.euros / totalEuros * 100).toFixed(1) : '0.0';
+    tHtml += `<tr>
+      <td style="padding:8px 12px;color:var(--text);font-weight:500">${DIAS_NOMBRES[r.d]}</td>
+      <td style="padding:8px 12px;text-align:right;color:var(--accent);font-family:'DM Mono',monospace">${fmtE(r.euros)}</td>
+      <td style="padding:8px 12px;text-align:right;color:var(--text2);font-family:'DM Mono',monospace">${r.tickets.toLocaleString('es-ES')}</td>
+      <td style="padding:8px 12px;text-align:right;color:var(--text2);font-family:'DM Mono',monospace">${r.ticket_medio.toFixed(2)}€</td>
+      <td style="padding:8px 12px;text-align:right;font-family:'DM Mono',monospace">
+        <span style="display:inline-block;width:${Math.max(4,parseFloat(pct)/100*80)}px;height:4px;background:var(--accent);border-radius:2px;margin-right:6px;vertical-align:middle"></span>
+        <span style="color:var(--text2)">${pct}%</span>
+      </td>
+    </tr>`;
+  });
+  tHtml += '</tbody>';
+  document.getElementById('dias-tabla').innerHTML = tHtml;
 }
 
 Chart.defaults.color='#4a5f54';

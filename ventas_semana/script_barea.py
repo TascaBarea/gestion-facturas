@@ -1,6 +1,7 @@
 import os
-import subprocess
 import sys
+import logging
+import shutil
 
 # Forzar UTF-8 en stdout/stderr (Windows cp1252 no soporta emojis)
 if sys.stdout.encoding != "utf-8":
@@ -8,21 +9,11 @@ if sys.stdout.encoding != "utf-8":
 if sys.stderr.encoding != "utf-8":
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-# --- AUTO-INSTALACIÓN DE LIBRERÍAS ---
-def install_requirements():
-    libs = ["pandas", "openpyxl", "requests", "python-dotenv", "woocommerce",
-            "matplotlib", "reportlab"]
-    for lib in libs:
-        try:
-            module_name = lib.replace("-", "_")
-            __import__(module_name)
-        except ImportError:
-            print(f"Instalando {lib} para Jaime...")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", lib])
-
-install_requirements()
-
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError:
+    print("ERROR: Faltan dependencias. Ejecuta: pip install -r requirements.txt")
+    sys.exit(1)
 import requests
 from woocommerce import API
 from dotenv import load_dotenv
@@ -30,6 +21,28 @@ from datetime import datetime, timedelta
 
 # Cargar configuración (relativo al script, no al cwd)
 _script_dir = os.path.dirname(os.path.abspath(__file__))
+
+# --- Logging -----------------------------------------------------------
+_logs_dir = os.path.join(os.path.dirname(_script_dir), "outputs", "logs_ventas")
+os.makedirs(_logs_dir, exist_ok=True)
+_log_file = os.path.join(_logs_dir, f"{datetime.now().strftime('%Y-%m-%d')}.log")
+
+log = logging.getLogger("barea")
+log.setLevel(logging.DEBUG)
+
+_fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
+
+_fh = logging.FileHandler(_log_file, encoding="utf-8")
+_fh.setLevel(logging.DEBUG)
+_fh.setFormatter(_fmt)
+log.addHandler(_fh)
+
+_ch = logging.StreamHandler(sys.stdout)
+_ch.setLevel(logging.INFO)
+_ch.setFormatter(logging.Formatter("%(message)s"))
+log.addHandler(_ch)
+# ------------------------------------------------------------------------
+
 _env_path = os.path.join(_script_dir, ".env")
 _env_txt_path = os.path.join(_script_dir, ".env.txt")
 if os.path.exists(_env_path):
@@ -37,13 +50,25 @@ if os.path.exists(_env_path):
 elif os.path.exists(_env_txt_path):
     load_dotenv(_env_txt_path)
 else:
-    print("ERROR: No encuentro el archivo .env")
+    log.error("No encuentro el archivo .env")
 
 PATH_VENTAS = os.getenv("PATH_VENTAS")
 PATH_ARTICULOS = os.getenv("PATH_ARTICULOS")
+PATH_HISTORICO = os.path.join(os.path.dirname(_script_dir), "datos", "Ventas Barea Historico.xlsx")
 
-# Nombres de tienda por token (para el print, no para datos)
+# Nombres de tienda por token
 STORE_NAMES = {"LOY_TOKEN_TASCA": "Tasca", "LOY_TOKEN_COMES": "Comes"}
+
+# Destinatarios email semanal (fácil de ampliar)
+EMAILS_RESUMEN_SEMANAL = ["jaimefermo@gmail.com"]
+
+# Gmail OAuth (reutiliza credenciales del módulo gmail/)
+_GMAIL_DIR = os.path.join(os.path.dirname(_script_dir), "gmail")
+_GMAIL_TOKEN = os.path.join(_GMAIL_DIR, "token.json")
+
+# Backup de Excel antes de escribir
+_BACKUP_DIR = os.path.join(os.path.dirname(_script_dir), "datos", "backups")
+_backed_up = set()  # archivos ya respaldados en esta ejecución
 
 
 def calcular_semana_anterior():
@@ -100,7 +125,7 @@ def fetch_loyverse(token, endpoint, created_at_min=None, created_at_max=None):
                 if response.status_code != 200:
                     break
             elif response.status_code != 200:
-                print(f"  ⚠️ API {endpoint}: HTTP {response.status_code}")
+                log.warning("API %s: HTTP %s", endpoint, response.status_code)
                 break
 
             data = response.json()
@@ -121,7 +146,7 @@ def fetch_loyverse(token, endpoint, created_at_min=None, created_at_max=None):
                 break
 
         except Exception as e:
-            print(f"  ⚠️ Error API {endpoint}: {e}")
+            log.warning("Error API %s: %s", endpoint, e)
             break
 
     return all_results
@@ -132,7 +157,7 @@ def fetch_lookup_data(token):
     Descarga datos de referencia de Loyverse para resolver IDs a nombres:
     stores, pos_devices, employees, customers, categories, payment_types, items.
     """
-    print("  📚 Cargando datos de referencia...")
+    log.info("  Cargando datos de referencia...")
 
     stores = {}
     for s in fetch_loyverse(token, "stores"):
@@ -172,7 +197,7 @@ def fetch_lookup_data(token):
                 'cost': v.get('cost', 0) or 0,
             }
 
-    print(f"     {len(stores)} tiendas, {len(pos_devices)} TPVs, "
+    log.info(f"     {len(stores)} tiendas, {len(pos_devices)} TPVs, "
           f"{len(employees)} empleados, {len(customers)} clientes, "
           f"{len(categories)} categorías, {len(items_by_variant)} variantes")
 
@@ -342,10 +367,45 @@ _COL_RENAMES = {
 }
 
 
+def _verificar_archivo_no_abierto(ruta):
+    """Comprueba que el archivo Excel no esté abierto. Devuelve True si está libre."""
+    if not os.path.exists(ruta):
+        return True
+    try:
+        with open(ruta, 'a'):
+            return True
+    except PermissionError:
+        log.error("El archivo '%s' está abierto en Excel. Ciérralo y reintenta.",
+                  os.path.basename(ruta))
+        return False
+
+
+def _backup_excel(path):
+    """Crea backup del Excel antes de la primera escritura de esta ejecución."""
+    if path in _backed_up or not os.path.exists(path):
+        return
+    os.makedirs(_BACKUP_DIR, exist_ok=True)
+    nombre = os.path.basename(path)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    destino = os.path.join(_BACKUP_DIR, f"{os.path.splitext(nombre)[0]}_{ts}.xlsx")
+    try:
+        shutil.copy2(path, destino)
+        _backed_up.add(path)
+        log.debug("Backup: %s", destino)
+    except Exception as e:
+        log.warning("No se pudo crear backup de %s: %s", nombre, e)
+
+
 def save_to_excel(df, path, sheet_name, unique_col=None):
     """Guarda DataFrame en Excel, acumulando sin duplicados."""
     if df.empty:
         return
+
+    if not _verificar_archivo_no_abierto(path):
+        log.error("ABORTANDO escritura de %s — archivo bloqueado.", sheet_name)
+        return
+
+    _backup_excel(path)
 
     if not os.path.exists(path):
         df.to_excel(path, sheet_name=sheet_name, index=False)
@@ -359,8 +419,8 @@ def save_to_excel(df, path, sheet_name, unique_col=None):
     except ValueError:
         pass  # Hoja no existe todavia, se creara nueva
     except Exception as e:
-        print(f"  ERROR leyendo {sheet_name} de {path}: {e}")
-        print(f"  ABORTANDO escritura para no perder datos existentes.")
+        log.error("Error leyendo %s de %s: %s", sheet_name, path, e)
+        log.error("ABORTANDO escritura para no perder datos existentes.")
         return
 
     if existing_df is not None and not existing_df.empty:
@@ -376,7 +436,7 @@ def save_to_excel(df, path, sheet_name, unique_col=None):
         with pd.ExcelWriter(path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
             combined_df.to_excel(writer, sheet_name=sheet_name, index=False)
     except Exception as e:
-        print(f"Error guardando {sheet_name}: {e}")
+        log.error("Error guardando %s: %s", sheet_name, e)
 
 
 def _strip_html(text):
@@ -397,17 +457,17 @@ def update_articles_history(new_items_raw, path, sheet_name, categories=None, ta
     import re as _re
 
     if not os.path.exists(path):
-        print(f"  ⚠️ No existe {path}, saltando artículos")
+        log.warning("No existe %s, saltando artículos", path)
         return
 
     try:
         old_df = pd.read_excel(path, sheet_name=sheet_name)
     except Exception as e:
-        print(f"  ⚠️ No se pudo leer pestaña '{sheet_name}': {e}")
+        log.warning("No se pudo leer pestaña '%s': %s", sheet_name, e)
         return
 
     if 'REF' not in old_df.columns:
-        print(f"  ⚠️ Pestaña '{sheet_name}' no tiene columna REF")
+        log.warning("Pestaña '%s' no tiene columna REF", sheet_name)
         return
 
     # Buscar columnas dinámicamente
@@ -417,7 +477,7 @@ def update_articles_history(new_items_raw, path, sheet_name, categories=None, ta
     col_existencias = next((c for c in old_df.columns if c.startswith('Existencias')), None)
 
     if not col_precio:
-        print(f"  ⚠️ No se encontró columna 'Precio [...]' en '{sheet_name}'")
+        log.warning("No se encontró columna 'Precio [...]' en '%s'", sheet_name)
         return
 
     # Añadir ESTADO y FECHA_BAJA si no existen
@@ -650,9 +710,723 @@ def update_articles_history(new_items_raw, path, sheet_name, categories=None, ta
         parts.append(f"{precios_actualizados} precios ({', '.join(det)})")
 
     if parts:
-        print(f"  📝 {sheet_name}: {', '.join(parts)}")
+        log.info(f"  {sheet_name}: {', '.join(parts)}")
     else:
-        print(f"  ✅ {sheet_name}: sin cambios")
+        log.info("  %s: sin cambios", sheet_name)
+
+
+def check_iva_anomalies(path, sheet_name):
+    """
+    Detecta anomalías de IVA en artículos tras la actualización semanal:
+    - Artículos con varios tipos de IVA marcados simultáneamente
+    - IVA al 0% (caso excepcional, reportar siempre)
+    - IVA al 21% en categorías donde no debería (solo permitido en
+      VINOS, BODEGA, LICORES, VERMÚS, CACHARRERÍA, BAZAR, EXPERIENCIAS)
+    """
+    import re as _re
+
+    try:
+        df = pd.read_excel(path, sheet_name=sheet_name)
+    except Exception:
+        return
+
+    tax_cols = [c for c in df.columns if c.startswith('impuesto')]
+    if not tax_cols:
+        return
+
+    # Extraer tasa de cada columna IVA
+    tax_col_rates = {}
+    for tc in tax_cols:
+        m = _re.search(r'\((\d+)%\)', tc)
+        if m:
+            tax_col_rates[tc] = int(m.group(1))
+
+    # Keywords de categorías permitidas con 21%
+    CATS_21_KEYWORDS = ['VINO', 'BODEGA', 'LICOR', 'VERM',
+                        'CACHARR', 'BAZAR', 'EXPERIENCIA']
+
+    anomalias = []
+
+    for _, row in df.iterrows():
+        ref = str(row.get('REF', '')).strip()
+        nombre = str(row.get('Nombre', ''))[:50]
+        categoria = str(row.get('Categoria', '') or '')
+        estado = str(row.get('ESTADO', '') or '').strip()
+
+        if estado == 'BAJA' or not ref:
+            continue
+
+        # IVAs activos
+        ivas = [tax_col_rates[tc] for tc in tax_cols
+                if row.get(tc) == 'Y' and tc in tax_col_rates]
+
+        # Multi-IVA
+        if len(ivas) > 1:
+            anomalias.append(f"MULTI-IVA: {ref} {nombre} - IVAs: {ivas}")
+
+        # IVA 0% (único)
+        if ivas == [0]:
+            anomalias.append(f"IVA 0%: {ref} {nombre} ({categoria})")
+
+        # IVA 21% fuera de categorías permitidas
+        if 21 in ivas and len(ivas) == 1:
+            cat_upper = categoria.upper()
+            if not any(kw in cat_upper for kw in CATS_21_KEYWORDS):
+                anomalias.append(
+                    f"IVA 21% SOSPECHOSO: {ref} {nombre} ({categoria})")
+
+    if anomalias:
+        log.warning("%s: %d anomalías IVA:", sheet_name, len(anomalias))
+        for a in anomalias:
+            log.warning("    - %s", a)
+    else:
+        log.info("  %s: IVA sin anomalías", sheet_name)
+
+
+def _to_float(val):
+    """Convierte a float, soportando formato español ('3,51') y NaN."""
+    if pd.isna(val):
+        return 0.0
+    if isinstance(val, (int, float)):
+        return float(val)
+    s = str(val).strip()
+    if not s:
+        return 0.0
+    return float(s.replace(",", "."))
+
+
+def _fmt_eur(n):
+    """Formatea número como moneda española: x.xxx,xx €"""
+    s = f"{abs(n):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{'-' if n < 0 else ''}{s} €"
+
+
+def _fmt_num(n):
+    """Formatea entero con separador de miles."""
+    return f"{int(n):,}".replace(",", ".")
+
+
+def _pct_var(actual, anterior):
+    """Calcula variación porcentual. Devuelve None si anterior es 0."""
+    if not anterior or anterior == 0:
+        return None
+    return (actual - anterior) / anterior * 100
+
+
+def _var_html(pct):
+    """Genera HTML de variación con flecha y color."""
+    if pct is None:
+        return '<span style="color:#999">—</span>'
+    color = "#155724" if pct >= 0 else "#721C24"
+    bg = "#D4EDDA" if pct >= 0 else "#F8D7DA"
+    arrow = "▲" if pct >= 0 else "▼"
+    return (f'<span style="color:{color};background:{bg};padding:2px 6px;'
+            f'border-radius:3px;font-size:12px">{arrow} {abs(pct):.1f}%</span>')
+
+
+def _cargar_items_historico(tienda):
+    """
+    Carga todos los Items de una tienda (Tasca o Comestibles) de todos los años.
+    Devuelve un único DataFrame con columnas normalizadas a float.
+    """
+    hojas = []
+
+    # Histórico (2023, 2024, 2025)
+    if os.path.exists(PATH_HISTORICO):
+        xl = pd.ExcelFile(PATH_HISTORICO)
+        prefijo = "Tasca" if tienda == "Tasca" else "Comestibles"
+        for s in xl.sheet_names:
+            if s.startswith(f"{prefijo}Item"):
+                df = pd.read_excel(PATH_HISTORICO, sheet_name=s)
+                hojas.append(df)
+
+    # Año actual
+    if os.path.exists(PATH_VENTAS):
+        sheet_actual = f"{tienda}Items" if tienda == "Tasca" else "ComesItems"
+        try:
+            df = pd.read_excel(PATH_VENTAS, sheet_name=sheet_actual)
+            hojas.append(df)
+        except Exception:
+            pass
+
+    if not hojas:
+        return pd.DataFrame()
+
+    df_all = pd.concat(hojas, ignore_index=True)
+
+    # Normalizar columnas numéricas (formato español en datos 2024)
+    for col in ['Ventas netas', 'Cantidad', 'Ventas brutas', 'Descuentos',
+                'Costo de los bienes', 'Beneficio bruto', 'Impuestos']:
+        if col in df_all.columns:
+            df_all[col] = df_all[col].apply(_to_float)
+
+    # Asegurar Fecha como datetime
+    df_all['Fecha'] = pd.to_datetime(df_all['Fecha'], errors='coerce')
+
+    return df_all
+
+
+def _cargar_recibos_historico(tienda):
+    """Carga todos los Recibos de una tienda de todos los años."""
+    hojas = []
+
+    if os.path.exists(PATH_HISTORICO):
+        xl = pd.ExcelFile(PATH_HISTORICO)
+        prefijo = "Tasca" if tienda == "Tasca" else "Comestibles"
+        for s in xl.sheet_names:
+            if s.startswith(f"{prefijo}Recibos"):
+                df = pd.read_excel(PATH_HISTORICO, sheet_name=s)
+                hojas.append(df)
+
+    if os.path.exists(PATH_VENTAS):
+        sheet_actual = f"{tienda}Recibos" if tienda == "Tasca" else "ComesRecibos"
+        try:
+            df = pd.read_excel(PATH_VENTAS, sheet_name=sheet_actual)
+            hojas.append(df)
+        except Exception:
+            pass
+
+    if not hojas:
+        return pd.DataFrame()
+
+    df_all = pd.concat(hojas, ignore_index=True)
+    for col in ['Ventas netas', 'Ventas brutas', 'Descuentos', 'Total recaudado',
+                'Costo de los bienes', 'Beneficio bruto', 'Impuestos']:
+        if col in df_all.columns:
+            df_all[col] = df_all[col].apply(_to_float)
+    df_all['Fecha'] = pd.to_datetime(df_all['Fecha'], errors='coerce')
+    return df_all
+
+
+def _filtrar_semana(df, lunes, domingo):
+    """Filtra DataFrame por rango de fechas (lunes a domingo)."""
+    mask = (df['Fecha'].dt.date >= lunes) & (df['Fecha'].dt.date <= domingo)
+    return df[mask]
+
+
+def _filtrar_ytd(df, hasta_fecha):
+    """Filtra desde 1 de enero del año de hasta_fecha hasta hasta_fecha inclusive."""
+    year = hasta_fecha.year
+    inicio = datetime(year, 1, 1).date()
+    mask = (df['Fecha'].dt.date >= inicio) & (df['Fecha'].dt.date <= hasta_fecha)
+    return df[mask]
+
+
+def _semana_equivalente_año_anterior(lunes, domingo):
+    """Calcula la semana equivalente del año anterior (misma semana ISO)."""
+    iso_year, iso_week, _ = lunes.isocalendar()
+    from datetime import date
+    # Primer jueves del año anterior determina semana 1
+    jan4 = date(iso_year - 1, 1, 4)
+    start_week1 = jan4 - timedelta(days=jan4.weekday())
+    lunes_ant = start_week1 + timedelta(weeks=iso_week - 1)
+    domingo_ant = lunes_ant + timedelta(days=6)
+    return lunes_ant, domingo_ant
+
+
+def _calcular_resumen_tienda(tienda, lunes, domingo):
+    """
+    Calcula resumen completo para una tienda:
+    - Semana actual vs semana anterior vs misma semana año anterior
+    - YTD actual vs YTD año anterior
+    - Top 10 productos por facturación y por unidades
+    """
+    df_items = _cargar_items_historico(tienda)
+    df_recibos = _cargar_recibos_historico(tienda)
+
+    if df_items.empty or df_recibos.empty:
+        return None
+
+    # Semana actual
+    items_sem = _filtrar_semana(df_items, lunes, domingo)
+    recibos_sem = _filtrar_semana(df_recibos, lunes, domingo)
+
+    # Semana anterior
+    lunes_prev = lunes - timedelta(days=7)
+    domingo_prev = lunes - timedelta(days=1)
+    items_prev = _filtrar_semana(df_items, lunes_prev, domingo_prev)
+    recibos_prev = _filtrar_semana(df_recibos, lunes_prev, domingo_prev)
+
+    # Misma semana año anterior
+    lunes_ya, domingo_ya = _semana_equivalente_año_anterior(lunes, domingo)
+    items_ya = _filtrar_semana(df_items, lunes_ya, domingo_ya)
+    recibos_ya = _filtrar_semana(df_recibos, lunes_ya, domingo_ya)
+
+    # YTD actual (hasta domingo de la semana procesada)
+    items_ytd = _filtrar_ytd(df_items, domingo)
+    recibos_ytd = _filtrar_ytd(df_recibos, domingo)
+
+    # YTD año anterior (mismo rango)
+    domingo_ya_ytd = domingo.replace(year=domingo.year - 1)
+    items_ytd_ya = _filtrar_ytd(df_items, domingo_ya_ytd)
+    recibos_ytd_ya = _filtrar_ytd(df_recibos, domingo_ya_ytd)
+
+    def kpis(items_df, recibos_df):
+        ventas = items_df['Ventas netas'].sum() if not items_df.empty else 0
+        tickets = recibos_df['Número de recibo'].nunique() if not recibos_df.empty else 0
+        ticket_medio = ventas / tickets if tickets > 0 else 0
+        return {'ventas': ventas, 'tickets': tickets, 'ticket_medio': ticket_medio}
+
+    sem = kpis(items_sem, recibos_sem)
+    prev = kpis(items_prev, recibos_prev)
+    ya = kpis(items_ya, recibos_ya)
+    ytd = kpis(items_ytd, recibos_ytd)
+    ytd_ya = kpis(items_ytd_ya, recibos_ytd_ya)
+
+    # Top 10 por facturación
+    top_eur = pd.DataFrame()
+    if not items_sem.empty:
+        top_eur = (items_sem.groupby('Artículo')
+                   .agg(ventas=('Ventas netas', 'sum'), cantidad=('Cantidad', 'sum'))
+                   .sort_values('ventas', ascending=False)
+                   .head(10))
+        # Añadir variación vs semana anterior y año anterior
+        if not items_prev.empty:
+            prev_grp = items_prev.groupby('Artículo')['Ventas netas'].sum()
+            top_eur['ventas_prev'] = top_eur.index.map(lambda x: prev_grp.get(x, 0))
+        else:
+            top_eur['ventas_prev'] = 0
+        if not items_ya.empty:
+            ya_grp = items_ya.groupby('Artículo')['Ventas netas'].sum()
+            top_eur['ventas_ya'] = top_eur.index.map(lambda x: ya_grp.get(x, 0))
+        else:
+            top_eur['ventas_ya'] = 0
+
+    # Top 10 por unidades
+    top_uds = pd.DataFrame()
+    if not items_sem.empty:
+        top_uds = (items_sem.groupby('Artículo')
+                   .agg(cantidad=('Cantidad', 'sum'), ventas=('Ventas netas', 'sum'))
+                   .sort_values('cantidad', ascending=False)
+                   .head(10))
+        if not items_prev.empty:
+            prev_grp_q = items_prev.groupby('Artículo')['Cantidad'].sum()
+            top_uds['cantidad_prev'] = top_uds.index.map(lambda x: prev_grp_q.get(x, 0))
+        else:
+            top_uds['cantidad_prev'] = 0
+        if not items_ya.empty:
+            ya_grp_q = items_ya.groupby('Artículo')['Cantidad'].sum()
+            top_uds['cantidad_ya'] = top_uds.index.map(lambda x: ya_grp_q.get(x, 0))
+        else:
+            top_uds['cantidad_ya'] = 0
+
+    # WooCommerce
+    wc_ventas = 0
+    wc_pedidos = 0
+    if tienda == "Comes" and os.path.exists(PATH_VENTAS):
+        try:
+            df_wc = pd.read_excel(PATH_VENTAS, sheet_name="WOOCOMMERCE")
+            if 'date_created' in df_wc.columns:
+                df_wc['Fecha'] = pd.to_datetime(df_wc['date_created'], errors='coerce')
+                wc_sem = _filtrar_semana(df_wc, lunes, domingo)
+                wc_pedidos = len(wc_sem)
+                if 'total' in df_wc.columns:
+                    wc_ventas = wc_sem['total'].apply(_to_float).sum()
+        except Exception:
+            pass
+
+    return {
+        'sem': sem, 'prev': prev, 'ya': ya,
+        'ytd': ytd, 'ytd_ya': ytd_ya,
+        'top_eur': top_eur, 'top_uds': top_uds,
+        'lunes_prev': lunes_prev, 'domingo_prev': domingo_prev,
+        'lunes_ya': lunes_ya, 'domingo_ya': domingo_ya,
+        'wc_ventas': wc_ventas, 'wc_pedidos': wc_pedidos,
+    }
+
+
+def _generar_html_email(lunes, domingo, datos_tasca, datos_comes):
+    """Genera el HTML del email de resumen semanal."""
+
+    def _seccion_kpis(titulo, color, d):
+        """Genera HTML de KPIs para una tienda."""
+        if d is None:
+            return f'<h2 style="color:{color}">{titulo}</h2><p>Sin datos esta semana</p>'
+
+        sem, prev, ya = d['sem'], d['prev'], d['ya']
+        ytd, ytd_ya = d['ytd'], d['ytd_ya']
+
+        html = f'''
+        <h2 style="color:{color};border-bottom:2px solid {color};padding-bottom:5px;margin-top:25px">
+            {titulo}
+        </h2>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:15px">
+            <tr style="background:#F7F8FA">
+                <th style="text-align:left;padding:8px;border:1px solid #DDD;width:25%"></th>
+                <th style="text-align:right;padding:8px;border:1px solid #DDD;width:25%">Esta semana</th>
+                <th style="text-align:center;padding:8px;border:1px solid #DDD;width:25%">vs Sem. anterior</th>
+                <th style="text-align:center;padding:8px;border:1px solid #DDD;width:25%">vs Año anterior</th>
+            </tr>
+            <tr>
+                <td style="padding:8px;border:1px solid #DDD;font-weight:bold">Ventas netas</td>
+                <td style="text-align:right;padding:8px;border:1px solid #DDD;font-size:16px;font-weight:bold">{_fmt_eur(sem['ventas'])}</td>
+                <td style="text-align:center;padding:8px;border:1px solid #DDD">{_var_html(_pct_var(sem['ventas'], prev['ventas']))}</td>
+                <td style="text-align:center;padding:8px;border:1px solid #DDD">{_var_html(_pct_var(sem['ventas'], ya['ventas']))}</td>
+            </tr>
+            <tr style="background:#F7F8FA">
+                <td style="padding:8px;border:1px solid #DDD;font-weight:bold">Tickets</td>
+                <td style="text-align:right;padding:8px;border:1px solid #DDD;font-size:16px;font-weight:bold">{_fmt_num(sem['tickets'])}</td>
+                <td style="text-align:center;padding:8px;border:1px solid #DDD">{_var_html(_pct_var(sem['tickets'], prev['tickets']))}</td>
+                <td style="text-align:center;padding:8px;border:1px solid #DDD">{_var_html(_pct_var(sem['tickets'], ya['tickets']))}</td>
+            </tr>
+            <tr>
+                <td style="padding:8px;border:1px solid #DDD;font-weight:bold">Ticket medio</td>
+                <td style="text-align:right;padding:8px;border:1px solid #DDD;font-size:16px;font-weight:bold">{_fmt_eur(sem['ticket_medio'])}</td>
+                <td style="text-align:center;padding:8px;border:1px solid #DDD">{_var_html(_pct_var(sem['ticket_medio'], prev['ticket_medio']))}</td>
+                <td style="text-align:center;padding:8px;border:1px solid #DDD">{_var_html(_pct_var(sem['ticket_medio'], ya['ticket_medio']))}</td>
+            </tr>
+        </table>
+
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+            <tr style="background:{color}20">
+                <th style="text-align:left;padding:8px;border:1px solid #DDD;width:25%">YTD {domingo.year}</th>
+                <th style="text-align:right;padding:8px;border:1px solid #DDD;width:25%">Acumulado</th>
+                <th style="text-align:center;padding:8px;border:1px solid #DDD;width:25%" colspan="2">vs YTD {domingo.year - 1}</th>
+            </tr>
+            <tr>
+                <td style="padding:8px;border:1px solid #DDD;font-weight:bold">Ventas netas</td>
+                <td style="text-align:right;padding:8px;border:1px solid #DDD;font-weight:bold">{_fmt_eur(ytd['ventas'])}</td>
+                <td style="text-align:center;padding:8px;border:1px solid #DDD" colspan="2">{_var_html(_pct_var(ytd['ventas'], ytd_ya['ventas']))}</td>
+            </tr>
+            <tr style="background:#F7F8FA">
+                <td style="padding:8px;border:1px solid #DDD;font-weight:bold">Tickets</td>
+                <td style="text-align:right;padding:8px;border:1px solid #DDD;font-weight:bold">{_fmt_num(ytd['tickets'])}</td>
+                <td style="text-align:center;padding:8px;border:1px solid #DDD" colspan="2">{_var_html(_pct_var(ytd['tickets'], ytd_ya['tickets']))}</td>
+            </tr>
+        </table>'''
+        return html
+
+    def _tabla_top10(titulo, df_top, col_valor, col_prev, col_ya, fmt_fn):
+        """Genera tabla HTML de top 10 productos."""
+        if df_top.empty:
+            return ''
+        rows = ''
+        for i, (nombre, row) in enumerate(df_top.iterrows()):
+            bg = 'background:#F7F8FA;' if i % 2 == 1 else ''
+            val = row[col_valor]
+            val_prev = row.get(col_prev, 0)
+            val_ya = row.get(col_ya, 0)
+            nombre_corto = str(nombre)[:35]
+            rows += f'''
+            <tr style="{bg}">
+                <td style="padding:6px 8px;border:1px solid #DDD;text-align:center">{i+1}</td>
+                <td style="padding:6px 8px;border:1px solid #DDD">{nombre_corto}</td>
+                <td style="text-align:right;padding:6px 8px;border:1px solid #DDD;font-weight:bold">{fmt_fn(val)}</td>
+                <td style="text-align:center;padding:6px 8px;border:1px solid #DDD">{_var_html(_pct_var(val, val_prev))}</td>
+                <td style="text-align:center;padding:6px 8px;border:1px solid #DDD">{_var_html(_pct_var(val, val_ya))}</td>
+            </tr>'''
+        return f'''
+        <h3 style="margin:15px 0 5px;color:#555">{titulo}</h3>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:15px;font-size:13px">
+            <tr style="background:#F7F8FA">
+                <th style="padding:6px 8px;border:1px solid #DDD;width:5%">#</th>
+                <th style="text-align:left;padding:6px 8px;border:1px solid #DDD;width:35%">Producto</th>
+                <th style="text-align:right;padding:6px 8px;border:1px solid #DDD;width:20%">Valor</th>
+                <th style="text-align:center;padding:6px 8px;border:1px solid #DDD;width:20%">vs Sem.ant</th>
+                <th style="text-align:center;padding:6px 8px;border:1px solid #DDD;width:20%">vs Año ant</th>
+            </tr>
+            {rows}
+        </table>'''
+
+    # Construir email completo
+    sem_str = f"{lunes.strftime('%d/%m/%Y')} — {domingo.strftime('%d/%m/%Y')}"
+
+    html = f'''<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family:Calibri,Arial,sans-serif;max-width:700px;margin:0 auto;color:#333">
+    <div style="background:#1B2A4A;padding:20px;text-align:center;border-radius:8px 8px 0 0">
+        <h1 style="color:white;margin:0;font-size:22px">Resumen Semanal de Ventas</h1>
+        <p style="color:#B8C5D9;margin:5px 0 0;font-size:14px">{sem_str}</p>
+    </div>
+    <div style="padding:20px;border:1px solid #DDD;border-top:none;border-radius:0 0 8px 8px">
+'''
+
+    # TASCA
+    html += _seccion_kpis("TASCA BAREA", "#1B2A4A", datos_tasca)
+    if datos_tasca and not datos_tasca['top_eur'].empty:
+        html += _tabla_top10("Top 10 por facturación", datos_tasca['top_eur'],
+                             'ventas', 'ventas_prev', 'ventas_ya', _fmt_eur)
+        html += _tabla_top10("Top 10 por unidades", datos_tasca['top_uds'],
+                             'cantidad', 'cantidad_prev', 'cantidad_ya',
+                             lambda x: f"{x:,.1f}".replace(",", "."))
+
+    # COMESTIBLES
+    html += _seccion_kpis("COMESTIBLES BAREA", "#1B5E20", datos_comes)
+    if datos_comes and not datos_comes['top_eur'].empty:
+        html += _tabla_top10("Top 10 por facturación", datos_comes['top_eur'],
+                             'ventas', 'ventas_prev', 'ventas_ya', _fmt_eur)
+        html += _tabla_top10("Top 10 por unidades", datos_comes['top_uds'],
+                             'cantidad', 'cantidad_prev', 'cantidad_ya',
+                             lambda x: f"{x:,.1f}".replace(",", "."))
+
+    # WOOCOMMERCE
+    if datos_comes and datos_comes['wc_pedidos'] > 0:
+        html += f'''
+        <h3 style="margin:15px 0 5px;color:#555">WooCommerce</h3>
+        <p>{datos_comes['wc_pedidos']} pedidos — {_fmt_eur(datos_comes['wc_ventas'])}</p>'''
+
+    html += f'''
+        <hr style="border:none;border-top:1px solid #DDD;margin:20px 0">
+        <p style="color:#999;font-size:11px;text-align:center">
+            Generado automáticamente el {datetime.now().strftime('%d/%m/%Y %H:%M')}
+            por script_barea.py
+        </p>
+    </div>
+</body>
+</html>'''
+
+    return html
+
+
+def _conectar_gmail_envio():
+    """Conecta con Gmail API para envío. Devuelve service o None."""
+    try:
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
+        from googleapiclient.discovery import build
+    except ImportError:
+        log.warning("google-auth/google-api-python-client no instalados")
+        return None
+
+    if not os.path.exists(_GMAIL_TOKEN):
+        log.warning("No existe %s", _GMAIL_TOKEN)
+        return None
+
+    scopes = [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/gmail.modify",
+    ]
+    creds = Credentials.from_authorized_user_file(_GMAIL_TOKEN, scopes)
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            with open(_GMAIL_TOKEN, "w") as f:
+                f.write(creds.to_json())
+        else:
+            log.warning("Credenciales Gmail expiradas")
+            return None
+
+    return build("gmail", "v1", credentials=creds)
+
+
+def enviar_email_semanal(lunes, domingo):
+    """
+    Genera y envía el email de resumen semanal con:
+    - KPIs Tasca + Comestibles (ventas, tickets, ticket medio)
+    - Comparativa vs semana anterior y misma semana año anterior
+    - YTD vs YTD año anterior
+    - Top 10 productos por facturación y por unidades
+    - WooCommerce si hubo pedidos
+    """
+    import base64
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
+    log.info("Generando resumen semanal por email...")
+
+    # Calcular datos
+    datos_tasca = _calcular_resumen_tienda("Tasca", lunes, domingo)
+    datos_comes = _calcular_resumen_tienda("Comes", lunes, domingo)
+
+    if datos_tasca is None and datos_comes is None:
+        log.info("  Sin datos de ventas, no se envía email")
+        return
+
+    # Generar HTML
+    html = _generar_html_email(lunes, domingo, datos_tasca, datos_comes)
+
+    # Conectar y enviar
+    service = _conectar_gmail_envio()
+    if not service:
+        log.warning("No se pudo conectar con Gmail para enviar resumen")
+        return
+
+    sem_str = f"{lunes.strftime('%d/%m')} - {domingo.strftime('%d/%m/%Y')}"
+    asunto = f"Resumen Ventas Semanal ({sem_str})"
+
+    for email_dest in EMAILS_RESUMEN_SEMANAL:
+        try:
+            message = MIMEMultipart("mixed")
+            message["To"] = email_dest
+            message["Subject"] = asunto
+            message.attach(MIMEText(html, "html"))
+            raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
+            service.users().messages().send(userId="me", body={"raw": raw}).execute()
+            log.info("  Email enviado a %s", email_dest)
+        except Exception as e:
+            log.error("Error enviando a %s: %s", email_dest, e)
+
+
+def _parse_gbp_num(s):
+    """Convierte '28.276' a int."""
+    return int(s.replace('.', '').replace(',', ''))
+
+
+def _parse_gbp_email(html, subject):
+    """
+    Parsea el HTML del email mensual de Google Business Profile.
+    Extrae: interacciones, llamadas, chat, indicaciones, visitas web,
+    vistas perfil, búsquedas, menú (con variaciones %), top 3 búsquedas.
+    """
+    import re as _re
+
+    MESES = {'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5,
+             'junio': 6, 'julio': 7, 'agosto': 8, 'septiembre': 9,
+             'octubre': 10, 'noviembre': 11, 'diciembre': 12}
+
+    ms = _re.search(r'de (\w+) de (\d{4})', subject)
+    if not ms:
+        return None
+    mes = MESES.get(ms.group(1).lower())
+    anio = int(ms.group(2))
+    if not mes:
+        return None
+
+    # Limpiar HTML a texto con separadores
+    text = _re.sub(r'<[^>]+>', '|', html)
+    text = _re.sub(r'[\n\r\t ]+', ' ', text)
+    text = _re.sub(r'\|[\s|]+\|', '|', text)
+    text = _re.sub(r'\|+', '|', text)
+    text = _re.sub(r'\| \|', '|', text)
+
+    def _extract(label_pattern):
+        """Extrae valor numérico + variación% asociada a una métrica."""
+        p = r'([\d.,]+) \| (?:usuarios han solicitado )?' + label_pattern
+        m = _re.search(p, text, _re.IGNORECASE)
+        val = _parse_gbp_num(m.group(1)) if m else None
+        var = None
+        if m:
+            after = text[m.end():m.end()+50]
+            mv = _re.search(r'([+-]\d+)%', after)
+            var = int(mv.group(1)) if mv else None
+        return val, var
+
+    # Interacciones
+    mi = _re.search(r'conseguiste\s+([\d.]+)\s+interacciones', text)
+    interacciones = _parse_gbp_num(mi.group(1)) if mi else None
+
+    llamadas, _ = _extract(r'llamadas')
+    chat, _ = _extract(r'clics en el chat')
+    indicaciones, ind_v = _extract(r'(?:usuarios han solicitado )?indicaciones')
+    web, web_v = _extract(r'visitas al sitio web')
+    vistas, vis_v = _extract(r'vistas del perfil')
+    busq, busq_v = _extract(r'b[uú]squedas')
+    menu, menu_v = _extract(r'visualizaciones del men[uú]')
+
+    # Top 3 búsquedas: buscar en texto limpio "rank | term | volumen"
+    # Usar texto con pipes menos agresivo para preservar estructura
+    text2 = _re.sub(r'<[^>]+>', '|', html)
+    text2 = _re.sub(r'[\n\r\t ]+', ' ', text2)
+    text2 = _re.sub(r'(\| )+', '|', text2)
+    tops = _re.findall(r'\|(\d) \|([a-zA-ZáéíóúñüÁÉÍÓÚÑÜ ]+)\|([\d.]+) \|', text2)
+    if not tops:
+        tops = _re.findall(r'\|(\d)\|([a-zA-ZáéíóúñüÁÉÍÓÚÑÜ ]+)\|([\d.]+)\|', text2)
+
+    top3 = []
+    for _, term, vol in tops[:3]:
+        term = term.strip()
+        if term:
+            top3.append((term, _parse_gbp_num(vol)))
+
+    return {
+        'Mes': mes, 'Anio': anio, 'Interacciones': interacciones,
+        'Llamadas': llamadas, 'Chat': chat,
+        'Indicaciones': indicaciones, 'Indicaciones_Var': ind_v,
+        'Visitas_Web': web, 'Visitas_Web_Var': web_v,
+        'Vistas_Perfil': vistas, 'Vistas_Perfil_Var': vis_v,
+        'Busquedas': busq, 'Busquedas_Var': busq_v,
+        'Menu': menu, 'Menu_Var': menu_v,
+        'Top1_Busqueda': top3[0][0] if len(top3) > 0 else None,
+        'Top1_Volumen': top3[0][1] if len(top3) > 0 else None,
+        'Top2_Busqueda': top3[1][0] if len(top3) > 1 else None,
+        'Top2_Volumen': top3[1][1] if len(top3) > 1 else None,
+        'Top3_Busqueda': top3[2][0] if len(top3) > 2 else None,
+        'Top3_Volumen': top3[2][1] if len(top3) > 2 else None,
+    }
+
+
+def recoger_google_business(target_year):
+    """
+    Lee emails de Google Business Profile del último año, parsea métricas
+    y guarda en pestaña GoogleBusiness del Excel de ventas.
+    Se ejecuta el 1er lunes del mes (junto con dashboard mensual).
+    """
+    import base64 as _b64
+
+    log.info("Recogiendo datos de Google Business Profile...")
+
+    service = _conectar_gmail_envio()
+    if not service:
+        log.warning("No se pudo conectar con Gmail")
+        return
+
+    def _find_html(payload):
+        if payload.get('mimeType') == 'text/html' and payload.get('body', {}).get('data'):
+            return _b64.urlsafe_b64decode(payload['body']['data']).decode('utf-8')
+        for part in payload.get('parts', []):
+            r = _find_html(part)
+            if r:
+                return r
+        return None
+
+    # Buscar emails de informe GBP
+    results = service.users().messages().list(
+        userId='me',
+        q='subject:"informe de rendimiento" Tasca Barea newer_than:2y',
+        maxResults=30
+    ).execute()
+
+    all_data = []
+    seen = set()
+    for m in results.get('messages', []):
+        msg = service.users().messages().get(userId='me', id=m['id'], format='full').execute()
+        headers = {h['name']: h['value'] for h in msg['payload']['headers']}
+        subject = headers.get('Subject', '')
+
+        html = _find_html(msg['payload'])
+        if not html:
+            continue
+
+        data = _parse_gbp_email(html, subject)
+        if data:
+            key = (data['Mes'], data['Anio'])
+            if key not in seen:
+                seen.add(key)
+                all_data.append(data)
+
+    if not all_data:
+        log.info("  No se encontraron emails de Google Business Profile")
+        return
+
+    # Filtrar por año objetivo
+    datos_anio = [d for d in all_data if d['Anio'] == target_year]
+
+    if not datos_anio:
+        log.info("  No hay datos de %s", target_year)
+        return
+
+    # Crear DataFrame y guardar
+    df = pd.DataFrame(datos_anio)
+    df = df.sort_values(['Anio', 'Mes'])
+
+    # Columnas en orden
+    col_order = ['Mes', 'Anio', 'Interacciones', 'Llamadas', 'Chat',
+                 'Indicaciones', 'Indicaciones_Var',
+                 'Visitas_Web', 'Visitas_Web_Var',
+                 'Vistas_Perfil', 'Vistas_Perfil_Var',
+                 'Busquedas', 'Busquedas_Var',
+                 'Menu', 'Menu_Var',
+                 'Top1_Busqueda', 'Top1_Volumen',
+                 'Top2_Busqueda', 'Top2_Volumen',
+                 'Top3_Busqueda', 'Top3_Volumen']
+    df = df[[c for c in col_order if c in df.columns]]
+
+    save_to_excel(df, PATH_VENTAS, "GoogleBusiness", unique_col="Mes")
+    log.info("  %d meses guardados en GoogleBusiness", len(datos_anio))
+    for d in sorted(datos_anio, key=lambda x: x['Mes']):
+        log.info("    %02d/%d: %s interacciones, %s indicaciones, %s búsquedas",
+                 d['Mes'], d['Anio'], d['Interacciones'], d['Indicaciones'], d['Busquedas'])
 
 
 def main():
@@ -660,9 +1434,8 @@ def main():
     desde_iso = f"{lunes}T00:00:00.000Z"
     hasta_iso = f"{domingo}T23:59:59.999Z"
 
-    print(f"--- Carga Barea: {datetime.now().strftime('%Y-%m-%d %H:%M')} ---")
-    print(f"📅 Semana: {lunes.strftime('%d/%m/%Y')} (lun) a {domingo.strftime('%d/%m/%Y')} (dom)")
-    print()
+    log.info("--- Carga Barea: %s ---", datetime.now().strftime('%Y-%m-%d %H:%M'))
+    log.info("Semana: %s (lun) a %s (dom)", lunes.strftime('%d/%m/%Y'), domingo.strftime('%d/%m/%Y'))
 
     # 1. WOOCOMMERCE (filtrado por semana)
     try:
@@ -685,11 +1458,11 @@ def main():
         if all_orders:
             df_wc = pd.json_normalize(all_orders)
             save_to_excel(df_wc, PATH_VENTAS, "WOOCOMMERCE", unique_col="id")
-            print(f"✅ WooCommerce: {len(all_orders)} pedidos")
+            log.info("WooCommerce: %d pedidos", len(all_orders))
         else:
-            print(f"✅ WooCommerce: sin pedidos esta semana")
+            log.info("WooCommerce: sin pedidos esta semana")
     except Exception as e:
-        print(f"❌ Error en WooCommerce: {e}")
+        log.error("Error en WooCommerce: %s", e)
 
     # 2. LOYVERSE (Tasca y Comestibles)
     stores = [("Tasca", "LOY_TOKEN_TASCA"), ("Comes", "LOY_TOKEN_COMES")]
@@ -698,33 +1471,33 @@ def main():
         if not token:
             continue
 
-        print(f"\n{'='*40}")
-        print(f"📍 {name}")
-        print(f"{'='*40}")
+        log.info("=" * 40)
+        log.info(name)
+        log.info("=" * 40)
 
         # Cargar datos de referencia (tiendas, TPVs, empleados, clientes, etc.)
         lookups = fetch_lookup_data(token)
 
         # Descargar recibos de la semana
-        print(f"  📥 Descargando recibos...")
+        log.info("  Descargando recibos...")
         receipts = fetch_loyverse(token, "receipts",
                                   created_at_min=desde_iso,
                                   created_at_max=hasta_iso)
 
         if receipts:
-            print(f"     {len(receipts)} recibos descargados")
+            log.info("     %d recibos descargados", len(receipts))
             df_recibos, df_items = procesar_recibos(receipts, lookups)
 
             save_to_excel(df_recibos, PATH_VENTAS, f"{name}Recibos", "Número de recibo")
             save_to_excel(df_items, PATH_VENTAS, f"{name}Items", "unique_id")
 
-            print(f"  ✅ {len(df_recibos)} recibos, {len(df_items)} items guardados")
+            log.info("  %d recibos, %d items guardados", len(df_recibos), len(df_items))
         else:
-            print(f"  ✅ Sin recibos esta semana")
+            log.info("  Sin recibos esta semana")
 
         # 3. ACTUALIZAR ARTÍCULOS (siempre)
         sheet_articulos = "Tasca" if name == "Tasca" else "Comestibles"
-        print(f"  📦 Descargando artículos e impuestos...")
+        log.info("  Descargando artículos e impuestos...")
         items_list = fetch_loyverse(token, "items")
         taxes_raw = fetch_loyverse(token, "taxes")
         taxes_by_id = {}
@@ -734,6 +1507,9 @@ def main():
             update_articles_history(items_list, PATH_ARTICULOS, sheet_articulos,
                                     categories=lookups['categories'],
                                     taxes_by_id=taxes_by_id)
+
+        # 3b. CHEQUEO ANOMALÍAS IVA (tras actualizar artículos)
+        check_iva_anomalies(PATH_ARTICULOS, sheet_articulos)
 
     # 4. REGENERAR DASHBOARDS (Comestibles + Tasca)
     dashboard_mensual = "--dashboard-mensual" in sys.argv
@@ -748,13 +1524,25 @@ def main():
             solo_meses_cerrados=dashboard_mensual,
             enviar_email=dashboard_mensual,
         )
-        print("Dashboards regenerados"
-              + (" (mensual + PDF + email)" if dashboard_mensual else ""))
+        log.info("Dashboards regenerados%s",
+                 " (mensual + PDF + email)" if dashboard_mensual else "")
     except Exception as e:
-        print(f"Error regenerando dashboards: {e}")
+        log.error("Error regenerando dashboards: %s", e)
 
-    print()
-    print("--- Proceso Finalizado ---")
+    # 5. GOOGLE BUSINESS PROFILE (1er lunes del mes)
+    if dashboard_mensual:
+        try:
+            recoger_google_business(domingo.year)
+        except Exception as e:
+            log.error("Error recogiendo Google Business: %s", e)
+
+    # 6. EMAIL RESUMEN SEMANAL
+    try:
+        enviar_email_semanal(lunes, domingo)
+    except Exception as e:
+        log.error("Error enviando email semanal: %s", e)
+
+    log.info("--- Proceso Finalizado ---")
 
 
 if __name__ == "__main__":
