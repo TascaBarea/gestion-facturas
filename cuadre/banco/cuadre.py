@@ -866,7 +866,7 @@ def clasificar_compra_tarjeta(concepto: str, importe: float, fecha_valor, fecha_
     # Extraer nombre del comercio (posición 30 en adelante, antes del guión)
     try:
         nombre_comercio = concepto_upper[30:].split("-")[0].strip()
-    except:
+    except (IndexError, TypeError) as e:
         nombre_comercio = ""
     
     nombre_emisor, encontrado_alias = buscar_mejor_alias(nombre_comercio, indice_aliases)

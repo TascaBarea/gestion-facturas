@@ -156,7 +156,7 @@ def _es_fecha_valida(dia: str, mes: str, año: str) -> bool:
     try:
         d, m, a = int(dia), int(mes), int(año)
         return 1 <= d <= 31 and 1 <= m <= 12 and 2020 <= a <= 2030
-    except:
+    except (ValueError, TypeError):
         return False
 
 
@@ -375,7 +375,7 @@ def _convertir_importe(importe_str: str) -> Optional[float]:
             importe_str = importe_str.replace(',', '.')
         
         return float(importe_str)
-    except:
+    except (ValueError, TypeError):
         return None
 
 

@@ -22,7 +22,7 @@ Creado: 02/02/2026
 import os
 import sys
 from datetime import datetime
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from openpyxl import load_workbook
@@ -150,7 +150,7 @@ def leer_transferencias_excel(ruta_excel: str) -> List[TransferenciaSEPA]:
         elif fecha_str:
             try:
                 fecha = datetime.strptime(str(fecha_str), "%d/%m/%y")
-            except:
+            except (ValueError, TypeError):
                 fecha = datetime.now()
         else:
             fecha = datetime.now()
@@ -160,7 +160,7 @@ def leer_transferencias_excel(ruta_excel: str) -> List[TransferenciaSEPA]:
             if isinstance(importe, str):
                 importe = importe.replace("€", "").replace(" ", "").replace(",", ".")
             importe_decimal = Decimal(str(importe)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        except:
+        except (ValueError, TypeError, InvalidOperation):
             print(f"⚠️ Importe inválido ignorado: {proveedor} - {importe}")
             continue
         

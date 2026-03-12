@@ -33,7 +33,7 @@ def extraer_nombre_emisor(concepto, df_fuzzy):
         if not fila.empty:
             return fila.iloc[0]["TITULO_FACTURA"].strip().upper()
         return nombre
-    except:
+    except (IndexError, KeyError, TypeError):
         return ""
 
 def buscar_facturas_por_importe(df_fact, importe):

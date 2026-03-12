@@ -1937,7 +1937,7 @@ class GmailProcessor:
                 try:
                     self.control.guardar()
                     self.logger.info("JSON de control guardado tras error crítico")
-                except:
+                except Exception:
                     pass
             return False
     
@@ -2390,7 +2390,7 @@ class GmailProcessor:
                             if hasattr(instancia, 'es_proforma'):
                                 try:
                                     datos['es_proforma'] = instancia.es_proforma(texto_pdf)
-                                except:
+                                except Exception:
                                     pass
 
                 # Fallback: funciones a nivel módulo
@@ -2417,7 +2417,7 @@ class GmailProcessor:
                                 try:
                                     resultado.fecha = datetime.strptime(datos['fecha'], fmt)
                                     break
-                                except:
+                                except ValueError:
                                     pass
                     
                     if 'total' in datos and datos['total']:
@@ -2430,7 +2430,7 @@ class GmailProcessor:
                                 elif ',' in total:
                                     total = total.replace(',', '.')
                             resultado.total = float(total)
-                        except:
+                        except (ValueError, TypeError):
                             pass
                     
                     for campo in ['referencia', 'numero', 'ref', 'numero_factura']:

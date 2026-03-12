@@ -64,7 +64,7 @@ class GmailConnection:
         if self.mail and self.conectado:
             try:
                 self.mail.logout()
-            except:
+            except Exception:
                 pass
             self.conectado = False
     
@@ -260,7 +260,7 @@ def decodificar_header(header: str) -> str:
                     result.append(content.decode(charset))
                 else:
                     result.append(content.decode('utf-8', errors='replace'))
-            except:
+            except (UnicodeDecodeError, LookupError):
                 result.append(content.decode('latin-1', errors='replace'))
         else:
             result.append(str(content))
