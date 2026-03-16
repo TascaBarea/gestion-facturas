@@ -1079,19 +1079,28 @@ def _generar_html_email(lunes, domingo, datos_tasca, datos_comes):
 
         <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
             <tr style="background:{color}20">
-                <th style="text-align:left;padding:8px;border:1px solid #DDD;width:25%">YTD {domingo.year}</th>
-                <th style="text-align:right;padding:8px;border:1px solid #DDD;width:25%">Acumulado</th>
-                <th style="text-align:center;padding:8px;border:1px solid #DDD;width:25%" colspan="2">vs YTD {domingo.year - 1}</th>
+                <th style="text-align:left;padding:8px;border:1px solid #DDD;width:22%">YTD {domingo.year}</th>
+                <th style="text-align:right;padding:8px;border:1px solid #DDD;width:26%">Acumulado</th>
+                <th style="text-align:right;padding:8px;border:1px solid #DDD;width:26%">{domingo.year - 1}</th>
+                <th style="text-align:center;padding:8px;border:1px solid #DDD;width:26%">vs YTD {domingo.year - 1}</th>
             </tr>
             <tr>
                 <td style="padding:8px;border:1px solid #DDD;font-weight:bold">Ventas netas</td>
                 <td style="text-align:right;padding:8px;border:1px solid #DDD;font-weight:bold">{_fmt_eur(ytd['ventas'])}</td>
-                <td style="text-align:center;padding:8px;border:1px solid #DDD" colspan="2">{_var_html(_pct_var(ytd['ventas'], ytd_ya['ventas']))}</td>
+                <td style="text-align:right;padding:8px;border:1px solid #DDD">{_fmt_eur(ytd_ya['ventas'])}</td>
+                <td style="text-align:center;padding:8px;border:1px solid #DDD">{_var_html(_pct_var(ytd['ventas'], ytd_ya['ventas']))}</td>
             </tr>
             <tr style="background:#F7F8FA">
                 <td style="padding:8px;border:1px solid #DDD;font-weight:bold">Tickets</td>
                 <td style="text-align:right;padding:8px;border:1px solid #DDD;font-weight:bold">{_fmt_num(ytd['tickets'])}</td>
-                <td style="text-align:center;padding:8px;border:1px solid #DDD" colspan="2">{_var_html(_pct_var(ytd['tickets'], ytd_ya['tickets']))}</td>
+                <td style="text-align:right;padding:8px;border:1px solid #DDD">{_fmt_num(ytd_ya['tickets'])}</td>
+                <td style="text-align:center;padding:8px;border:1px solid #DDD">{_var_html(_pct_var(ytd['tickets'], ytd_ya['tickets']))}</td>
+            </tr>
+            <tr>
+                <td style="padding:8px;border:1px solid #DDD;font-weight:bold">Ticket medio</td>
+                <td style="text-align:right;padding:8px;border:1px solid #DDD;font-weight:bold">{_fmt_eur(ytd['ticket_medio'])}</td>
+                <td style="text-align:right;padding:8px;border:1px solid #DDD">{_fmt_eur(ytd_ya['ticket_medio'])}</td>
+                <td style="text-align:center;padding:8px;border:1px solid #DDD">{_var_html(_pct_var(ytd['ticket_medio'], ytd_ya['ticket_medio']))}</td>
             </tr>
         </table>'''
         return html

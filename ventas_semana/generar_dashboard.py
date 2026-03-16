@@ -99,16 +99,20 @@ MESES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun",
 # Meses con apertura parcial (no comparables) — 8 = Agosto
 MESES_PARCIALES = [8]
 
-# ── Configuracion email y GitHub Pages ────────────────────────────────────────
-# Destinatarios: cargados de config/datos_sensibles.py
+# ── Configuracion email y Netlify ─────────────────────────────────────────────
 try:
-    from config.datos_sensibles import EMAILS_FULL, EMAILS_COMES_ONLY
+    from config.datos_sensibles import (EMAILS_FULL, EMAILS_COMES_ONLY,
+                                        NETLIFY_TOKEN, NETLIFY_SITE_ID,
+                                        NETLIFY_URL)
 except ImportError:
     EMAILS_FULL = []
     EMAILS_COMES_ONLY = []
+    NETLIFY_TOKEN = ""
+    NETLIFY_SITE_ID = ""
+    NETLIFY_URL = ""
 
-GITHUB_PAGES_URL = "https://tascabarea.github.io/barea-dashboard/"
-GITHUB_PAGES_REPO = os.path.expanduser("~/barea-dashboard")
+# Alias para compatibilidad con código que usa GITHUB_PAGES_URL
+GITHUB_PAGES_URL = NETLIFY_URL
 
 _GMAIL_DIR = os.path.join(_ROOT, "gmail")
 _GMAIL_CREDENTIALS = os.path.join(_GMAIL_DIR, "credentials.json")
@@ -1624,6 +1628,89 @@ def generar_pdf_resumen(D, RAW, PBM_tasca, comes_items, tasca_items):
     elements.append(cards)
     elements.append(Spacer(1, 6*mm))
 
+    # ── Tabla YTD ──
+    def _ytd_kpis(data_dict, year, hasta_mes):
+        ventas, tickets = 0, 0
+        for m in range(1, hasta_mes + 1):
+            d = data_dict.get(year, {}).get("mensual", {}).get(str(m), {})
+            ventas += d.get("euros", 0)
+            tickets += d.get("tickets", 0)
+        ticket_medio = ventas / tickets if tickets > 0 else 0
+        return ventas, tickets, ticket_medio
+
+    from reportlab.platypus import Table, TableStyle
+    from reportlab.lib.colors import HexColor
+
+    def _tabla_ytd_pdf(titulo, color_accent, color_bg, data_actual, data_ant):
+        v_act, t_act, tm_act = data_actual
+        v_ant, t_ant, tm_ant = data_ant
+
+        def pct(a, b):
+            if b == 0:
+                return "—"
+            p = (a - b) / b * 100
+            signo = "▲" if p >= 0 else "▼"
+            return f"{signo}{abs(p):.1f}%"
+
+        s_hdr = ParagraphStyle(f"ytd_h_{titulo}", fontName=font_bold,
+                               fontSize=9, textColor=HexColor("#FFFFFF"))
+        s_lbl = ParagraphStyle(f"ytd_l_{titulo}", fontName=font_bold,
+                               fontSize=9, textColor=HexColor("#333"))
+        s_val = ParagraphStyle(f"ytd_v_{titulo}", fontName=font_name,
+                               fontSize=9, textColor=HexColor("#333"))
+
+        rows = [
+            [Paragraph(f"YTD {year_actual}", s_hdr),
+             Paragraph("Acumulado", s_hdr),
+             Paragraph(year_ant, s_hdr),
+             Paragraph(f"vs YTD {year_ant}", s_hdr)],
+            [Paragraph("Ventas netas", s_lbl),
+             Paragraph(_fmt_eur(v_act), s_val),
+             Paragraph(_fmt_eur(v_ant), s_val),
+             Paragraph(pct(v_act, v_ant), s_val)],
+            [Paragraph("Tickets", s_lbl),
+             Paragraph(f"{t_act:,}".replace(",", "."), s_val),
+             Paragraph(f"{t_ant:,}".replace(",", "."), s_val),
+             Paragraph(pct(t_act, t_ant), s_val)],
+            [Paragraph("Ticket medio", s_lbl),
+             Paragraph(_fmt_eur(tm_act), s_val),
+             Paragraph(_fmt_eur(tm_ant), s_val),
+             Paragraph(pct(tm_act, tm_ant), s_val)],
+        ]
+        t = Table(rows, colWidths=[40*mm, 37*mm, 37*mm, 37*mm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), HexColor(color_accent)),
+            ("BACKGROUND", (0, 1), (-1, -1), HexColor(color_bg)),
+            ("BACKGROUND", (0, 2), (-1, 2), HexColor("#FFFFFF")),
+            ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#CCCCCC")),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+            ("ALIGN", (3, 0), (3, -1), "CENTER"),
+        ]))
+        return t
+
+    elements.append(Paragraph("Acumulado año (YTD)", s_heading))
+    ytd_t_act = _ytd_kpis(RAW, year_actual, mes_cerrado)
+    ytd_t_ant = _ytd_kpis(RAW, year_ant, mes_cerrado)
+    ytd_c_act = _ytd_kpis(D, year_actual, mes_cerrado)
+    ytd_c_ant = _ytd_kpis(D, year_ant, mes_cerrado)
+
+    elements.append(Paragraph("Tasca Barea", ParagraphStyle(
+        "ytd_st", fontName=font_bold, fontSize=10,
+        textColor=HexColor("#1F4E79"), spaceAfter=2*mm)))
+    elements.append(_tabla_ytd_pdf(
+        "tasca", "#1F4E79", "#DEEAF1", ytd_t_act, ytd_t_ant))
+    elements.append(Spacer(1, 4*mm))
+    elements.append(Paragraph("Comestibles Barea", ParagraphStyle(
+        "ytd_sc", fontName=font_bold, fontSize=10,
+        textColor=HexColor("#375623"), spaceAfter=2*mm)))
+    elements.append(_tabla_ytd_pdf(
+        "comes", "#375623", "#C6EFCE", ytd_c_act, ytd_c_ant))
+    elements.append(Spacer(1, 6*mm))
+
     elements.append(Paragraph("Comparativa", s_heading))
     elements.append(Image(chart_conjunto, width=170*mm, height=62*mm))
 
@@ -1929,6 +2016,66 @@ def generar_pdf_comestibles(D, comes_items):
         ("LEFTPADDING", (0, 0), (-1, -1), 10),
     ]))
     elements.append(kpi_t)
+    elements.append(Spacer(1, 6*mm))
+
+    # ── Tabla YTD Comestibles ──
+    def _ytd_sum(data_dict, yr, hasta_mes):
+        ventas, tickets = 0, 0
+        for m in range(1, hasta_mes + 1):
+            d = data_dict.get(yr, {}).get("mensual", {}).get(str(m), {})
+            ventas += d.get("euros", 0)
+            tickets += d.get("tickets", 0)
+        tm = ventas / tickets if tickets > 0 else 0
+        return ventas, tickets, tm
+
+    def pct_str(a, b):
+        if b == 0:
+            return "—"
+        p = (a - b) / b * 100
+        return ("▲" if p >= 0 else "▼") + f"{abs(p):.1f}%"
+
+    v_act, t_act, tm_act = _ytd_sum(D, year_actual, mes_cerrado)
+    v_ant, t_ant, tm_ant = _ytd_sum(D, year_ant, mes_cerrado)
+
+    s_ytd_h = ParagraphStyle("pc_yh", fontName=font_bold, fontSize=9,
+                             textColor=HexColor("#FFFFFF"))
+    s_ytd_l = ParagraphStyle("pc_yl", fontName=font_bold, fontSize=9,
+                             textColor=HexColor("#333"))
+    s_ytd_v = ParagraphStyle("pc_yv", fontName=font_name, fontSize=9,
+                             textColor=HexColor("#333"))
+    ytd_rows = [
+        [Paragraph(f"YTD {year_actual}", s_ytd_h),
+         Paragraph("Acumulado", s_ytd_h),
+         Paragraph(year_ant, s_ytd_h),
+         Paragraph(f"vs YTD {year_ant}", s_ytd_h)],
+        [Paragraph("Ventas netas", s_ytd_l),
+         Paragraph(_fmt_eur(v_act), s_ytd_v),
+         Paragraph(_fmt_eur(v_ant), s_ytd_v),
+         Paragraph(pct_str(v_act, v_ant), s_ytd_v)],
+        [Paragraph("Tickets", s_ytd_l),
+         Paragraph(f"{t_act:,}".replace(",", "."), s_ytd_v),
+         Paragraph(f"{t_ant:,}".replace(",", "."), s_ytd_v),
+         Paragraph(pct_str(t_act, t_ant), s_ytd_v)],
+        [Paragraph("Ticket medio", s_ytd_l),
+         Paragraph(_fmt_eur(tm_act), s_ytd_v),
+         Paragraph(_fmt_eur(tm_ant), s_ytd_v),
+         Paragraph(pct_str(tm_act, tm_ant), s_ytd_v)],
+    ]
+    ytd_t = Table(ytd_rows, colWidths=[40*mm, 37*mm, 37*mm, 37*mm])
+    ytd_t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), HexColor("#375623")),
+        ("BACKGROUND", (0, 1), (-1, -1), HexColor("#C6EFCE")),
+        ("BACKGROUND", (0, 2), (-1, 2), HexColor("#FFFFFF")),
+        ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#CCCCCC")),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+        ("ALIGN", (3, 0), (3, -1), "CENTER"),
+    ]))
+    elements.append(Paragraph("Acumulado año (YTD)", s_heading))
+    elements.append(ytd_t)
     elements.append(Spacer(1, 6*mm))
 
     # Grafico
@@ -2242,44 +2389,45 @@ h1{{font-size:28px;color:#e8c97a;margin-bottom:8px;}}
 
 
 def publicar_github_pages(path_comes, path_tasca):
-    """Publica ambos dashboards + index en GitHub Pages."""
-    if not GITHUB_PAGES_REPO:
+    """Publica ambos dashboards en Netlify (reemplaza GitHub Pages)."""
+    if not NETLIFY_TOKEN or not NETLIFY_SITE_ID:
+        print("  Aviso: NETLIFY_TOKEN o NETLIFY_SITE_ID no configurados")
         return
 
-    if not os.path.isdir(GITHUB_PAGES_REPO):
-        print(f"  Aviso: repo GitHub Pages no encontrado: {GITHUB_PAGES_REPO}")
-        return
+    import zipfile
+    import urllib.request
 
     try:
-        # Copiar dashboards
-        shutil.copy2(path_comes, os.path.join(GITHUB_PAGES_REPO, "comestibles.html"))
-        shutil.copy2(path_tasca, os.path.join(GITHUB_PAGES_REPO, "tasca.html"))
-
-        # Generar index
+        # Crear zip con los 3 archivos
+        tmp_zip = os.path.join(tempfile.gettempdir(), "barea_dashboards.zip")
         index_html = _generar_index_github_pages()
-        with open(os.path.join(GITHUB_PAGES_REPO, "index.html"), "w", encoding="utf-8") as f:
-            f.write(index_html)
 
-        fecha = datetime.now().strftime("%Y-%m-%d %H:%M")
-        subprocess.run(
-            ["git", "add", "."],
-            cwd=GITHUB_PAGES_REPO, check=True, capture_output=True,
+        with zipfile.ZipFile(tmp_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.write(path_comes, "comestibles.html")
+            zf.write(path_tasca, "tasca.html")
+            zf.writestr("index.html", index_html)
+
+        # Subir a Netlify via API
+        url = f"https://api.netlify.com/api/v1/sites/{NETLIFY_SITE_ID}/deploys"
+        with open(tmp_zip, "rb") as f:
+            data = f.read()
+
+        req = urllib.request.Request(
+            url, data=data, method="POST",
+            headers={
+                "Authorization": f"Bearer {NETLIFY_TOKEN}",
+                "Content-Type": "application/zip",
+            }
         )
-        subprocess.run(
-            ["git", "commit", "-m", f"Dashboards {fecha}"],
-            cwd=GITHUB_PAGES_REPO, check=True, capture_output=True,
-        )
-        subprocess.run(
-            ["git", "push"],
-            cwd=GITHUB_PAGES_REPO, check=True, capture_output=True,
-        )
-        print(f"  GitHub Pages actualizado: {GITHUB_PAGES_URL}")
-    except subprocess.CalledProcessError as e:
-        stderr = e.stderr.decode(errors="replace") if e.stderr else ""
-        if "nothing to commit" in stderr:
-            print("  GitHub Pages: sin cambios")
-        else:
-            print(f"  Aviso GitHub Pages: {stderr[:200]}")
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            result = json.loads(resp.read())
+
+        os.remove(tmp_zip)
+        print(f"  Netlify actualizado: {NETLIFY_URL}")
+        return result.get("deploy_ssl_url", NETLIFY_URL)
+
+    except Exception as e:
+        print(f"  Aviso Netlify: {e}")
     except Exception as e:
         print(f"  Aviso GitHub Pages: {e}")
 

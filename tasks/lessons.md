@@ -1,0 +1,62 @@
+# lessons.md — Errores y patrones aprendidos
+<!-- Actualizar tras cada corrección del usuario -->
+<!-- Nunca borrar entradas existentes — solo añadir -->
+<!-- Formato nueva entrada: YYYY-MM-DD | módulo | descripción | regla -->
+
+---
+
+## REGLAS CRÍTICAS (errores documentados del proyecto)
+
+### Excel y openpyxl
+- **[CRÍTICO] Excel abierto al escribir** → fallo silencioso o corrupción de archivo
+  → REGLA: Avisar SIEMPRE al usuario antes de cualquier escritura Excel. Sin excepción.
+- **Sobreescritura sin leer primero** → pérdida de datos existentes
+  → REGLA: save_to_excel() SIEMPRE lee hoja existente antes de escribir. Dedup por unique_col.
+- **Backup omitido** → sin posibilidad de recuperación si algo falla
+  → REGLA: Backup automático en datos/backups/ antes de la primera escritura de cada sesión
+
+### Scripts batch (.bat)
+- **ERRORLEVEL dentro de bloques if ()** → no se actualiza en Windows
+  → REGLA: Usar goto + labels para manejo de errores. Nunca if ERRORLEVEL anidado.
+
+### Gmail API
+- **Token OAuth2 caducado** → error silencioso o crash en gmail.py
+  → REGLA: Si gmail.py falla con error de autenticación → ejecutar gmail/renovar_token_business.py
+- **MIME type con barra invertida** → text\html en vez de text/html
+  → REGLA: Al parsear payloads Gmail API, verificar que el MIME type usa barra normal.
+
+### Formato de datos
+- **Coma decimal en datos 2024** → "3,51" en vez de "3.51"
+  → REGLA: Al leer Excel histórico 2024, convertir comas a puntos antes de operar.
+  → REGLA: Datos 2025+ usan punto. No aplicar conversión si el archivo es de 2025+.
+
+### Extractores PDF
+- **Extractor nuevo sin manejo de excepciones** → factura sin procesar si falla
+  → REGLA: Todo extractor debe devolver datos parciales ante fallo, nunca lanzar excepción.
+- **OCR como método primario** → solo para PDFs imagen pura confirmados
+  → REGLA: Usar OCR primario solo en extractores confirmados: JIMELUZ, CASA DEL DUQUE, LA LLILDIRIA.
+  → Para el resto: pdfplumber o pypdf con fallback_ocr=True.
+- **`extraer_numero_factura` eliminado en Parseo v5.18** → gmail.py debe usar `extraer_referencia`
+  → REGLA: Al crear extractores nuevos, solo implementar `extraer_referencia` (nunca `extraer_numero_factura`).
+
+### Portes y envío en facturas
+- **Portes como línea separada** → error de IVA y descuadre en totales
+  → REGLA: Portes/envío SIEMPRE proporcionales entre productos.
+  → FÓRMULA: (coste_envío × (1 + IVA_envío/100)) / (1 + IVA_productos/100)
+
+### Sincronización de documentación
+- **Versiones desincronizadas entre archivos**
+  → REGLA: Al modificar un módulo, actualizar versión en 2 sitios: header del código + tabla en CLAUDE.md.
+  → Actualizar ESQUEMA al cerrar sesión si hubo cambios significativos.
+
+---
+
+## REGISTRO DE CORRECCIONES
+<!-- Claude Code añade aquí cada vez que el usuario corrija un comportamiento -->
+
+| Fecha | Módulo | Error cometido | Regla añadida |
+|-------|--------|----------------|---------------|
+| 2026-03-13 | General | — | Archivo creado con errores documentados del proyecto |
+| 2026-03-13 | Parseo | ESQUEMA buscado en carpeta equivocada | ESQUEMA está en gestion-facturas/docs/, no en Parseo/ |
+| 2026-03-13 | Gmail | REF "86" de BERNAL rechazada por gmail.py | gmail.py exigía len>=3, extractor genérico len>=2. Alineado a >=2 |
+| 2026-03-13 | La Llildiria | Total 93.94 en vez de 172.75 | PyPDF no captura tabla totales en PDFs imagen. Añadido cálculo desde subtotales + cambio a OCR primario |

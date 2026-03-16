@@ -2391,12 +2391,7 @@ class GmailProcessor:
                                 except Exception as e:
                                     self.logger.debug(f"  ↳ Error extraer_total: {e}")
                             
-                            if hasattr(instancia, 'extraer_numero_factura'):
-                                try:
-                                    datos['referencia'] = instancia.extraer_numero_factura(texto_pdf)
-                                except Exception as e:
-                                    self.logger.debug(f"  ↳ Error extraer_numero_factura: {e}")
-                            elif hasattr(instancia, 'extraer_referencia'):
+                            if hasattr(instancia, 'extraer_referencia'):
                                 try:
                                     datos['referencia'] = instancia.extraer_referencia(texto_pdf)
                                 except Exception as e:
@@ -2454,7 +2449,7 @@ class GmailProcessor:
                             ref_candidata = str(datos[campo]).strip()
                             # v1.7: misma validación que extractor genérico
                             if (ref_candidata.upper() not in ExtractorPDF.REF_INVALIDAS
-                                    and len(ref_candidata) >= 3
+                                    and len(ref_candidata) >= 2
                                     and sum(c.isdigit() for c in ref_candidata) >= 1):
                                 resultado.referencia = ref_candidata
                             break

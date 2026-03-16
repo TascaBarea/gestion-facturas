@@ -1,7 +1,7 @@
 # 📐 ESQUEMA PROYECTO GESTIÓN-FACTURAS
 
-**Versión:** 4.9
-**Fecha:** 12/03/2026
+**Versión:** 5.2
+**Fecha:** 16/03/2026
 **Estado:** DEFINITIVO - Base para desarrollo
 
 ---
@@ -210,7 +210,7 @@ NOVEDADES v1.4:
                - Emails marcados como leídos
 ```
 
-### Ⓒ VENTAS (95% - FUNCIONAL) ✅ v4.0
+### Ⓒ VENTAS (95% - FUNCIONAL) ✅ v4.7
 ```
 UBICACIÓN:     gestion-facturas/ventas_semana/
 ENTRADA:       - API Loyverse (TASCA + COMESTIBLES) — recibos + items
@@ -342,9 +342,13 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   │   ├── credentials.json         ← OAuth Google (gitignored)
 │   │   ├── token.json               ← Token Gmail (gitignored)
 │   │   ├── gmail_auto.bat           ← Script automatización v1.7 (curl HTTPS, alertas)
-│   │   └── gmail_auto_setup.bat     ← Setup tarea programada
+│   │   ├── gmail_auto_setup.bat     ← Setup tarea programada
+│   │   ├── buscar_emails_proveedores.py ← Búsqueda manual de emails por proveedor
+│   │   ├── renovar_token_business.py    ← Renueva token OAuth Google Business
+│   │   ├── test_borboton.py             ← Test extractor Borbotón
+│   │   └── test_extractores.py          ← Tests extractores PDF
 │   │
-│   ├── cuadre\                      ← Ⓓ CUADRE (✅ v1.5b)
+│   ├── cuadre\                      ← Ⓓ CUADRE (✅ v1.6)
 │   │   ├── banco\
 │   │   │   ├── cuadre.py            ← Clasificador principal (~1300 líneas)
 │   │   │   ├── router.py            ← Router de clasificadores
@@ -361,7 +365,7 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   │       ├── norma43.py            ← Parser ficheros N43 Sabadell
 │   │       └── archivados\           ← Ficheros N43 procesados
 │   │
-│   ├── ventas_semana\               ← Ⓒ VENTAS + DASHBOARDS (✅ v4.0)
+│   ├── ventas_semana\               ← Ⓒ VENTAS + DASHBOARDS (✅ v4.7)
 │   │   ├── script_barea.py          ← Loyverse + WooCommerce API → Excel
 │   │   ├── generar_dashboard.py     ← Generador dual: Comestibles + Tasca + PDF + email
 │   │   ├── dashboards\
@@ -402,13 +406,16 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   │   ├── EXTRACTORES_COMPLETO.xlsx
 │   │   └── emails_procesados.json   ← Control duplicados Gmail (gitignored)
 │   │
-│   ├── .claude\skills\              ← 6 skills personalizadas Claude Code
+│   ├── .claude\skills\              ← 9 skills personalizadas Claude Code
 │   │   ├── estado/SKILL.md          ← /estado: resumen proyecto
 │   │   ├── dashboard/SKILL.md       ← /dashboard: generar dashboards
 │   │   ├── log-gmail/SKILL.md       ← /log-gmail: analizar logs
 │   │   ├── extractor/SKILL.md       ← /extractor: crear extractores
 │   │   ├── esquema/SKILL.md         ← /esquema: actualizar ESQUEMA
-│   │   └── ventas/SKILL.md          ← /ventas: descargar ventas
+│   │   ├── ventas/SKILL.md          ← /ventas: descargar ventas
+│   │   ├── lecciones/SKILL.md       ← /lecciones: mostrar lessons.md y proponer reglas
+│   │   ├── plan/SKILL.md            ← /plan: crear o revisar tasks/todo.md
+│   │   └── revisar/SKILL.md         ← /revisar: analizar movimientos REVISAR del cuadre
 │   │
 │   ├── alerta_fallo.py              ← Email alerta si fallo (token refresh + scope gmail.send)
 │   ├── requirements.txt             ← 16 dependencias fijadas (pip install -r)
@@ -431,7 +438,7 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 
 ---
 
-## 5. Ⓐ PARSEO - EXTRACTORES (101 total)
+## 5. Ⓐ PARSEO - EXTRACTORES (~104 total)
 
 ### 5.1 Estado de Extractores
 
@@ -577,11 +584,11 @@ class ExtractorBase(ABC):
     def extraer_total(self, texto) -> float           # Por defecto: patrones genéricos (incl. PROFORMA)
     def extraer_fecha(self, texto) -> str             # Por defecto: DD/MM/YYYY
     def extraer_referencia(self, texto) -> str        # Por defecto: patrones genéricos + proforma (PVT/,PRF/,PRO/)
-    def extraer_numero_factura(self, texto) -> str    # Alias, prioridad sobre extraer_referencia
     def es_proforma(self, texto) -> bool              # Detecta \bPROFORMA\b en texto
 
     # UTILIDADES HEREDADAS
-    def _convertir_importe(self, texto) -> float      # Español/americano → float
+    def _convertir_importe(self, texto) -> float      # Español/americano → float (superset: €, espacios, OCR)
+    def _convertir_europeo(self, texto) -> float      # Alias de _convertir_importe (compatibilidad)
     def _calcular_base_desde_total(total, iva)        # Total con IVA → base
     def _calcular_total_desde_base(base, iva)         # Base → total con IVA
     def _limpiar_texto(texto) -> str                  # Limpiar espacios/saltos
@@ -602,18 +609,18 @@ class ExtractorBase(ABC):
 }
 ```
 
-### 5.7.5 Estadísticas (101 extractores)
+### 5.7.5 Estadísticas (~104 extractores)
 
 | Concepto | Valor |
 |---|---|
-| Total extractores | 101 |
+| Total extractores | ~104 |
 | Método pdfplumber | 93 (92%) |
 | Método OCR | 6 (6%): fishgourmet, gaditaun, jimeluz, la_cuchara, manipulados_abellan, tirso |
 | Método pdfplumber+fallback_ocr | 1 (1%): la_lleidiria (facturas nuevas=texto, antiguas=imagen) |
 | Método híbrido | 2 (2%): angel_borja, casa_del_duque |
 | Con extraer_total propio | 90 (100%) |
 | Con extraer_fecha propio | 90 (100%) |
-| Con extraer_referencia o extraer_numero_factura | 89 (~99%) |
+| Con extraer_referencia | 89 (~99%) |
 | Con distribución de portes | 11: angel_loli, arganza, bernal, ecoficus, felisa, fernando_moro, molienda_verde, montbrione, pago_de_las_olmas, porvaz, zucca |
 | Con categoría fija | 43 (~48%) |
 | IVA 4% (alimentación básica) | 7 extractores |
@@ -631,7 +638,7 @@ portes_equiv = (portes_base × (1 + IVA_portes/100)) / (1 + IVA_productos/100)
 
 **IVA:** Usar tipo real del producto (4% lácteos/pan, 10% alimentación, 21% servicios/bebidas alcohólicas). Cada extractor define el IVA de sus productos.
 
-**REFERENCIA:** Filtro anti-falsos positivos en `_es_referencia_valida()`: excluye teléfonos, CIFs, fechas, números de cliente, palabras sueltas. Mínimo 3 caracteres y 2 dígitos.
+**REFERENCIA:** Método unificado `extraer_referencia()` (antes había `extraer_numero_factura()` como alias, eliminado en v5.18). Filtro anti-falsos positivos en `_es_referencia_valida()`: excluye teléfonos, CIFs, fechas, números de cliente, palabras sueltas. Mínimo 3 caracteres y 2 dígitos. Parser genérico (`nucleo/parser.py`) con patrones estrictos que requieren dígitos, blacklist de palabras inválidas (FECHA, DATOS, CLIENTE...), lookbehind `(?<!FECHA )` y filtro de fechas parciales.
 
 **OCR:** Para PDFs imagen (sin texto extraíble). Usa `pytesseract` + `pdf2image` con `lang='spa'`. Los extractores OCR definen `metodo_pdf = 'ocr'`. Algunos usan `fallback_ocr = True` para intentar pdfplumber primero y OCR si falla.
 
@@ -661,7 +668,7 @@ PASO 3: Implementar extraer_lineas()
 PASO 4: Sobrescribir métodos opcionales (si formato especial)
    - extraer_total() si el total no sigue patrón genérico
    - extraer_fecha() si la fecha no es DD/MM/YYYY
-   - extraer_numero_factura() si la referencia es especial
+   - extraer_referencia() si la referencia es especial
 
 PASO 5: Probar
    python tests/probar_extractor.py "NUEVO PROVEEDOR" factura.pdf
@@ -887,7 +894,7 @@ Lógica común a transferencias, compra_tarjeta y adeudo_recibo (~40 líneas cad
 | ~~1️⃣~~ | ~~Ⓑ GMAIL~~ | ~~Descargar + renombrar~~ | ✅ **v1.7** |
 | ~~2️⃣~~ | ~~Extractores PARSEO~~ | ~~Mejorar tasa de éxito (85%→95%)~~ | ✅ **99 extractores** |
 | 3️⃣ | Ⓓ CUADRE integración | Conectar con COMPRAS (ESTADO_PAGO) | 🟡 Pendiente |
-| ~~4️⃣~~ | ~~Ⓒ VENTAS~~ | ~~Loyverse + Woocommerce~~ | ✅ **v4.0 (95%)** |
+| ~~4️⃣~~ | ~~Ⓒ VENTAS~~ | ~~Loyverse + Woocommerce~~ | ✅ **v4.7 (95%)** |
 | ~~5️⃣~~ | ~~Informes~~ | ~~Dashboards + PDF + email~~ | ✅ **Comes + Tasca** |
 | 6️⃣ | Limpiar WooCommerce | Reducir 69→10 columnas en pestaña WOOCOMMERCE (Ventas Barea) | 🟡 Pendiente |
 | 7️⃣ | Integrar | Mover PARSEO a gestion-facturas | ❌ Futuro |
@@ -998,7 +1005,72 @@ Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` p
 
 ---
 
+## 14. SKILLS DE CLAUDE CODE (/comandos)
+
+Skills disponibles en `gestion-facturas/.claude/skills/`:
+
+| Comando       | Acción                                                          |
+|---------------|-----------------------------------------------------------------|
+| `/ventas`     | Descargar ventas semanales y regenerar dashboards               |
+| `/dashboard`  | Generar dashboards HTML + PDF (opciones: email, cerrados, test) |
+| `/estado`     | Informe de estado: versiones, pendientes, errores recientes     |
+| `/esquema`    | Actualizar este ESQUEMA con cambios de la sesión                |
+| `/log-gmail`  | Analizar logs de la última ejecución Gmail                      |
+| `/extractor`  | Crear nuevo extractor PDF para proveedor nuevo                  |
+| `/revisar`    | Analizar movimientos REVISAR del cuadre: agrupar + diagnosticar |
+| `/lecciones`  | Mostrar tasks/lessons.md y proponer nuevas reglas               |
+| `/plan`       | Crear o revisar tasks/todo.md para la sesión actual             |
+
+---
+
 ## CHANGELOG
+
+### v5.2 (16/03/2026) — EXTRACTORES: FIXES BM + JIMELUZ + DOCS ACTUALIZADAS
+- ✅ **BM Supermercados v6.2** — `extraer_referencia()` tolera OCR garbled (`F\uFFFDCTURA` → regex `F.{0,3}CTURA`). Fallbacks: 17 dígitos consecutivos, alfanumérico largo. Tickets térmicos atrasados → entrada manual (SIN_TOTAL irresoluble por calidad OCR)
+- ✅ **JIMELUZ v3** — 0% IVA aceptado (frutas/verduras genuinamente a 0%). Base sin separador decimal corregida (`"341"` → `3.41`). Resultado: 6/9 OK (antes 1/9)
+- ✅ **FELISA GOURMET** — confirmado 100% OK desde v5.1. Sin cambios necesarios
+- ✅ **LA ROSQUILLERIA** — confirmado 100% OK desde 04/01/2026. Reescrito ese día (capturaba SUBTOTAL en lugar de TOTAL)
+- ✅ **ESQUEMA actualizado** — skills tree 6→9 (lecciones, plan, revisar), gmail 4 archivos añadidos, extractores 101→~104, cuadre v1.5b→v1.6, clasificadores_mejorados ubicación corregida
+- ✅ **Parseo/CLAUDE.md v2.0** — creado con atributos ExtractorBase, patrones avanzados (importes_con_iva, extraer_texto() custom, Fallback MERGE), tabla OCR y proveedores prioritarios actualizados
+- ✅ **Facturas/CLAUDE.md** — creado con reglas universales (Excel, archivos prohibidos, estilo Python, autonomía)
+- ✅ **gestion-facturas/CLAUDE.md v4.0** — refactorizado eliminando duplicados con root CLAUDE.md
+
+### v5.1 (13/03/2026) — PARSEO: LIMPIEZA Y CONSOLIDACIÓN
+- ✅ **Consolidar `_convertir_europeo` en base.py** — 70 extractores tenían copias idénticas (~1000 líneas)
+  - `_convertir_importe()` reescrito como superset: soporta €, espacios, formato ES/US, variantes OCR
+  - `_convertir_europeo()` añadido como alias en base.py (compatibilidad)
+  - Eliminadas las 70 copias locales → todos heredan de base.py
+- ✅ **VERSION unificada** — `config/settings.py` es fuente única (5.18), `main.py` importa de ahí
+  - Antes: settings.py decía 5.7, main.py decía 5.15, git decía 5.18
+- ✅ **DICCIONARIO_DEFAULT corregido** — Apuntaba a `ParsearFacturas-main` (path antiguo)
+- ✅ **Código muerto eliminado** — `salidas/excel.py`: bloque duplicado inalcanzable tras `return`
+- ✅ **Archivos basura eliminados** — `cd`, `for`, `from`, `python`, `print(*)` (artefactos bash)
+- 74 archivos modificados, -1120 líneas netas
+
+### v5.0 (12/03/2026) — PARSEO v5.18: UNIFICACIÓN + FIXES
+- ✅ **Unificación `extraer_numero_factura` → `extraer_referencia`** — 66 extractores renombrados
+  - Eliminado método duplicado: todos usan `extraer_referencia()` como nombre canónico
+  - Eliminado puente de compatibilidad en `base.py` (ya no existe `extraer_numero_factura`)
+  - 8 archivos adicionales limpiados (aliases inversos, self-calls)
+- ✅ **Fix WEBEMPRESA descuadre** — `extraer_total()` capturaba "Sub Total" en vez de "Total"
+  - Solución: lookbehind negativo `(?<!Sub )` en regex
+  - Resultado: 0/1 → 3/3 OK
+- ✅ **Fix KINEMA descuadre** — Líneas de servicio sin código 5 dígitos no se extraían
+  - Solución: segundo patrón regex para líneas sin código (ej: "CÁLCULO Y AJUSTE CUOTA AUTÓNOMOS")
+  - Resultado: 2/3 → 13/13 OK
+- ✅ **Fechas Excel nativas** — Antes: strings "DD/MM/YYYY" → Ahora: datetime con formato DD/MM/YYYY
+  - `parsear_fecha()`: convierte strings a datetime objects
+  - `_aplicar_formato_fecha()`: aplica number_format 'DD/MM/YYYY' a celdas
+  - 905 celdas datetime, 0 strings, 13 vacías (esperado)
+- ✅ **Fix fechas AMAZON** — Formato punto `28.03.2025` no se reconocía
+  - Añadido `\.` como separador en patrones de fecha (`nucleo/parser.py`)
+- ✅ **Fix REFs basura** — Genérico capturaba "Fecha", "DATOS", "DE", "erencia", "Cliente"
+  - Patrones más estrictos que requieren dígitos en la referencia
+  - Blacklist de palabras inválidas (FECHA, DATOS, DE, CLIENTE, ERENCIA...)
+  - Lookbehind `(?<!FECHA )` para evitar capturar fechas como "Factura:"
+  - Filtro de fechas parciales (`^\d{1,2}/\d{1,2}`)
+  - Resultado: 206 válidas, 44 vacías, 3 cortas-pero-reales
+- ✅ **`salidas/` incluido en git** — Contenía código fuente (excel.py, log.py) excluido por error en .gitignore
 
 ### v4.9 (12/03/2026) — CUADRE v1.6 + GMAIL v1.14
 - ✅ **GMAIL actualizado a v1.14** — Fallback parcial: si extractor dedicado obtiene datos parciales, complementa con genérico (+ OCR)
@@ -1197,4 +1269,4 @@ Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` p
 **Documento de referencia para todas las sesiones futuras.**
 
 ✅ **APROBADO POR:** Tasca
-📅 **FECHA:** 03/03/2026
+📅 **FECHA:** 13/03/2026
