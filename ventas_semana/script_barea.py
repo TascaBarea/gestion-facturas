@@ -1438,6 +1438,77 @@ def recoger_google_business(target_year):
                  d['Mes'], d['Anio'], d['Interacciones'], d['Indicaciones'], d['Busquedas'])
 
 
+def generar_inventario_talleres():
+    """
+    Busca todos los productos WooCommerce publicados con una fecha (DD/MM/YY)
+    en el nombre, extrae el horario del description y guarda el resultado en
+    ventas_semana/talleres_programados.json.
+    Llamado cada lunes por main() para mantener el inventario actualizado en el repo.
+    """
+    import json
+    import re as _re
+
+    output_path = os.path.join(_script_dir, "talleres_programados.json")
+    patron_fecha = _re.compile(r'\b(\d{1,2}/\d{2}/\d{2})\b')
+    patron_hora  = _re.compile(r'HORARIO:\s*de\s*(\d{1,2}:\d{2})(?:\s*a\s*(\d{1,2}:\d{2}))?', _re.IGNORECASE)
+
+    def _strip_html(text):
+        return _re.sub(r'<[^>]+>', ' ', text or '').strip()
+
+    wc = get_wc_api()
+    talleres = []
+    page = 1
+
+    while True:
+        productos = wc.get("products", params={"per_page": 100, "page": page, "status": "publish"}).json()
+        if not isinstance(productos, list) or not productos:
+            break
+
+        for p in productos:
+            nombre = _strip_html(p.get("name", ""))
+            m_fecha = patron_fecha.search(nombre)
+            if not m_fecha:
+                continue
+
+            fecha_str = m_fecha.group(1)
+            # Normalizar a DD/MM/YY con día de dos dígitos para consistencia
+            try:
+                fecha_dt = datetime.strptime(fecha_str, "%d/%m/%y")
+            except ValueError:
+                try:
+                    fecha_dt = datetime.strptime(fecha_str, "%-d/%m/%y")
+                except ValueError:
+                    continue
+            fecha_norm = fecha_dt.strftime("%d/%m/%y")
+
+            desc = _strip_html(p.get("description", ""))
+            m_hora = patron_hora.search(desc)
+
+            talleres.append({
+                "id": p["id"],
+                "nombre": nombre.split(fecha_str)[0].strip().rstrip('-').strip(),
+                "fecha": fecha_norm,
+                "hora_inicio": m_hora.group(1) if m_hora else None,
+                "hora_fin":    m_hora.group(2) if (m_hora and m_hora.group(2)) else None,
+            })
+            log.info("  Taller: %s %s %s", fecha_norm,
+                     talleres[-1]["nombre"][:40],
+                     talleres[-1]["hora_inicio"] or "(sin hora)")
+
+        page += 1
+        if len(productos) < 100:
+            break
+
+    resultado = {
+        "generado": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+        "talleres": talleres,
+    }
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(resultado, f, ensure_ascii=False, indent=2)
+
+    log.info("Inventario talleres guardado: %d taller(es) → %s", len(talleres), output_path)
+
+
 def main():
     lunes, domingo = calcular_semana_anterior()
     desde_iso = f"{lunes}T00:00:00.000Z"
@@ -1550,6 +1621,12 @@ def main():
         enviar_email_semanal(lunes, domingo)
     except Exception as e:
         log.error("Error enviando email semanal: %s", e)
+
+    # 7. INVENTARIO TALLERES (para GitHub Actions)
+    try:
+        generar_inventario_talleres()
+    except Exception as e:
+        log.error("Error generando inventario talleres: %s", e)
 
     log.info("--- Proceso Finalizado ---")
 

@@ -1,0 +1,586 @@
+{
+  "generado": "2026-03-20T22:24:37",
+  "talleres": [
+    {
+      "id": 3331,
+      "nombre": "CERRADO-CATA-TALLERElena   Comestibles Barea",
+      "fecha": "29/04/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 3326,
+      "nombre": "CERRADO-CATA-TALLERNoemi   Comestibles Barea",
+      "fecha": "08/05/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 3313,
+      "nombre": "CERRADO-CATA-TALLERPierre    Comestibles Barea",
+      "fecha": "04/04/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 3310,
+      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "fecha": "14/03/26",
+      "hora_inicio": "14:30",
+      "hora_fin": "16:30"
+    },
+    {
+      "id": 3279,
+      "nombre": "CATA-TALLER    Comestibles Barea",
+      "fecha": "28/03/26",
+      "hora_inicio": "14:30",
+      "hora_fin": "16:30"
+    },
+    {
+      "id": 3278,
+      "nombre": "Vermunova a la italiana    Taller de maceración de vermú, amaros y aledaños",
+      "fecha": "27/05/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 3276,
+      "nombre": "Aperitivos vivos por el mundo   De lactofermentados, kombuchas y kimchis",
+      "fecha": "07/05/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 3274,
+      "nombre": "CATA-TALLER    Comestibles Barea",
+      "fecha": "24/04/26",
+      "hora_inicio": "14:30",
+      "hora_fin": "16:30"
+    },
+    {
+      "id": 3272,
+      "nombre": "Encurtidos Gildas y Banderillas   Todo lo que usted quiso saber sobre encurtidos y jamás osó preguntar. Escabeches y otras técnicas de conservación de alimentos, puestos a bailar en forma de gildas y banderillas",
+      "fecha": "22/04/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 3271,
+      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "fecha": "09/04/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 3261,
+      "nombre": "CATA-TALLER    Comestibles Barea",
+      "fecha": "28/02/26",
+      "hora_inicio": "14:30",
+      "hora_fin": "16:30"
+    },
+    {
+      "id": 3243,
+      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "fecha": "15/02/25",
+      "hora_inicio": "14:30",
+      "hora_fin": "16:30"
+    },
+    {
+      "id": 3235,
+      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "fecha": "27/02/25",
+      "hora_inicio": "19:30",
+      "hora_fin": "21:30"
+    },
+    {
+      "id": 3234,
+      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "fecha": "20/02/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 3225,
+      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "fecha": "21/02/25",
+      "hora_inicio": "15:00",
+      "hora_fin": "17:00"
+    },
+    {
+      "id": 3224,
+      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "fecha": "07/03/26",
+      "hora_inicio": "15:00",
+      "hora_fin": "17:00"
+    },
+    {
+      "id": 3181,
+      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "fecha": "13/02/26",
+      "hora_inicio": "15:00",
+      "hora_fin": "17:00"
+    },
+    {
+      "id": 3162,
+      "nombre": "CERRADO-CATA-Siemensiana:-D   Comestibles Barea",
+      "fecha": "12/12/25",
+      "hora_inicio": "15:00",
+      "hora_fin": null
+    },
+    {
+      "id": 3161,
+      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "fecha": "21/02/25",
+      "hora_inicio": "15:00",
+      "hora_fin": "17:00"
+    },
+    {
+      "id": 3044,
+      "nombre": "CREA TU MENÚ LITERARIO    Comestibles Barea",
+      "fecha": "18/02/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 3041,
+      "nombre": "Cata Bodega Borbotón & Maridaje Barea  Bodega Borbotón | Tasca Barea",
+      "fecha": "11/03/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 3040,
+      "nombre": "Cata Bodega Borbotón & Maridaje Barea  Bodega Borbotón | Tasca Barea",
+      "fecha": "21/01/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2992,
+      "nombre": "¿QUÉ ES ESO?  Cata Taller Vino y quesos y..    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "fecha": "14/03/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2991,
+      "nombre": "¿QUÉ ES ESO?  Cata Taller Vino y quesos y..    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "fecha": "14/02/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2990,
+      "nombre": "¿QUÉ ES ESO?  Cata Taller Vino y quesos y..    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "fecha": "24/01/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2989,
+      "nombre": "Vermunova a la italiana    Taller de maceración de vermú y aledaños",
+      "fecha": "18/03/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2988,
+      "nombre": "Aperitivos vivos por el mundo   De lactofermentados, kombuchas y kimchis",
+      "fecha": "04/03/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2987,
+      "nombre": "Vermunova a la italiana    Taller de maceración de vermú y aledaños",
+      "fecha": "25/02/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2986,
+      "nombre": "Encurtidos Gildas y Banderillas   Todo lo que usted quiso saber sobre encurtidos y jamás osó preguntar. Escabeches y otras técnicas de conservación de alimentos, puestos a bailar en forma de gildas y banderillas",
+      "fecha": "11/02/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2985,
+      "nombre": "Vermunova a la italiana    Taller de maceración de aperitivo italiano y maridaje comparado",
+      "fecha": "29/01/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2966,
+      "nombre": "CERRADO_Vermunova.    Taller de maceración de vermú y aledaños",
+      "fecha": "15/01/26",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2956,
+      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "fecha": "20/12/25",
+      "hora_inicio": "20:00",
+      "hora_fin": "22:00"
+    },
+    {
+      "id": 2896,
+      "nombre": "Aperitivos vivos.   De lactofermentados, kombuchas y kimchis",
+      "fecha": "22/01/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2890,
+      "nombre": "Cata de vinos Los Gredales del Toboso 5 variedades y mucha tradición",
+      "fecha": "18/12/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2808,
+      "nombre": "CERRADO-TALLER-VERMUT    Comestibles Barea",
+      "fecha": "13/12/25",
+      "hora_inicio": "15:00",
+      "hora_fin": "16:45"
+    },
+    {
+      "id": 2805,
+      "nombre": "CERRADO-CATA-Siemensiana:-D   Comestibles Barea",
+      "fecha": "12/12/25",
+      "hora_inicio": "19:30",
+      "hora_fin": null
+    },
+    {
+      "id": 2799,
+      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "fecha": "28/11/25",
+      "hora_inicio": "19:30",
+      "hora_fin": "21:30"
+    },
+    {
+      "id": 2797,
+      "nombre": "¿QUÉ ES ESO?  Cata Taller Vino y quesos y..    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "fecha": "06/12/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2764,
+      "nombre": "Aperitivos vivos.   De lactofermentados, kombuchas y kimchis",
+      "fecha": "29/10/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2763,
+      "nombre": "Aperitivos vivos.   De lactofermentados, kombuchas y kimchis",
+      "fecha": "03/12/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2759,
+      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "fecha": "10/12/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2751,
+      "nombre": "CERRADO-TALLER-VERMUT    Comestibles Barea",
+      "fecha": "08/11/25",
+      "hora_inicio": "13:00",
+      "hora_fin": "14:30"
+    },
+    {
+      "id": 2725,
+      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "fecha": "22/11/25",
+      "hora_inicio": "13:00",
+      "hora_fin": "14:30"
+    },
+    {
+      "id": 2724,
+      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "fecha": "17/10/25",
+      "hora_inicio": "19:30",
+      "hora_fin": "21:30"
+    },
+    {
+      "id": 2686,
+      "nombre": "¿QUÉ ES ESO?  Cata Taller Vino y quesos y..    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "fecha": "15/11/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2683,
+      "nombre": "Cata de vinos D.O. Calatayud Vinos de pueblo,  paraje y finca   Con maridaje de Comestibles Barea Tasca Barea",
+      "fecha": "21/11/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2656,
+      "nombre": "Cata de vinos y aceites de Regantío Viejo & Maridaje Barea  Tasca Barea",
+      "fecha": "06/11/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2615,
+      "nombre": "Encurtidos y escabeches    Todo lo que usted quiso saber sobre encurtidos y jamás osó preguntar. Escabeches y otras técnicas de conservación de alimentos",
+      "fecha": "15/10/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2614,
+      "nombre": "¿QUÉ ES ESO?  Cata Taller Vino y quesos y..    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "fecha": "25/10/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2609,
+      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "fecha": "05/11/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2607,
+      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "fecha": "09/10/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2601,
+      "nombre": "Aperitivos vivos.   De lactofermentados, kombuchas y kimchis",
+      "fecha": "24/09/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2600,
+      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "fecha": "09/09/25",
+      "hora_inicio": "19:30",
+      "hora_fin": "21:30"
+    },
+    {
+      "id": 2598,
+      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "fecha": "10/09/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2582,
+      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "fecha": "16/07/25",
+      "hora_inicio": "19:30",
+      "hora_fin": "21:30"
+    },
+    {
+      "id": 2580,
+      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "fecha": "02/07/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2555,
+      "nombre": "ARTE COMESTIBLE   Comestibles Barea",
+      "fecha": "17/06/25",
+      "hora_inicio": "20:00",
+      "hora_fin": "22:00"
+    },
+    {
+      "id": 2538,
+      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "fecha": "09/07/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2537,
+      "nombre": "KOMBUCHA   Taller de bebidas fermentadas",
+      "fecha": "02/07/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2529,
+      "nombre": "KOMBUCHA   Taller de bebidas fermentadas",
+      "fecha": "02/04/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2524,
+      "nombre": "CATA-TALLER    Comestibles Barea",
+      "fecha": "30/05/25",
+      "hora_inicio": "19:45",
+      "hora_fin": "21:30"
+    },
+    {
+      "id": 2516,
+      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "fecha": "18/06/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2500,
+      "nombre": "CATA-TALLER    Comestibles Barea",
+      "fecha": "31/05/25",
+      "hora_inicio": "15:00",
+      "hora_fin": "17:00"
+    },
+    {
+      "id": 2498,
+      "nombre": "CATA-TALLER    Comestibles Barea",
+      "fecha": "24/05/25",
+      "hora_inicio": "15:00",
+      "hora_fin": "17:00"
+    },
+    {
+      "id": 2497,
+      "nombre": "¿QUÉ ES ESO?  Cata Taller Vino y quesos y..    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "fecha": "28/06/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2496,
+      "nombre": "CATA-TALLER    Comestibles Barea",
+      "fecha": "10/05/25",
+      "hora_inicio": "15:00",
+      "hora_fin": "17:00"
+    },
+    {
+      "id": 2481,
+      "nombre": "CATA  ESPECIAL    Comestibles Barea",
+      "fecha": "23/05/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2480,
+      "nombre": "Degustación    Comestibles Barea",
+      "fecha": "19/04/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2479,
+      "nombre": "CATA    Comestibles Barea",
+      "fecha": "25/04/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2478,
+      "nombre": "Degustación    Comestibles Barea",
+      "fecha": "26/05/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2411,
+      "nombre": "¿QUÉ ES ESO?  Taller de quesos    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "fecha": "12/04/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2406,
+      "nombre": "¿QUÉ ES ESO?  Taller de quesos    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "fecha": "28/03/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2347,
+      "nombre": "Aperitivos vivos.    De encurtidos, Kimchis, Lactofermentados y banderillas",
+      "fecha": "11/06/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2344,
+      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "fecha": "28/05/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2343,
+      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "fecha": "09/04/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2333,
+      "nombre": "Aperitivos vivos.    De encurtidos, Kimchis, Lactofermentados y banderillas",
+      "fecha": "06/03/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2332,
+      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "fecha": "19/03/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2317,
+      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños (second round)",
+      "fecha": "19/02/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2282,
+      "nombre": "Degustación    Comestibles Barea",
+      "fecha": "08/02/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2281,
+      "nombre": "Degustación    Comestibles Barea",
+      "fecha": "07/02/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2279,
+      "nombre": "Degustación   Comestibles Barea",
+      "fecha": "01/02/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2271,
+      "nombre": "KOMBUCHA   Taller de bebidas fermentadas",
+      "fecha": "02/04/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    },
+    {
+      "id": 2131,
+      "nombre": "Degustación   Comestibles Barea",
+      "fecha": "31/01/25",
+      "hora_inicio": null,
+      "hora_fin": null
+    }
+  ]
+}

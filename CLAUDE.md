@@ -1,12 +1,12 @@
 # CLAUDE.md — gestion-facturas
-<!-- Versión: 4.0 — 16/03/2026 -->
+<!-- Versión: 4.1 — 20/03/2026 -->
 <!-- IMPORTANTE: Leer tasks/lessons.md al iniciar cada sesión -->
-<!-- Reglas universales (Excel, prohibidos, estilo, autonomía) en Facturas/CLAUDE.md -->
 
 ## Proyecto
+Tasca Barea SLL (bar + tienda gourmet + experiencias, Madrid). Ver `docs/TASCA_BAREA_CONTEXT.md` para contexto completo de empresa.
 4 módulos: Gmail (pagos email), Ventas (Loyverse+WooCommerce), Cuadre (banco NORMA43), Artículos (catálogo Loyverse).
 Parseo (extractores PDF): repo separado → `Parseo/` · ver `Parseo/CLAUDE.md`.
-Documentación técnica completa: `docs/ESQUEMA_PROYECTO_DEFINITIVO_v2_6.md` (v5.1).
+Documentación técnica completa: `docs/ESQUEMA_PROYECTO_DEFINITIVO_v2_6.md` (v5.3).
 
 ## Estructura
 ```
@@ -39,7 +39,7 @@ gestion-facturas/
 | Gmail   | v1.14   | gmail/gmail.py                     |
 | Ventas  | v4.7    | ventas_semana/script_barea.py      |
 | Cuadre  | v1.6    | cuadre/cuadre.py                   |
-| ESQUEMA | v5.1    | docs/ESQUEMA_PROYECTO_DEFINITIVO   |
+| ESQUEMA | v4.4    | docs/ESQUEMA_PROYECTO_DEFINITIVO   |
 
 ---
 
@@ -55,11 +55,19 @@ gestion-facturas/
 
 ---
 
+## Prioridades de desarrollo activas
+<!-- Ver ESQUEMA §6.9 para lista completa -->
+1. 🔴 CUADRE: conectar con COMPRAS para actualizar `ESTADO_PAGO` automáticamente
+2. 🟡 Limpiar WooCommerce: reducir 69 → 10 columnas en pestaña WOOCOMMERCE
+3. 🟡 Cruce Artículos↔Proveedores via `DiccionarioProveedoresCategoria.xlsx`
+
+---
+
 ## Errores conocidos → ver tasks/lessons.md para lista completa
 
 | Error | Regla rápida |
 |-------|-------------|
-| Excel abierto | Avisar SIEMPRE antes de escribir (ver raíz CLAUDE.md) |
+| Excel abierto | Avisar SIEMPRE antes de escribir. Leer antes de sobrescribir. Hacer backup. |
 | ERRORLEVEL en batch | Usar goto + labels, nunca if anidado |
 | Token Gmail caducado | Ejecutar gmail/renovar_token_business.py |
 | MIME type Gmail | text/html con barra normal, nunca invertida |
@@ -68,14 +76,23 @@ gestion-facturas/
 
 ## Skills (/comandos)
 
-| Comando       | Acción                                                          |
-|---------------|-----------------------------------------------------------------|
-| `/ventas`     | Descargar ventas semanales y regenerar dashboards               |
-| `/dashboard`  | Generar dashboards HTML + PDF (opciones: email, cerrados, test) |
-| `/estado`     | Informe de estado: versiones, pendientes, errores recientes     |
-| `/esquema`    | Actualizar ESQUEMA DEFINITIVO con cambios de la sesión          |
-| `/log-gmail`  | Analizar logs de la última ejecución Gmail                      |
-| `/extractor`  | Crear nuevo extractor PDF para proveedor nuevo                  |
-| `/revisar`    | Analizar movimientos REVISAR del cuadre: agrupar + diagnosticar |
-| `/lecciones`  | Mostrar lessons.md y proponer nuevas reglas si procede          |
-| `/plan`       | Crear o revisar tasks/todo.md para la sesión actual             |
+| Comando               | Acción                                                          |
+|-----------------------|-----------------------------------------------------------------|
+| `/ventas`             | Descargar ventas semanales y regenerar dashboards               |
+| `/dashboard`          | Generar dashboards HTML + PDF (opciones: email, cerrados, test) |
+| `/estado`             | Informe de estado: versiones, pendientes, errores recientes     |
+| `/esquema`            | Actualizar ESQUEMA DEFINITIVO con cambios de la sesión          |
+| `/log-gmail`          | Analizar logs de la última ejecución Gmail                      |
+| `/extractor`          | Crear nuevo extractor PDF para proveedor nuevo                  |
+| `/revisar`            | Analizar movimientos REVISAR del cuadre: agrupar + diagnosticar |
+| `/lecciones`          | Mostrar lessons.md y proponer nuevas reglas si procede          |
+| `/plan`               | Crear o revisar tasks/todo.md para la sesión actual             |
+| `/cuadre [mes]`       | Proceso completo de cuadre bancario mensual (NORMA43 vs fact.)  |
+| `/debug-extractor`    | Diagnosticar y corregir errores en un extractor existente       |
+| `/nuevo-proveedor`    | Alta completa de proveedor nuevo (MAESTRO + alias + extractor)  |
+
+---
+
+## Asistentes IA configurados
+- **Claude Code**: usa este archivo (carga automática)
+- **GitHub Copilot (VS Code)**: ver `.github/copilot-instructions.md`

@@ -118,6 +118,25 @@ echo [%date% %time%] Script finalizado (exit code: %EXIT_CODE%) >> "%LOG_FILE%"
 
 if %EXIT_CODE% EQU 0 (
     echo [%date% %time%] EXITO: Ejecucion completada correctamente >> "%LOG_FILE%"
+
+    REM ============================================================================
+    REM PUBLICAR INVENTARIO TALLERES EN GITHUB (para GitHub Actions)
+    REM ============================================================================
+    echo [%date% %time%] Publicando inventario talleres en GitHub... >> "%LOG_FILE%"
+    set "JSON_FILE=%SCRIPT_DIR%\talleres_programados.json"
+    if exist "%JSON_FILE%" (
+        cd /d "%PROJECT_ROOT%"
+        git add ventas_semana/talleres_programados.json >> "%LOG_FILE%" 2>&1
+        git commit -m "inventario talleres actualizado (%date%)" >> "%LOG_FILE%" 2>&1
+        git push >> "%LOG_FILE%" 2>&1
+        if !ERRORLEVEL! EQU 0 (
+            echo [%date% %time%] Inventario talleres publicado en GitHub >> "%LOG_FILE%"
+        ) else (
+            echo [%date% %time%] AVISO: No se pudo hacer push a GitHub (no critico) >> "%LOG_FILE%"
+        )
+    ) else (
+        echo [%date% %time%] AVISO: No existe %JSON_FILE%, sin push >> "%LOG_FILE%"
+    )
 ) else (
     echo [%date% %time%] ERROR: Fallo con codigo %EXIT_CODE% >> "%LOG_FILE%"
     set "ERROR_MSG=Script Python fallo con exit code %EXIT_CODE%"

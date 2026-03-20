@@ -1,0 +1,60 @@
+name: Asistentes Taller
+
+# Se ejecuta cada día a las 07:00 UTC (09:00 CEST / 08:00 CET — Madrid)
+# También se puede lanzar manualmente desde GitHub → Actions → Run workflow
+on:
+  schedule:
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      fecha:
+        description: "Fecha a simular (DD/MM/YY). Vacío = hoy."
+        required: false
+        default: ""
+      test:
+        description: "Modo test (true = no envía email)"
+        required: false
+        default: "false"
+
+jobs:
+  enviar-asistentes:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar dependencias
+        run: pip install python-dotenv WooCommerce openpyxl google-auth google-auth-oauthlib google-api-python-client
+
+      - name: Restaurar token Gmail desde secret
+        env:
+          GMAIL_TOKEN_B64: ${{ secrets.GMAIL_TOKEN_B64 }}
+        run: |
+          mkdir -p gmail
+          echo "$GMAIL_TOKEN_B64" | base64 --decode > gmail/token.json
+
+      - name: Crear .env desde secrets
+        env:
+          WC_URL:    ${{ secrets.WC_URL }}
+          WC_KEY:    ${{ secrets.WC_KEY }}
+          WC_SECRET: ${{ secrets.WC_SECRET }}
+        run: |
+          printf "WC_URL=%s\nWC_KEY=%s\nWC_SECRET=%s\n" \
+            "$WC_URL" "$WC_KEY" "$WC_SECRET" > ventas_semana/.env
+
+      - name: Ejecutar asistentes_taller.py
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.fecha }}" != "" ]; then
+            ARGS="$ARGS --fecha ${{ github.event.inputs.fecha }}"
+          fi
+          if [ "${{ github.event.inputs.test }}" = "true" ]; then
+            ARGS="$ARGS --test"
+          fi
+          python ventas_semana/asistentes_taller.py $ARGS
