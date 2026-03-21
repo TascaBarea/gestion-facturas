@@ -200,8 +200,9 @@ def generar_excel(asistentes: list[dict], taller: dict) -> str:
     ws.cell(row=fila_total, column=5, value=round(sum(a["Importe (€)"] for a in asistentes), 2)).font = Font(bold=True)
 
     # Anchos de columna
+    from openpyxl.utils import get_column_letter
     for col_i, width in enumerate(WIDTHS, 1):
-        ws.column_dimensions[ws.cell(row=1, column=col_i).column_letter].width = width
+        ws.column_dimensions[get_column_letter(col_i)].width = width
 
     nombre_archivo = f"Asistentes_{nombre_safe}_{fecha_safe}.xlsx"
     path = os.path.join(_script_dir, nombre_archivo)
@@ -228,7 +229,7 @@ def _get_gmail_service():
         return None
 
     scopes = [
-        "https://www.googleapis.com/auth/gmail.send",
+        "https://www.googleapis.com/auth/gmail.readonly",
         "https://www.googleapis.com/auth/gmail.modify",
     ]
     creds = Credentials.from_authorized_user_file(_GMAIL_TOKEN, scopes)
