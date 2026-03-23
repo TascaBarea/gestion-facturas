@@ -29,6 +29,9 @@
 - **Coma decimal en datos 2024** → "3,51" en vez de "3.51"
   → REGLA: Al leer Excel histórico 2024, convertir comas a puntos antes de operar.
   → REGLA: Datos 2025+ usan punto. No aplicar conversión si el archivo es de 2025+.
+- **Formato moneda en Excel/email** → SIEMPRE usar formato europeo: X,xx € (coma decimal, símbolo al final)
+  → REGLA: Al escribir importes en Excel o HTML, usar `f"{v:.2f}".replace(".", ",") + " €"`
+  → REGLA: Fechas en columnas Excel de ventas: formato DD-MM-YY (no YYYY-MM-DD)
 
 ### Extractores PDF
 - **Extractor nuevo sin manejo de excepciones** → factura sin procesar si falla
