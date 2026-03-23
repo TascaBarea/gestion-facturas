@@ -5,7 +5,7 @@ r"""
 CUADRE.PY - Clasificador de Movimientos Bancarios
 ================================================================================
 
-Versión: 1.6
+Versión: 1.7
 Fecha: Marzo 2026
 Autor: TASCA BAREA S.L.L.
 
@@ -13,6 +13,13 @@ DESCRIPCIÓN:
 ------------
 Clasifica movimientos bancarios de un archivo Excel (con hojas Tasca, Comestibles
 y Facturas) rellenando las columnas Categoria_Tipo y Categoria_Detalle.
+
+CAMBIOS v1.7:
+-------------
+- Fix filtro fecha: ventana bidireccional [-60, +15] días (antes: solo facturas anteriores)
+- Criterio selección: factura más cercana en días absolutos (antes o después del cargo)
+- Resuelve REVISAR en facturas con fecha posterior al pago (ej: CONSERVAS LA ALACENA)
+- Log mejorado: indica si la factura es "X días antes" o "X días después" del cargo
 
 CAMBIOS v1.6:
 -------------
@@ -520,42 +527,38 @@ def buscar_factura_candidata(
         fecha_mov = pd.to_datetime(fecha_operativa, errors="coerce", dayfirst=True)
 
     if pd.notna(fecha_mov):
-        # Filtrar facturas anteriores o iguales al movimiento
-        anteriores = candidatas_disponibles[candidatas_disponibles["Fec.Fac."] <= fecha_mov].copy()
+        # Filtrar facturas dentro de la ventana [-60 días, +15 días]
+        candidatas_disponibles["_dias_signed"] = (
+            candidatas_disponibles["Fec.Fac."] - fecha_mov
+        ).dt.days
+        dentro_ventana = candidatas_disponibles[
+            (candidatas_disponibles["_dias_signed"] >= -60) &
+            (candidatas_disponibles["_dias_signed"] <= 15)
+        ].copy()
+        dentro_ventana["_dias_abs"] = dentro_ventana["_dias_signed"].abs()
 
-        if not anteriores.empty:
-            # Calcular días de diferencia
-            anteriores["_dias"] = (fecha_mov - anteriores["Fec.Fac."]).dt.days
+        if not dentro_ventana.empty:
+            # Elegir la más cercana en días (independientemente de si es antes o después)
+            dentro_ventana = dentro_ventana.sort_values("_dias_abs")
+            fila = dentro_ventana.iloc[0]
+            cod = fila["Cód."]
+            titulo = fila["Título"]
+            score = fila["_score"]
+            dias = int(fila["_dias_abs"])
+            signo = fila["_dias_signed"]
+            direccion = "después" if signo > 0 else ("antes" if signo < 0 else "mismo día")
 
-            # Filtrar por máximo 60 días de antigüedad
-            dentro_plazo = anteriores[anteriores["_dias"] <= 60].copy()
-
-            if not dentro_plazo.empty:
-                # Elegir la más cercana en fecha
-                dentro_plazo = dentro_plazo.sort_values("_dias")
-                fila = dentro_plazo.iloc[0]
-                cod = fila["Cód."]
-                titulo = fila["Título"]
-                score = fila["_score"]
-                dias = fila["_dias"]
-
-                facturas_usadas.add(cod)
-                detalle = formatear_detalle_factura(cod, titulo, score, es_fuzzy=True)
-                if incluir_ref:
-                    ref = fila.get("Factura", "")
-                    if pd.notna(ref) and str(ref).strip():
-                        detalle += f" ({ref})"
-                log(f"  → ASIGNADO: {titulo} {detalle} (fecha: {dias} días antes)")
-                return titulo, detalle
-            else:
-                # Todas las anteriores están fuera del plazo de 60 días
-                mejor = anteriores.sort_values("_dias").iloc[0]
-                log(f"  → REVISAR: Factura #{mejor['Cód.']} muy antigua ({mejor['_dias']} días)")
-                return "REVISAR", f"#{mejor['Cód.']} muy antigua ({mejor['_dias']} días)"
+            facturas_usadas.add(cod)
+            detalle = formatear_detalle_factura(cod, titulo, score, es_fuzzy=True)
+            if incluir_ref:
+                ref = fila.get("Factura", "")
+                if pd.notna(ref) and str(ref).strip():
+                    detalle += f" ({ref})"
+            log(f"  → ASIGNADO: {titulo} {detalle} (fecha: {dias} días {direccion})")
+            return titulo, detalle
         else:
-            # No hay facturas anteriores al movimiento
-            log(f"  → REVISAR: No hay facturas anteriores al movimiento")
-            return "REVISAR", f"No hay facturas anteriores a {fecha_mov.strftime('%d/%m/%Y')}"
+            log(f"  → REVISAR: Sin facturas en ventana [-60, +15] días")
+            return "REVISAR", f"Sin facturas en ventana de fecha para {fecha_mov.strftime('%d/%m/%Y')}"
 
     # Si no hay fecha válida, elegir por mejor fuzzy
     fila = candidatas_disponibles.loc[candidatas_disponibles["_score"].idxmax()]
