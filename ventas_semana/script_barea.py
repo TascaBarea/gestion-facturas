@@ -1175,6 +1175,9 @@ def _generar_html_email(lunes, domingo, datos_tasca, datos_comes):
         <h3 style="margin:15px 0 5px;color:#555">WooCommerce</h3>
         <p>{datos_comes['wc_pedidos']} pedidos — {_fmt_eur(datos_comes['wc_ventas'])}</p>'''
 
+    # CALENDARIO TALLERES
+    html += _seccion_talleres()
+
     html += f'''
         <hr style="border:none;border-top:1px solid #DDD;margin:20px 0">
         <p style="color:#999;font-size:11px;text-align:center">
@@ -1186,6 +1189,90 @@ def _generar_html_email(lunes, domingo, datos_tasca, datos_comes):
 </html>'''
 
     return html
+
+
+def _seccion_talleres():
+    """Genera el bloque HTML con los talleres/catas/eventos futuros.
+
+    Lee talleres_programados.json, filtra los que aún no han pasado y
+    devuelve una tabla HTML lista para insertar en el email semanal.
+    Devuelve cadena vacía si no hay eventos futuros o el JSON no existe.
+    """
+    import json
+    json_path = os.path.join(_script_dir, "talleres_programados.json")
+    if not os.path.exists(json_path):
+        return ''
+
+    try:
+        with open(json_path, encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception:
+        return ''
+
+    hoy = datetime.now().date()
+    futuros = []
+    for t in data.get('talleres', []):
+        try:
+            fecha_dt = datetime.strptime(t['fecha'], '%d/%m/%y').date()
+        except (ValueError, KeyError):
+            continue
+        if fecha_dt >= hoy:
+            futuros.append((fecha_dt, t))
+
+    if not futuros:
+        return ''
+
+    futuros.sort(key=lambda x: x[0])
+
+    filas = ''
+    for i, (fecha_dt, t) in enumerate(futuros):
+        bg = 'background:#F7F8FA;' if i % 2 == 1 else ''
+        nombre = t.get('nombre') or '(sin nombre)'
+        fecha_str = fecha_dt.strftime('%d/%m/%Y')
+        hora = ''
+        if t.get('hora_inicio'):
+            hora = t['hora_inicio']
+            if t.get('hora_fin'):
+                hora += f" - {t['hora_fin']}"
+
+        stock_qty = t.get('stock_quantity')
+        stock_status = t.get('stock_status', 'instock')
+        if stock_qty is None:
+            plazas_txt = 'Sin límite'
+            plazas_color = '#1B5E20'
+        elif stock_status == 'outofstock' or stock_qty <= 0:
+            plazas_txt = 'Completo'
+            plazas_color = '#B71C1C'
+        else:
+            plazas_txt = f'{stock_qty} disponible{"s" if stock_qty != 1 else ""}'
+            plazas_color = '#1B5E20' if stock_qty > 3 else '#E65100'
+
+        precio = t.get('precio', 0)
+        precio_txt = f"{precio:.0f} €" if precio else ''
+
+        filas += f'''
+        <tr style="{bg}">
+            <td style="padding:7px 10px;border:1px solid #DDD;font-weight:bold">{nombre}</td>
+            <td style="padding:7px 10px;border:1px solid #DDD;white-space:nowrap">{fecha_str}</td>
+            <td style="padding:7px 10px;border:1px solid #DDD;white-space:nowrap">{hora}</td>
+            <td style="padding:7px 10px;border:1px solid #DDD;color:{plazas_color};font-weight:bold">{plazas_txt}</td>
+            <td style="padding:7px 10px;border:1px solid #DDD;text-align:right">{precio_txt}</td>
+        </tr>'''
+
+    return f'''
+    <h3 style="margin:20px 0 8px;color:#555;border-bottom:1px solid #DDD;padding-bottom:4px">
+        Próximos eventos ({len(futuros)})
+    </h3>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:10px">
+        <tr style="background:#1B2A4A;color:white">
+            <th style="padding:7px 10px;text-align:left">Evento</th>
+            <th style="padding:7px 10px;text-align:left">Fecha</th>
+            <th style="padding:7px 10px;text-align:left">Horario</th>
+            <th style="padding:7px 10px;text-align:left">Plazas</th>
+            <th style="padding:7px 10px;text-align:right">Precio</th>
+        </tr>
+        {filas}
+    </table>'''
 
 
 def _conectar_gmail_envio():
@@ -1438,12 +1525,33 @@ def recoger_google_business(target_year):
                  d['Mes'], d['Anio'], d['Interacciones'], d['Indicaciones'], d['Busquedas'])
 
 
+def _limpiar_nombre_taller(nombre_raw, fecha_str):
+    """Limpia el nombre de un taller extraído del producto WooCommerce.
+
+    - Elimina la fecha si quedó dentro del nombre
+    - Quita sufijos de tienda ('Comestibles Barea', 'Tasca Barea')
+    - Quita guiones sobrantes
+    """
+    import re as _re
+    nombre = nombre_raw
+    # Quitar la fecha si aparece dentro del trozo antes de dividir
+    nombre = nombre.replace(fecha_str, '')
+    # Quitar sufijos de tienda
+    for sufijo in ('Comestibles Barea', 'Tasca Barea', 'Comestibles', 'Tasca'):
+        nombre = _re.sub(r'\s*' + _re.escape(sufijo) + r'\s*', ' ', nombre, flags=_re.IGNORECASE)
+    # Limpiar guiones/espacios sobrantes al inicio y fin
+    nombre = _re.sub(r'^[-\s]+|[-\s]+$', '', nombre)
+    nombre = _re.sub(r'\s{2,}', ' ', nombre)
+    return nombre.strip()
+
+
 def generar_inventario_talleres():
     """
     Busca todos los productos WooCommerce publicados con una fecha (DD/MM/YY)
     en el nombre, extrae el horario del description y guarda el resultado en
     ventas_semana/talleres_programados.json.
     Llamado cada lunes por main() para mantener el inventario actualizado en el repo.
+    Incluye stock_quantity, stock_status y price para el calendario de eventos.
     """
     import json
     import re as _re
@@ -1465,8 +1573,8 @@ def generar_inventario_talleres():
             break
 
         for p in productos:
-            nombre = _strip_html(p.get("name", ""))
-            m_fecha = patron_fecha.search(nombre)
+            nombre_raw = _strip_html(p.get("name", ""))
+            m_fecha = patron_fecha.search(nombre_raw)
             if not m_fecha:
                 continue
 
@@ -1481,15 +1589,30 @@ def generar_inventario_talleres():
                     continue
             fecha_norm = fecha_dt.strftime("%d/%m/%y")
 
+            # Extraer nombre limpio: trozo antes de la fecha, sin sufijos de tienda
+            nombre_base = nombre_raw.split(fecha_str)[0]
+            nombre_limpio = _limpiar_nombre_taller(nombre_base, fecha_str)
+
             desc = _strip_html(p.get("description", ""))
             m_hora = patron_hora.search(desc)
 
+            # Plazas: stock_quantity puede ser None si WC no gestiona stock
+            stock_qty = p.get("stock_quantity")
+            stock_status = p.get("stock_status", "instock")  # instock / outofstock
+            try:
+                precio = float(p.get("price") or p.get("regular_price") or 0)
+            except (ValueError, TypeError):
+                precio = 0.0
+
             talleres.append({
                 "id": p["id"],
-                "nombre": nombre.split(fecha_str)[0].strip().rstrip('-').strip(),
+                "nombre": nombre_limpio,
                 "fecha": fecha_norm,
                 "hora_inicio": m_hora.group(1) if m_hora else None,
                 "hora_fin":    m_hora.group(2) if (m_hora and m_hora.group(2)) else None,
+                "stock_quantity": stock_qty,
+                "stock_status": stock_status,
+                "precio": precio,
             })
             log.info("  Taller: %s %s %s", fecha_norm,
                      talleres[-1]["nombre"][:40],
@@ -1507,6 +1630,55 @@ def generar_inventario_talleres():
         json.dump(resultado, f, ensure_ascii=False, indent=2)
 
     log.info("Inventario talleres guardado: %d taller(es) → %s", len(talleres), output_path)
+
+
+def _normalizar_pedidos_wc(orders):
+    """Convierte la lista de pedidos WooCommerce en un DataFrame limpio.
+
+    Genera 7 columnas útiles (1 fila por pedido) en lugar de las ~69 que
+    produce pd.json_normalize. La columna 'items_resumen' consolida todos
+    los productos del pedido en un string legible sin HTML.
+    """
+    import re as _re
+
+    def _limpiar_nombre_item(text):
+        """Elimina tags HTML y espacios sobrantes del nombre de un producto."""
+        if not text:
+            return ''
+        text = _re.sub(r'<[^>]+>', ' ', str(text))
+        text = _re.sub(r'\s{2,}', ' ', text)
+        return text.strip()
+
+    filas = []
+    for o in orders:
+        line_items = o.get("line_items", [])
+        partes = []
+        total_uds = 0
+        for item in line_items:
+            qty = item.get("quantity", 1)
+            name = _limpiar_nombre_item(item.get("name", ""))
+            total_uds += qty
+            partes.append(name)
+        try:
+            total_eur = f"{float(o.get('total', 0)):.2f}".replace(".", ",") + " €"
+        except (ValueError, TypeError):
+            total_eur = o.get("total", "")
+        fecha_raw = o.get("date_created", "")[:10]
+        try:
+            from datetime import datetime as _dt
+            fecha_fmt = _dt.strptime(fecha_raw, "%Y-%m-%d").strftime("%d-%m-%y")
+        except ValueError:
+            fecha_fmt = fecha_raw
+        filas.append({
+            "id":            o.get("id"),
+            "fecha":         fecha_fmt,
+            "estado":        o.get("status"),
+            "estado_pago":   o.get("payment_method_title"),
+            "total":         total_eur,
+            "items_resumen": ", ".join(partes) if partes else "",
+            "num_items":     total_uds,
+        })
+    return pd.DataFrame(filas)
 
 
 def main():
@@ -1536,7 +1708,7 @@ def main():
             if len(orders) < 100:
                 break
         if all_orders:
-            df_wc = pd.json_normalize(all_orders)
+            df_wc = _normalizar_pedidos_wc(all_orders)
             save_to_excel(df_wc, PATH_VENTAS, "WOOCOMMERCE", unique_col="id")
             log.info("WooCommerce: %d pedidos", len(all_orders))
         else:
@@ -1616,17 +1788,17 @@ def main():
         except Exception as e:
             log.error("Error recogiendo Google Business: %s", e)
 
-    # 6. EMAIL RESUMEN SEMANAL
-    try:
-        enviar_email_semanal(lunes, domingo)
-    except Exception as e:
-        log.error("Error enviando email semanal: %s", e)
-
-    # 7. INVENTARIO TALLERES (para GitHub Actions)
+    # 6. INVENTARIO TALLERES — antes del email para que el email use datos frescos
     try:
         generar_inventario_talleres()
     except Exception as e:
         log.error("Error generando inventario talleres: %s", e)
+
+    # 7. EMAIL RESUMEN SEMANAL
+    try:
+        enviar_email_semanal(lunes, domingo)
+    except Exception as e:
+        log.error("Error enviando email semanal: %s", e)
 
     log.info("--- Proceso Finalizado ---")
 

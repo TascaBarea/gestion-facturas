@@ -1,586 +1,835 @@
 {
-  "generado": "2026-03-20T22:24:37",
+  "generado": "2026-03-23T03:14:30",
   "talleres": [
     {
       "id": 3331,
-      "nombre": "CERRADO-CATA-TALLERElena   Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLERElena",
       "fecha": "29/04/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 3326,
-      "nombre": "CERRADO-CATA-TALLERNoemi   Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLERNoemi",
       "fecha": "08/05/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 3313,
-      "nombre": "CERRADO-CATA-TALLERPierre    Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLERPierre",
       "fecha": "04/04/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 3310,
-      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLER",
       "fecha": "14/03/26",
       "hora_inicio": "14:30",
-      "hora_fin": "16:30"
+      "hora_fin": "16:30",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 3279,
-      "nombre": "CATA-TALLER    Comestibles Barea",
+      "nombre": "CATA-TALLER",
       "fecha": "28/03/26",
       "hora_inicio": "14:30",
-      "hora_fin": "16:30"
+      "hora_fin": "16:30",
+      "stock_quantity": 7,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 3278,
-      "nombre": "Vermunova a la italiana    Taller de maceración de vermú, amaros y aledaños",
+      "nombre": "Vermunova a la italiana Taller de maceración de vermú, amaros y aledaños",
       "fecha": "27/05/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 10,
+      "stock_status": "instock",
+      "precio": 40.0
     },
     {
       "id": 3276,
-      "nombre": "Aperitivos vivos por el mundo   De lactofermentados, kombuchas y kimchis",
+      "nombre": "Aperitivos vivos por el mundo De lactofermentados, kombuchas y kimchis",
       "fecha": "07/05/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 9,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 3274,
-      "nombre": "CATA-TALLER    Comestibles Barea",
+      "nombre": "CATA-TALLER",
       "fecha": "24/04/26",
       "hora_inicio": "14:30",
-      "hora_fin": "16:30"
+      "hora_fin": "16:30",
+      "stock_quantity": 1,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 3272,
-      "nombre": "Encurtidos Gildas y Banderillas   Todo lo que usted quiso saber sobre encurtidos y jamás osó preguntar. Escabeches y otras técnicas de conservación de alimentos, puestos a bailar en forma de gildas y banderillas",
+      "nombre": "Encurtidos Gildas y Banderillas Todo lo que usted quiso saber sobre encurtidos y jamás osó preguntar. Escabeches y otras técnicas de conservación de alimentos, puestos a bailar en forma de gildas y banderillas",
       "fecha": "22/04/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 8,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 3271,
-      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "nombre": "Vermunova. Taller de maceración de vermú y aledaños",
       "fecha": "09/04/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 3261,
-      "nombre": "CATA-TALLER    Comestibles Barea",
+      "nombre": "CATA-TALLER",
       "fecha": "28/02/26",
       "hora_inicio": "14:30",
-      "hora_fin": "16:30"
+      "hora_fin": "16:30",
+      "stock_quantity": 4,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 3243,
-      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLER",
       "fecha": "15/02/25",
       "hora_inicio": "14:30",
-      "hora_fin": "16:30"
+      "hora_fin": "16:30",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 35.0
     },
     {
       "id": 3235,
-      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLER",
       "fecha": "27/02/25",
       "hora_inicio": "19:30",
-      "hora_fin": "21:30"
+      "hora_fin": "21:30",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 3234,
-      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLER",
       "fecha": "20/02/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 35.0
     },
     {
       "id": 3225,
-      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLER",
       "fecha": "21/02/25",
       "hora_inicio": "15:00",
-      "hora_fin": "17:00"
+      "hora_fin": "17:00",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 35.0
     },
     {
       "id": 3224,
-      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLER",
       "fecha": "07/03/26",
       "hora_inicio": "15:00",
-      "hora_fin": "17:00"
+      "hora_fin": "17:00",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 3181,
-      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLER",
       "fecha": "13/02/26",
       "hora_inicio": "15:00",
-      "hora_fin": "17:00"
+      "hora_fin": "17:00",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 3162,
-      "nombre": "CERRADO-CATA-Siemensiana:-D   Comestibles Barea",
+      "nombre": "CERRADO-CATA-Siemensiana:-D",
       "fecha": "12/12/25",
       "hora_inicio": "15:00",
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 3161,
-      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLER",
       "fecha": "21/02/25",
       "hora_inicio": "15:00",
-      "hora_fin": "17:00"
+      "hora_fin": "17:00",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 3044,
-      "nombre": "CREA TU MENÚ LITERARIO    Comestibles Barea",
+      "nombre": "CREA TU MENÚ LITERARIO",
       "fecha": "18/02/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 40.0
     },
     {
       "id": 3041,
-      "nombre": "Cata Bodega Borbotón & Maridaje Barea  Bodega Borbotón | Tasca Barea",
+      "nombre": "Cata Bodega Borbotón & Maridaje Barea Bodega Borbotón |",
       "fecha": "11/03/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 6,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 3040,
-      "nombre": "Cata Bodega Borbotón & Maridaje Barea  Bodega Borbotón | Tasca Barea",
+      "nombre": "Cata Bodega Borbotón & Maridaje Barea Bodega Borbotón |",
       "fecha": "21/01/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 3,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2992,
-      "nombre": "¿QUÉ ES ESO?  Cata Taller Vino y quesos y..    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "nombre": "¿QUÉ ES ESO? Cata Taller Vino y quesos y.. Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
       "fecha": "14/03/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2991,
-      "nombre": "¿QUÉ ES ESO?  Cata Taller Vino y quesos y..    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "nombre": "¿QUÉ ES ESO? Cata Taller Vino y quesos y.. Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
       "fecha": "14/02/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2990,
-      "nombre": "¿QUÉ ES ESO?  Cata Taller Vino y quesos y..    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "nombre": "¿QUÉ ES ESO? Cata Taller Vino y quesos y.. Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
       "fecha": "24/01/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": -4,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2989,
-      "nombre": "Vermunova a la italiana    Taller de maceración de vermú y aledaños",
+      "nombre": "Vermunova a la italiana Taller de maceración de vermú y aledaños",
       "fecha": "18/03/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 40.0
     },
     {
       "id": 2988,
-      "nombre": "Aperitivos vivos por el mundo   De lactofermentados, kombuchas y kimchis",
+      "nombre": "Aperitivos vivos por el mundo De lactofermentados, kombuchas y kimchis",
       "fecha": "04/03/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2987,
-      "nombre": "Vermunova a la italiana    Taller de maceración de vermú y aledaños",
+      "nombre": "Vermunova a la italiana Taller de maceración de vermú y aledaños",
       "fecha": "25/02/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 40.0
     },
     {
       "id": 2986,
-      "nombre": "Encurtidos Gildas y Banderillas   Todo lo que usted quiso saber sobre encurtidos y jamás osó preguntar. Escabeches y otras técnicas de conservación de alimentos, puestos a bailar en forma de gildas y banderillas",
+      "nombre": "Encurtidos Gildas y Banderillas Todo lo que usted quiso saber sobre encurtidos y jamás osó preguntar. Escabeches y otras técnicas de conservación de alimentos, puestos a bailar en forma de gildas y banderillas",
       "fecha": "11/02/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 4,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2985,
-      "nombre": "Vermunova a la italiana    Taller de maceración de aperitivo italiano y maridaje comparado",
+      "nombre": "Vermunova a la italiana Taller de maceración de aperitivo italiano y maridaje comparado",
       "fecha": "29/01/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 40.0
     },
     {
       "id": 2966,
-      "nombre": "CERRADO_Vermunova.    Taller de maceración de vermú y aledaños",
+      "nombre": "CERRADO_Vermunova. Taller de maceración de vermú y aledaños",
       "fecha": "15/01/26",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2956,
-      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLER",
       "fecha": "20/12/25",
       "hora_inicio": "20:00",
-      "hora_fin": "22:00"
+      "hora_fin": "22:00",
+      "stock_quantity": 1,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2896,
-      "nombre": "Aperitivos vivos.   De lactofermentados, kombuchas y kimchis",
+      "nombre": "Aperitivos vivos. De lactofermentados, kombuchas y kimchis",
       "fecha": "22/01/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2890,
       "nombre": "Cata de vinos Los Gredales del Toboso 5 variedades y mucha tradición",
       "fecha": "18/12/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2808,
-      "nombre": "CERRADO-TALLER-VERMUT    Comestibles Barea",
+      "nombre": "CERRADO-TALLER-VERMUT",
       "fecha": "13/12/25",
       "hora_inicio": "15:00",
-      "hora_fin": "16:45"
+      "hora_fin": "16:45",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2805,
-      "nombre": "CERRADO-CATA-Siemensiana:-D   Comestibles Barea",
+      "nombre": "CERRADO-CATA-Siemensiana:-D",
       "fecha": "12/12/25",
       "hora_inicio": "19:30",
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 8,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2799,
-      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLER",
       "fecha": "28/11/25",
       "hora_inicio": "19:30",
-      "hora_fin": "21:30"
+      "hora_fin": "21:30",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2797,
-      "nombre": "¿QUÉ ES ESO?  Cata Taller Vino y quesos y..    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "nombre": "¿QUÉ ES ESO? Cata Taller Vino y quesos y.. Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
       "fecha": "06/12/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 4,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2764,
-      "nombre": "Aperitivos vivos.   De lactofermentados, kombuchas y kimchis",
+      "nombre": "Aperitivos vivos. De lactofermentados, kombuchas y kimchis",
       "fecha": "29/10/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 3,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2763,
-      "nombre": "Aperitivos vivos.   De lactofermentados, kombuchas y kimchis",
+      "nombre": "Aperitivos vivos. De lactofermentados, kombuchas y kimchis",
       "fecha": "03/12/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 8,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2759,
-      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "nombre": "Vermunova. Taller de maceración de vermú y aledaños",
       "fecha": "10/12/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 2,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2751,
-      "nombre": "CERRADO-TALLER-VERMUT    Comestibles Barea",
+      "nombre": "CERRADO-TALLER-VERMUT",
       "fecha": "08/11/25",
       "hora_inicio": "13:00",
-      "hora_fin": "14:30"
+      "hora_fin": "14:30",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2725,
-      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLER",
       "fecha": "22/11/25",
       "hora_inicio": "13:00",
-      "hora_fin": "14:30"
+      "hora_fin": "14:30",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2724,
-      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLER",
       "fecha": "17/10/25",
       "hora_inicio": "19:30",
-      "hora_fin": "21:30"
+      "hora_fin": "21:30",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2686,
-      "nombre": "¿QUÉ ES ESO?  Cata Taller Vino y quesos y..    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "nombre": "¿QUÉ ES ESO? Cata Taller Vino y quesos y.. Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
       "fecha": "15/11/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2683,
-      "nombre": "Cata de vinos D.O. Calatayud Vinos de pueblo,  paraje y finca   Con maridaje de Comestibles Barea Tasca Barea",
+      "nombre": "Cata de vinos D.O. Calatayud Vinos de pueblo, paraje y finca Con maridaje de",
       "fecha": "21/11/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 25.0
     },
     {
       "id": 2656,
-      "nombre": "Cata de vinos y aceites de Regantío Viejo & Maridaje Barea  Tasca Barea",
+      "nombre": "Cata de vinos y aceites de Regantío Viejo & Maridaje Barea",
       "fecha": "06/11/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 1,
+      "stock_status": "instock",
+      "precio": 25.0
     },
     {
       "id": 2615,
-      "nombre": "Encurtidos y escabeches    Todo lo que usted quiso saber sobre encurtidos y jamás osó preguntar. Escabeches y otras técnicas de conservación de alimentos",
+      "nombre": "Encurtidos y escabeches Todo lo que usted quiso saber sobre encurtidos y jamás osó preguntar. Escabeches y otras técnicas de conservación de alimentos",
       "fecha": "15/10/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2614,
-      "nombre": "¿QUÉ ES ESO?  Cata Taller Vino y quesos y..    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "nombre": "¿QUÉ ES ESO? Cata Taller Vino y quesos y.. Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
       "fecha": "25/10/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2609,
-      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "nombre": "Vermunova. Taller de maceración de vermú y aledaños",
       "fecha": "05/11/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 8,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2607,
-      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "nombre": "Vermunova. Taller de maceración de vermú y aledaños",
       "fecha": "09/10/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 8,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2601,
-      "nombre": "Aperitivos vivos.   De lactofermentados, kombuchas y kimchis",
+      "nombre": "Aperitivos vivos. De lactofermentados, kombuchas y kimchis",
       "fecha": "24/09/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2600,
-      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLER",
       "fecha": "09/09/25",
       "hora_inicio": "19:30",
-      "hora_fin": "21:30"
+      "hora_fin": "21:30",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 35.0
     },
     {
       "id": 2598,
-      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "nombre": "Vermunova. Taller de maceración de vermú y aledaños",
       "fecha": "10/09/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2582,
-      "nombre": "CERRADO-CATA-TALLER    Comestibles Barea",
+      "nombre": "CERRADO-CATA-TALLER",
       "fecha": "16/07/25",
       "hora_inicio": "19:30",
-      "hora_fin": "21:30"
+      "hora_fin": "21:30",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2580,
-      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "nombre": "Vermunova. Taller de maceración de vermú y aledaños",
       "fecha": "02/07/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2555,
-      "nombre": "ARTE COMESTIBLE   Comestibles Barea",
+      "nombre": "ARTE COMESTIBLE",
       "fecha": "17/06/25",
       "hora_inicio": "20:00",
-      "hora_fin": "22:00"
+      "hora_fin": "22:00",
+      "stock_quantity": 3,
+      "stock_status": "instock",
+      "precio": 35.0
     },
     {
       "id": 2538,
-      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "nombre": "Vermunova. Taller de maceración de vermú y aledaños",
       "fecha": "09/07/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 4,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2537,
-      "nombre": "KOMBUCHA   Taller de bebidas fermentadas",
+      "nombre": "KOMBUCHA Taller de bebidas fermentadas",
       "fecha": "02/07/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 10,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2529,
-      "nombre": "KOMBUCHA   Taller de bebidas fermentadas",
+      "nombre": "KOMBUCHA Taller de bebidas fermentadas",
       "fecha": "02/04/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2524,
-      "nombre": "CATA-TALLER    Comestibles Barea",
+      "nombre": "CATA-TALLER",
       "fecha": "30/05/25",
       "hora_inicio": "19:45",
-      "hora_fin": "21:30"
+      "hora_fin": "21:30",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2516,
-      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "nombre": "Vermunova. Taller de maceración de vermú y aledaños",
       "fecha": "18/06/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2500,
-      "nombre": "CATA-TALLER    Comestibles Barea",
+      "nombre": "CATA-TALLER",
       "fecha": "31/05/25",
       "hora_inicio": "15:00",
-      "hora_fin": "17:00"
+      "hora_fin": "17:00",
+      "stock_quantity": 10,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2498,
-      "nombre": "CATA-TALLER    Comestibles Barea",
+      "nombre": "CATA-TALLER",
       "fecha": "24/05/25",
       "hora_inicio": "15:00",
-      "hora_fin": "17:00"
+      "hora_fin": "17:00",
+      "stock_quantity": 8,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2497,
-      "nombre": "¿QUÉ ES ESO?  Cata Taller Vino y quesos y..    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "nombre": "¿QUÉ ES ESO? Cata Taller Vino y quesos y.. Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
       "fecha": "28/06/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 10,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2496,
-      "nombre": "CATA-TALLER    Comestibles Barea",
+      "nombre": "CATA-TALLER",
       "fecha": "10/05/25",
       "hora_inicio": "15:00",
-      "hora_fin": "17:00"
+      "hora_fin": "17:00",
+      "stock_quantity": 10,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2481,
-      "nombre": "CATA  ESPECIAL    Comestibles Barea",
+      "nombre": "CATA ESPECIAL",
       "fecha": "23/05/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 50.0
     },
     {
       "id": 2480,
-      "nombre": "Degustación    Comestibles Barea",
+      "nombre": "Degustación",
       "fecha": "19/04/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 25.0
     },
     {
       "id": 2479,
-      "nombre": "CATA    Comestibles Barea",
+      "nombre": "CATA",
       "fecha": "25/04/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 25.0
     },
     {
       "id": 2478,
-      "nombre": "Degustación    Comestibles Barea",
+      "nombre": "Degustación",
       "fecha": "26/05/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 25.0
     },
     {
       "id": 2411,
-      "nombre": "¿QUÉ ES ESO?  Taller de quesos    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "nombre": "¿QUÉ ES ESO? Taller de quesos Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
       "fecha": "12/04/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2406,
-      "nombre": "¿QUÉ ES ESO?  Taller de quesos    Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
+      "nombre": "¿QUÉ ES ESO? Taller de quesos Todo lo que quiso saber sobre el queso y nunca se atrevió a preguntar",
       "fecha": "28/03/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2347,
-      "nombre": "Aperitivos vivos.    De encurtidos, Kimchis, Lactofermentados y banderillas",
+      "nombre": "Aperitivos vivos. De encurtidos, Kimchis, Lactofermentados y banderillas",
       "fecha": "11/06/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 2,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2344,
-      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "nombre": "Vermunova. Taller de maceración de vermú y aledaños",
       "fecha": "28/05/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2343,
-      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "nombre": "Vermunova. Taller de maceración de vermú y aledaños",
       "fecha": "09/04/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2333,
-      "nombre": "Aperitivos vivos.    De encurtidos, Kimchis, Lactofermentados y banderillas",
+      "nombre": "Aperitivos vivos. De encurtidos, Kimchis, Lactofermentados y banderillas",
       "fecha": "06/03/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2332,
-      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños",
+      "nombre": "Vermunova. Taller de maceración de vermú y aledaños",
       "fecha": "19/03/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 2,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2317,
-      "nombre": "Vermunova.    Taller de maceración de vermú y aledaños (second round)",
+      "nombre": "Vermunova. Taller de maceración de vermú y aledaños (second round)",
       "fecha": "19/02/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 5,
+      "stock_status": "instock",
+      "precio": 30.0
     },
     {
       "id": 2282,
-      "nombre": "Degustación    Comestibles Barea",
+      "nombre": "Degustación",
       "fecha": "08/02/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 10,
+      "stock_status": "instock",
+      "precio": 25.0
     },
     {
       "id": 2281,
-      "nombre": "Degustación    Comestibles Barea",
+      "nombre": "Degustación",
       "fecha": "07/02/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 10,
+      "stock_status": "instock",
+      "precio": 25.0
     },
     {
       "id": 2279,
-      "nombre": "Degustación   Comestibles Barea",
+      "nombre": "Degustación",
       "fecha": "01/02/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 10,
+      "stock_status": "instock",
+      "precio": 25.0
     },
     {
       "id": 2271,
-      "nombre": "KOMBUCHA   Taller de bebidas fermentadas",
+      "nombre": "KOMBUCHA Taller de bebidas fermentadas",
       "fecha": "02/04/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
     },
     {
       "id": 2131,
-      "nombre": "Degustación   Comestibles Barea",
+      "nombre": "Degustación",
       "fecha": "31/01/25",
       "hora_inicio": null,
-      "hora_fin": null
+      "hora_fin": null,
+      "stock_quantity": 10,
+      "stock_status": "instock",
+      "precio": 25.0
     }
   ]
 }
