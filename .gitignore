@@ -8,6 +8,7 @@ desktop.ini
 config_local.py
 credentials.json
 token.json
+token.json.backup
 datos_sensibles.py
 
 # Datos financieros (Excel, banco, JSON procesados)
@@ -36,3 +37,8 @@ outputs/logs_barea/
 ventas_semana/dashboards/dashboard_comes.html
 ventas_semana/dashboards/dashboard_tasca.html
 ventas_semana/dashboards/informe_barea_*.pdf
+ventas_semana/dashboards/*.pdf
+
+# Notas y archivos temporales de investigación
+docs/investigacion-fuentes-temp.txt
+docs/youtube-research-notes.md
