@@ -1,18 +1,26 @@
 # GitHub Copilot Instructions — gestion-facturas
-<!-- Versión: 1.0 — 20/03/2026 -->
+<!-- Versión: 1.1 — 24/03/2026 -->
 <!-- Referencia completa: CLAUDE.md + docs/ESQUEMA_PROYECTO_DEFINITIVO_v2_6.md -->
+<!-- Conocimiento específico por módulo: .github/instructions/*.instructions.md -->
 
 ## Proyecto
 Sistema integrado de gestión de facturas para **Tasca Barea SLL** (bar + tienda gourmet + experiencias, Madrid).
 Desarrollado y mantenido por Jaime Fernández. Stack: Python 3.13, pandas, openpyxl, pdfplumber, Gmail API, Loyverse API.
 Contexto completo de empresa: `docs/TASCA_BAREA_CONTEXT.md`
 
+## Instrucciones específicas por módulo
+Cada módulo tiene su propio archivo de instrucciones con conocimiento técnico detallado:
+- **Cuadre** → `.github/instructions/cuadre.instructions.md`
+- **Ventas** → `.github/instructions/ventas.instructions.md`
+- **Gmail** → `.github/instructions/gmail.instructions.md`
+- **Núcleo/Parseo** → `.github/instructions/nucleo.instructions.md`
+
 ## Módulos (4 principales)
 | Módulo | Versión | Archivo | Automatización |
 |--------|---------|---------|----------------|
 | Ⓑ GMAIL | v1.14 | `gmail/gmail.py` | Automático (viernes 03:00) |
 | Ⓒ VENTAS | v4.7 | `ventas_semana/script_barea.py` | Automático (lunes 03:00) |
-| Ⓓ CUADRE | v1.6 | `cuadre/banco/cuadre.py` | Manual |
+| Ⓓ CUADRE | v1.7 | `cuadre/banco/cuadre.py` | Manual |
 | Ⓐ PARSEO | v5.18 | `Parseo/` (repo separado) | Manual |
 
 ## Estructura clave

@@ -7,8 +7,39 @@ allowed-tools: Bash, Read, Write, Edit, Grep, Glob
 ---
 
 # Proceso de Cuadre Bancario Mensual
+<!-- cuadre.py v1.7 -->
 
-Ejecuta el proceso completo de cuadre para el mes indicado.
+## Conocimiento técnico del módulo (leer antes de tocar el código)
+
+### Lógica de asignación — buscar_factura_candidata() — ORDEN FIJO
+1. **Importe**: `abs(Total - importe) <= 0.01€`
+2. **Proveedor**: fuzzy `>= 70%` usando aliases de MAESTRO_PROVEEDORES
+3. **Fecha**: ventana `[fecha_mov - 60 días, fecha_mov + 15 días]`, distancia absoluta
+4. **Asignar** o **REVISAR**
+
+### Umbrales
+```python
+UMBRAL_FUZZY_MINIMO  = 0.70   # mínimo para candidata
+UMBRAL_FUZZY_INDICAR = 0.85   # por debajo: mostrar %(fuzzy) en detalle
+# Ventana fecha: [-60, +15] días — hardcoded en buscar_factura_candidata()
+```
+
+### Reglas críticas
+- ESTADO_PAGO y MOV# → solo los escribe cuadre.py, nunca otro script
+- facturas_usadas → set global, se reinicia una vez al inicio, no por hoja
+- Excel de entrada → avisar antes de escribir, falla si está abierto en Excel
+
+### Clasificadores especiales (tienen lógica propia, no pasan por buscar_factura_candidata)
+| Trigger en concepto | Clasificador | Lógica |
+|---|---|---|
+| BENJAMIN ORTEGA Y JAIME | ALQUILER | 2 facturas del mismo mes |
+| Y?C\d{9,} / XFERA/YOIGO | YOIGO | regex |
+| COM PROP | COMUNIDAD DE VECINOS | 2 facturas ISTA más cercanas |
+| SOM ENERGIA | SOM Energia | número factura en concepto |
+| SPOTIFY/NETFLIX/LOYVERSE | Suscripción sin factura | tipo fijo |
+| MAKE.COM/OPENAI | Suscripción con factura | factura del mismo mes |
+
+---
 
 ## Requisito previo
 
