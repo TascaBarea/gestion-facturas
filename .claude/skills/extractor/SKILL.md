@@ -78,7 +78,7 @@ OBLIGATORIO:
 SOBRESCRIBIR SI EL FORMATO ES ESPECIAL:
 - `extraer_total(texto)` -> float
 - `extraer_fecha(texto)` -> str (formato DD/MM/YYYY)
-- `extraer_numero_factura(texto)` -> str
+- `extraer_referencia(texto)` -> str
 
 REGLAS DE NEGOCIO:
 - **PORTES**: NUNCA como linea separada. Distribuir proporcionalmente entre productos:
@@ -112,7 +112,7 @@ print(f'Total factura: {total}')
 print(f'Suma lineas:   {round(suma, 2)}')
 print(f'Cuadre:        {\"OK\" if abs(total - suma) < 0.05 else \"DESCUADRE\"} (diff={round(total-suma, 2)})')
 print(f'Fecha: {ext.extraer_fecha(texto)}')
-print(f'Ref:   {ext.extraer_numero_factura(texto)}')
+print(f'Ref:   {ext.extraer_referencia(texto)}')
 "
 ```
 
