@@ -29,7 +29,8 @@ except Exception as e:
 
 @st.cache_data(ttl=300)
 def _categorias():
-    return cargar_categorias(wc)
+    _wc = get_wc_api()
+    return cargar_categorias(_wc)
 
 
 cats = _categorias()
