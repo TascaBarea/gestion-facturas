@@ -3,6 +3,7 @@ Comestibles Barea — Panel de gestión
 Streamlit multi-page app para procesos WooCommerce.
 """
 
+import hmac
 import streamlit as st
 
 st.set_page_config(
@@ -35,7 +36,10 @@ def _check_password():
     password = st.text_input("Contraseña", type="password", key="login_pwd")
 
     if st.button("Entrar", type="primary"):
-        if password == st.secrets.get("APP_PASSWORD", ""):
+        stored = st.secrets.get("APP_PASSWORD")
+        if not stored:
+            st.error("Error de configuración: APP_PASSWORD no definida en secrets.")
+        elif hmac.compare_digest(password, stored):
             st.session_state.autenticado = True
             st.rerun()
         else:

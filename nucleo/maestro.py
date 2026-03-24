@@ -18,6 +18,11 @@ from openpyxl import load_workbook
 from rapidfuzz import fuzz, process
 import pdfplumber
 
+try:
+    from config.datos_sensibles import CIFS_PROPIOS as _CIFS_PROPIOS
+except ImportError:
+    _CIFS_PROPIOS = set()
+
 
 # Sufijos societarios a eliminar de nombres de proveedores
 SUFIJOS_ELIMINAR = [
@@ -82,7 +87,8 @@ class MaestroProveedores:
     """
 
     # CIFs propios (cliente) — excluir de identificación por PDF
-    CIFS_PROPIOS = {'B87760575'}
+    # Importado de config/datos_sensibles.py (no hardcodear aquí)
+    CIFS_PROPIOS = _CIFS_PROPIOS
 
     def __init__(self, ruta: str, umbral_fuzzy: int = UMBRAL_FUZZY_DEFAULT):
         self.ruta = ruta

@@ -10,6 +10,7 @@ datos_sensibles.py esta en .gitignore y NUNCA se sube a git.
 # =============================================================================
 
 CIF_PROPIO = ""           # Ej: "B12345678"
+CIFS_PROPIOS = set()      # Ej: {"B12345678"} — set para búsqueda rápida
 NOMBRE_ORDENANTE = ""     # Ej: "MI EMPRESA S.L."
 NIF_SUFIJO = ""           # Ej: "B12345678000"
 BIC_ORDENANTE = ""        # Ej: "REDACTED_BIC"
@@ -28,6 +29,11 @@ EMAILS_FULL = [
 ]
 EMAILS_COMES_ONLY = [
     # "socio3@email.com",
+]
+
+# Destinatarios email resumen semanal
+EMAILS_RESUMEN_SEMANAL = [
+    # "admin@email.com",
 ]
 
 # =============================================================================

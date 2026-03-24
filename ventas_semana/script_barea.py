@@ -59,8 +59,13 @@ PATH_HISTORICO = os.path.join(os.path.dirname(_script_dir), "datos", "Ventas Bar
 # Nombres de tienda por token
 STORE_NAMES = {"LOY_TOKEN_TASCA": "Tasca", "LOY_TOKEN_COMES": "Comes"}
 
-# Destinatarios email semanal (fácil de ampliar)
-EMAILS_RESUMEN_SEMANAL = ["jaimefermo@gmail.com"]
+# Destinatarios email semanal — importar de datos_sensibles
+try:
+    sys.path.insert(0, os.path.join(os.path.dirname(_script_dir), "config"))
+    from datos_sensibles import EMAILS_RESUMEN_SEMANAL
+except ImportError:
+    EMAILS_RESUMEN_SEMANAL = []
+    log.warning("No se pudo importar EMAILS_RESUMEN_SEMANAL de datos_sensibles")
 
 # Gmail OAuth (reutiliza credenciales del módulo gmail/)
 _GMAIL_DIR = os.path.join(os.path.dirname(_script_dir), "gmail")

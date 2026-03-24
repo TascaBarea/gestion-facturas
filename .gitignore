@@ -40,6 +40,9 @@ ventas_semana/dashboards/dashboard_tasca.html
 ventas_semana/dashboards/informe_barea_*.pdf
 ventas_semana/dashboards/*.pdf
 
+# Documentos con datos personales (DNIs, IBANs, salarios)
+TASCA_BAREA_CONTEXT*
+
 # Notas y archivos temporales de investigación
 docs/investigacion-fuentes-temp.txt
 docs/youtube-research-notes.md
