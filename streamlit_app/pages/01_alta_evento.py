@@ -40,10 +40,18 @@ nombres_cats = ["(Sin categoría)"] + [nombre for _, nombre in cats]
 with st.form("form_evento"):
     st.subheader("Datos del evento")
 
-    nombre_base = st.text_input(
-        "Nombre del evento (sin fecha)",
-        placeholder="Cata de vinos naturales",
-    )
+    # Nombres basados en categorías WC + opción libre
+    nombres_evento = [nombre for _, nombre in cats] + ["Otro (escribir)"]
+    seleccion_nombre = st.selectbox("Tipo de evento", nombres_evento)
+
+    nombre_libre = ""
+    if seleccion_nombre == "Otro (escribir)":
+        nombre_libre = st.text_input(
+            "Nombre del evento (sin fecha)",
+            placeholder="Ej: Cata de vinos naturales",
+        )
+
+    nombre_base = nombre_libre if seleccion_nombre == "Otro (escribir)" else seleccion_nombre
 
     col1, col2 = st.columns(2)
     with col1:
