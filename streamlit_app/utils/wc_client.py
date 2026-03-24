@@ -86,6 +86,12 @@ def nombre_corto_evento(nombre_raw):
     return re.sub(r"<[^>]+>", "", nombre).strip()
 
 
+def extraer_fecha_evento(nombre_raw):
+    """Extrae fecha DD/MM/YY del nombre HTML del producto. Devuelve str o None."""
+    match = re.search(r"(\d{2}/\d{2}/\d{2,4})", nombre_raw)
+    return match.group(1) if match else None
+
+
 def cargar_eventos_futuros(wc):
     """Carga eventos ticket-event con stock_status instock o manage_stock.
 
@@ -100,6 +106,7 @@ def cargar_eventos_futuros(wc):
             "id": p["id"],
             "nombre_raw": p.get("name", ""),
             "nombre": nombre_corto_evento(p.get("name", "")),
+            "fecha": extraer_fecha_evento(p.get("name", "")),
             "stock_quantity": p.get("stock_quantity"),
             "manage_stock": p.get("manage_stock", False),
             "total_sales": p.get("total_sales", 0),

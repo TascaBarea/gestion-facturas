@@ -49,22 +49,40 @@ if not eventos:
 
 st.subheader("Eventos programados")
 
+from datetime import datetime
+
 resumen = []
 for ev in eventos:
     plazas_total = ev["stock_quantity"] if ev["manage_stock"] else None
     vendidas = ev["total_sales"] or 0
     plazas_libres = (plazas_total - vendidas) if plazas_total is not None else None
+    fecha_str = ev.get("fecha", "")
+    # Parsear fecha para ordenar
+    fecha_dt = None
+    if fecha_str:
+        try:
+            if len(fecha_str) == 8:  # DD/MM/YY
+                fecha_dt = datetime.strptime(fecha_str, "%d/%m/%y")
+            else:
+                fecha_dt = datetime.strptime(fecha_str, "%d/%m/%Y")
+        except ValueError:
+            pass
     resumen.append({
         "Evento": ev["nombre"],
+        "Fecha": fecha_str or "Sin fecha",
+        "_fecha_dt": fecha_dt,
         "Vendidas": vendidas,
         "Plazas totales": plazas_total if plazas_total is not None else "Sin límite",
         "Plazas libres": plazas_libres if plazas_libres is not None else "Sin límite",
         "id": ev["id"],
     })
 
+# Ordenar por fecha (más próximos primero)
+resumen.sort(key=lambda x: x["_fecha_dt"] or datetime.max)
+
 df_resumen = pd.DataFrame(resumen)
 st.dataframe(
-    df_resumen[["Evento", "Vendidas", "Plazas totales", "Plazas libres"]],
+    df_resumen[["Evento", "Fecha", "Vendidas", "Plazas totales", "Plazas libres"]],
     use_container_width=True,
     hide_index=True,
 )
@@ -74,11 +92,26 @@ st.dataframe(
 st.markdown("---")
 st.subheader("Asistentes por evento")
 
-nombres_eventos = [ev["nombre"] for ev in eventos]
-evento_sel = st.selectbox("Selecciona un evento", nombres_eventos)
+# Selector con nombre + fecha para distinguir eventos con mismo nombre
+opciones_map = {}
+for ev in eventos:
+    fecha_str = ev.get("fecha", "")
+    label = f"{ev['nombre']} — {fecha_str}" if fecha_str else ev["nombre"]
+    # Si hay duplicados, añadir ID
+    if label in opciones_map:
+        label += f" (#{ev['id']})"
+    opciones_map[label] = ev["id"]
 
-# Encontrar el evento seleccionado (puede haber varios con mismo nombre corto)
-eventos_match = [ev for ev in eventos if ev["nombre"] == evento_sel]
+# Ordenar por fecha
+opciones_ordenadas = sorted(opciones_map.keys(), key=lambda x: next(
+    (r["_fecha_dt"] for r in resumen if r["id"] == opciones_map[x]),
+    datetime.max,
+))
+
+evento_sel_label = st.selectbox("Selecciona un evento", opciones_ordenadas)
+evento_sel_id = opciones_map[evento_sel_label]
+
+eventos_match = [ev for ev in eventos if ev["id"] == evento_sel_id]
 
 if not eventos_match:
     st.warning("Evento no encontrado.")
@@ -153,7 +186,7 @@ else:
             )
             ws.column_dimensions[chr(64 + col_idx)].width = min(max_len + 3, 40)
 
-    nombre_archivo = f"asistentes_{evento_sel.replace(' ', '_')[:30]}.xlsx"
+    nombre_archivo = f"asistentes_{evento_sel_label.replace(' ', '_')[:30]}.xlsx"
     st.download_button(
         label="Descargar Excel",
         data=buffer.getvalue(),
