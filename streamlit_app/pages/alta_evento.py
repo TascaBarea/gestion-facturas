@@ -5,11 +5,9 @@ Conversión del CLI alta_evento.py a formulario Streamlit.
 
 import streamlit as st
 from datetime import datetime, date
+from utils.auth import require_role
 
-# Proteger página con autenticación
-if not st.session_state.get("autenticado", False):
-    st.warning("Inicia sesión desde la página principal.")
-    st.stop()
+require_role(["admin", "eventos"])
 
 from utils.wc_client import get_wc_api, cargar_tipos_evento, crear_producto
 
