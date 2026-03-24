@@ -49,7 +49,9 @@ if not eventos:
 
 st.subheader("Eventos programados")
 
-from datetime import datetime
+from datetime import datetime, date
+
+hoy = datetime.combine(date.today(), datetime.min.time())
 
 resumen = []
 for ev in eventos:
@@ -57,7 +59,7 @@ for ev in eventos:
     vendidas = ev["total_sales"] or 0
     plazas_libres = (plazas_total - vendidas) if plazas_total is not None else None
     fecha_str = ev.get("fecha", "")
-    # Parsear fecha para ordenar
+    # Parsear fecha para ordenar y filtrar
     fecha_dt = None
     if fecha_str:
         try:
@@ -67,6 +69,9 @@ for ev in eventos:
                 fecha_dt = datetime.strptime(fecha_str, "%d/%m/%Y")
         except ValueError:
             pass
+    # Solo eventos futuros (fecha >= hoy). Sin fecha = excluir.
+    if fecha_dt is None or fecha_dt < hoy:
+        continue
     resumen.append({
         "Evento": ev["nombre"],
         "Fecha": fecha_str or "Sin fecha",
@@ -79,6 +84,10 @@ for ev in eventos:
 
 # Ordenar por fecha (más próximos primero)
 resumen.sort(key=lambda x: x["_fecha_dt"] or datetime.max)
+
+if not resumen:
+    st.info("No hay eventos futuros programados.")
+    st.stop()
 
 df_resumen = pd.DataFrame(resumen)
 st.dataframe(
