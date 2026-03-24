@@ -90,6 +90,7 @@ gestion-facturas/
 | `/cuadre [mes]`       | Proceso completo de cuadre bancario mensual (NORMA43 vs fact.)  |
 | `/debug-extractor`    | Diagnosticar y corregir errores en un extractor existente       |
 | `/nuevo-proveedor`    | Alta completa de proveedor nuevo (MAESTRO + alias + extractor)  |
+| `/validar-patrones`   | Testear regex del extractor genérico contra textos de prueba    |
 
 ---
 

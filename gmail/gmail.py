@@ -11,29 +11,7 @@ MEJORAS v1.14:
 
 MEJORAS v1.13:
 - CURSOR TEMPORAL: Solo procesa emails posteriores a la última ejecución (after:YYYY/MM/DD)
-- Evita reprocesar emails antiguos que ya se gestionaron manualmente
 - Fecha de última ejecución guardada en emails_procesados.json
-
-MEJORAS v1.6:
-- ANTI-DUPLICADOS: JSON se guarda después de CADA email (no al final)
-- ANTI-DUPLICADOS: Email se mueve a PROCESADAS ANTES de procesar (no después)
-- ANTI-DUPLICADOS: Todos los emails vistos se registran (con/sin adjuntos, errores)
-- ANTI-DUPLICADOS: mover_email_seguro() con retry y backoff
-- ANTI-DUPLICADOS: Escritura atómica del JSON (archivo temporal + rename)
-- ANTI-DUPLICADOS: Guardar JSON de emergencia si hay error crítico
-
-MEJORAS v1.5:
-- Mover TODOS los emails a FACTURAS_PROCESADAS (reenvíos, sin adjuntos, con errores)
-- Evita reprocesar los mismos emails cada semana
-
-MEJORAS v1.4:
-- Marcar correos como LEÍDOS además de mover a PROCESADOS
-- Pestaña SEPA con desplegable IBAN ordenante
-- Lógica ATRASADAS corregida (trimestre ejecución vs trimestre factura)
-- Ruta extractores corregida
-- LocalDropboxClient (copia local, no API)
-- Integración correcta con extractores de PARSEO (clases)
-- Notificación por email a tascabarea@gmail.com
 
 Ejecuta: python gmail.py --produccion
          python gmail.py --test (modo prueba sin modificar archivos)
@@ -41,20 +19,21 @@ Ejecuta: python gmail.py --produccion
 
 import os
 import sys
+import io
 import json
 import hashlib
 import logging
 import argparse
-import smtplib
-import unicodedata
 import re
+import time
+import tempfile
+import traceback
+import importlib.util
 from datetime import datetime, timedelta
-from pathlib import Path
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional, Dict, List, Tuple, Any
-from dataclasses import dataclass, field, asdict
-from copy import deepcopy
+from dataclasses import dataclass, field
 import shutil
 
 # Google API
@@ -73,8 +52,8 @@ try:
 except ImportError:
     OCR_DISPONIBLE = False
 
-# Fuzzy matching
-from rapidfuzz import fuzz, process
+# Maestro proveedores (centralizado en nucleo/)
+from nucleo.maestro import Proveedor, MaestroProveedores, normalizar_nombre_proveedor
 
 # Excel
 from openpyxl import Workbook, load_workbook
@@ -82,16 +61,13 @@ from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
-# Fechas
-from dateutil import parser as date_parser
-
 # ============================================================================
-# CONFIGURACIÓN v1.4
+# CONFIGURACIÓN v1.14
 # ============================================================================
 
 @dataclass
 class Config:
-    """Configuración del sistema v1.4"""
+    """Configuración del sistema v1.14"""
     # Rutas base
     BASE_PATH: str = r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas"
     GMAIL_PATH: str = r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\gmail"
@@ -181,19 +157,7 @@ CONFIG = Config()
 # MODELOS DE DATOS
 # ============================================================================
 
-@dataclass
-class Proveedor:
-    """Datos de un proveedor del MAESTRO"""
-    nombre: str
-    cif: str = ""
-    iban: str = ""
-    forma_pago: str = ""
-    email: str = ""
-    alias: List[str] = field(default_factory=list)
-    cuenta: str = ""
-    tiene_extractor: bool = False
-    archivo_extractor: str = ""
-
+# Proveedor: importado de nucleo.maestro
 
 @dataclass
 class FacturaExtraida:
@@ -273,33 +237,7 @@ def configurar_logging(modo_test: bool = False) -> logging.Logger:
 # UTILIDADES
 # ============================================================================
 
-def normalizar_nombre_proveedor(nombre: str) -> str:
-    """
-    Normaliza el nombre de un proveedor para usar en nombre de archivo.
-    v1.6: Limpieza de artefactos tras eliminar sufijos (puntos, comas sueltos)
-    """
-    if not nombre:
-        return ""
-    
-    nombre = unicodedata.normalize('NFD', nombre)
-    nombre = ''.join(c for c in nombre if unicodedata.category(c) != 'Mn')
-    nombre = nombre.replace("'", "").replace("'", "").replace("`", "")
-    nombre = nombre.replace("&", "Y")
-    nombre = re.sub(r'\([^)]*\)', '', nombre)
-    
-    for sufijo in sorted(CONFIG.SUFIJOS_ELIMINAR, key=len, reverse=True):
-        nombre = re.sub(rf'\b{re.escape(sufijo)}\b', '', nombre, flags=re.IGNORECASE)
-    
-    # v1.6: Limpiar artefactos que quedan tras eliminar sufijos
-    nombre = re.sub(r'[,;.]+\s*$', '', nombre)  # Coma/punto final
-    nombre = re.sub(r'\s+[,;.]+\s*', ' ', nombre)  # Coma/punto suelto en medio
-    nombre = re.sub(r'[,;.]+\s+', ' ', nombre)  # Coma/punto seguido de espacio
-    
-    nombre = ' '.join(nombre.split())
-    nombre = nombre.upper()
-    
-    return nombre
-
+# normalizar_nombre_proveedor: importado de nucleo.maestro
 
 def obtener_trimestre(fecha: datetime) -> str:
     """Devuelve el trimestre en formato XTyy (ej: 1T26)"""
@@ -388,223 +326,7 @@ def formatear_iban(iban: str) -> str:
     return " ".join([iban[i:i+4] for i in range(0, len(iban), 4)])
 
 
-# ============================================================================
-# MAESTRO PROVEEDORES
-# ============================================================================
-
-class MaestroProveedores:
-    """Gestiona el acceso al MAESTRO_PROVEEDORES"""
-    
-    def __init__(self, ruta: str):
-        self.ruta = ruta
-        self.proveedores: Dict[str, Proveedor] = {}
-        self.emails: Dict[str, str] = {}
-        self.alias: Dict[str, str] = {}
-        self.cifs: Dict[str, str] = {}  # CIF → nombre proveedor
-        self._cargar()
-    
-    def _cargar(self):
-        """Carga los proveedores del Excel"""
-        wb = load_workbook(self.ruta, read_only=True, data_only=True)
-        ws = wb.active
-        
-        headers = {}
-        for col, cell in enumerate(ws[1], 1):
-            if cell.value:
-                headers[str(cell.value).upper().strip()] = col
-        
-        col_map = {
-            'PROVEEDOR': headers.get('PROVEEDOR', headers.get('NOMBRE', 2)),
-            'CIF': headers.get('CIF', headers.get('NIF', 4)),
-            'IBAN': headers.get('IBAN', 5),
-            'FORMA_PAGO': headers.get('FORMA_PAGO', headers.get('METODO_PAGO', 6)),
-            'EMAIL': headers.get('EMAIL', headers.get('CORREO', 7)),
-            'ALIAS': headers.get('ALIAS', 3),
-            'CUENTA': headers.get('CUENTA', headers.get('CODIGO', 1)),
-            'TIENE_EXTRACTOR': headers.get('TIENE_EXTRACTOR', 8),
-            'ARCHIVO_EXTRACTOR': headers.get('ARCHIVO_EXTRACTOR', 9)
-        }
-        
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if not row or len(row) < 2:
-                continue
-            
-            nombre = row[col_map['PROVEEDOR'] - 1] if len(row) >= col_map['PROVEEDOR'] else None
-            if not nombre:
-                continue
-            nombre = str(nombre).strip()
-            
-            alias_raw = row[col_map['ALIAS'] - 1] if len(row) >= col_map['ALIAS'] else ""
-            alias_list = []
-            if alias_raw:
-                separador = "," if "," in str(alias_raw) else "|"
-                alias_list = [a.strip().upper() for a in str(alias_raw).split(separador) if a.strip()]
-            
-            tiene_extractor = False
-            archivo_extractor = ""
-            if len(row) >= col_map['TIENE_EXTRACTOR']:
-                tiene_ext = row[col_map['TIENE_EXTRACTOR'] - 1]
-                tiene_extractor = str(tiene_ext).upper().strip() == 'SI' if tiene_ext else False
-            if len(row) >= col_map['ARCHIVO_EXTRACTOR']:
-                archivo_extractor = str(row[col_map['ARCHIVO_EXTRACTOR'] - 1] or "").strip()
-            
-            proveedor = Proveedor(
-                nombre=nombre,
-                cif=str(row[col_map['CIF'] - 1] or "").strip() if len(row) >= col_map['CIF'] else "",
-                iban=str(row[col_map['IBAN'] - 1] or "").strip() if len(row) >= col_map['IBAN'] else "",
-                forma_pago=str(row[col_map['FORMA_PAGO'] - 1] or "").strip().upper() if len(row) >= col_map['FORMA_PAGO'] else "",
-                email=str(row[col_map['EMAIL'] - 1] or "").strip().lower() if len(row) >= col_map['EMAIL'] else "",
-                alias=alias_list,
-                cuenta=str(row[col_map['CUENTA'] - 1] or "").strip() if len(row) >= col_map['CUENTA'] else "",
-                tiene_extractor=tiene_extractor,
-                archivo_extractor=archivo_extractor
-            )
-            
-            self.proveedores[nombre.upper()] = proveedor
-            
-            if proveedor.email:
-                for em in proveedor.email.split(","):
-                    em = em.strip().lower()
-                    if em:
-                        self.emails[em] = nombre
-            
-            for alias in alias_list:
-                self.alias[alias.upper()] = nombre
-
-            if proveedor.cif:
-                cif_limpio = proveedor.cif.upper().replace(' ', '').replace('-', '')
-                if cif_limpio:
-                    self.cifs[cif_limpio] = nombre
-
-        wb.close()
-
-        # Emails hardcoded (dominio no coincide con razón social)
-        _hardcoded = {
-            'manuel@castrolaborda.com': 'PAGOS ALTOS DE ACERED, SL',
-            'manuel@lajas.es': 'PAGOS ALTOS DE ACERED, SL',
-        }
-        for em, nombre_prov in _hardcoded.items():
-            self.emails[em] = nombre_prov
-
-    def buscar_por_email(self, email: str) -> Optional[Proveedor]:
-        """Busca proveedor por email del remitente"""
-        email = email.lower().strip()
-        if "<" in email and ">" in email:
-            email = email.split("<")[1].split(">")[0].strip()
-        
-        nombre = self.emails.get(email)
-        if nombre:
-            return self.proveedores.get(nombre.upper())
-        
-        for email_maestro, nombre_prov in self.emails.items():
-            if email_maestro in email or email in email_maestro:
-                return self.proveedores.get(nombre_prov.upper())
-        
-        return None
-    
-    def buscar_por_alias(self, texto: str) -> Optional[Proveedor]:
-        """Busca proveedor por alias en el texto"""
-        texto_upper = texto.upper().strip()
-        texto_limpio = texto_upper.replace(',', ' ').replace('"', ' ').replace('(', ' ').replace(')', ' ')
-        palabras_texto = set(texto_limpio.split())
-        
-        nombre = self.alias.get(texto_upper)
-        if nombre:
-            return self.proveedores.get(nombre.upper())
-        
-        for alias, nombre_prov in self.alias.items():
-            if len(alias) >= 6 and alias in texto_upper:
-                return self.proveedores.get(nombre_prov.upper())
-            elif len(alias) >= 4 and alias in palabras_texto:
-                return self.proveedores.get(nombre_prov.upper())
-        
-        return None
-    
-    def buscar_fuzzy(self, texto: str, umbral: int = 85) -> Optional[Tuple[Proveedor, int]]:
-        """Busca proveedor por coincidencia fuzzy"""
-        if not texto:
-            return None
-        
-        nombres = list(self.proveedores.keys())
-        resultado = process.extractOne(
-            texto.upper(),
-            nombres,
-            scorer=fuzz.token_sort_ratio
-        )
-        
-        if resultado and resultado[1] >= umbral:
-            return (self.proveedores[resultado[0]], resultado[1])
-        return None
-
-    def buscar_por_cif(self, cif: str) -> Optional[Proveedor]:
-        """Busca proveedor por CIF"""
-        cif = cif.upper().replace(' ', '').replace('-', '')
-        nombre = self.cifs.get(cif)
-        if nombre:
-            return self.proveedores.get(nombre.upper())
-        return None
-
-    # CIFs propios (cliente) — excluir de identificación por PDF
-    CIFS_PROPIOS = {'B87760575'}
-
-    def identificar_por_pdf(self, contenido: bytes, logger=None, texto_pdf: str = None) -> Optional[Proveedor]:
-        """
-        Último recurso: busca CIF del proveedor en el texto del PDF.
-        Se usa cuando email/alias/fuzzy no identificaron al proveedor.
-        Si se pasa texto_pdf, no vuelve a abrir el PDF.
-        """
-        if texto_pdf is None:
-            try:
-                import io
-                texto_pdf = ""
-                with pdfplumber.open(io.BytesIO(contenido)) as pdf:
-                    for page in pdf.pages[:2]:
-                        t = page.extract_text()
-                        if t:
-                            texto_pdf += t + "\n"
-            except Exception:
-                return None
-
-        if not texto_pdf:
-            return None
-
-        # Buscar CIFs españoles en texto
-        #    Formato: letra + 8 dígitos (o viceversa), con espacios opcionales
-        #    Ejemplos: B87874327, B 99138372, B99 138 372
-        cifs_raw = re.findall(r'\b([A-Z])\s?(\d[\s\d]{7,11})\b', texto_pdf.upper())
-        cifs_encontrados = []
-        for letra, digitos in cifs_raw:
-            solo_digitos = digitos.replace(' ', '')
-            if len(solo_digitos) == 8:
-                cifs_encontrados.append(letra + solo_digitos)
-        for cif in cifs_encontrados:
-            if cif in self.CIFS_PROPIOS:
-                continue
-            prov = self.buscar_por_cif(cif)
-            if prov:
-                if logger:
-                    logger.info(f"  \u21b3 Identificado por CIF en PDF: {prov.nombre} ({cif})")
-                return prov
-
-        return None
-
-    def identificar_proveedor(self, email: str, nombre_remitente: str, asunto: str) -> Optional[Proveedor]:
-        """Cascada de identificación"""
-        prov = self.buscar_por_email(email)
-        if prov:
-            return prov
-        
-        for texto in [nombre_remitente, asunto]:
-            prov = self.buscar_por_alias(texto)
-            if prov:
-                return prov
-        
-        resultado = self.buscar_fuzzy(nombre_remitente, CONFIG.UMBRAL_FUZZY)
-        if resultado:
-            return resultado[0]
-        
-        return None
-
+# MaestroProveedores: importado de nucleo.maestro
 
 # ============================================================================
 # CONTROL DUPLICADOS
@@ -719,26 +441,26 @@ class ExtractorPDF:
     """Extrae datos de facturas en PDF"""
     
     PATRONES_FECHA = [
-        r'(?:fecha[:\s]*)?(\\d{1,2})[/-](\\d{1,2})[/-](\\d{2,4})',
-        r'(\\d{1,2})\\s+de\\s+(\\w+)\\s+de\\s+(\\d{4})',
-        r'(\\d{4})[/-](\\d{1,2})[/-](\\d{1,2})',
+        r'(?:fecha[:\s]*)?(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})',
+        r'(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})',
+        r'(\d{4})[/-](\d{1,2})[/-](\d{1,2})',
     ]
     
     PATRONES_TOTAL = [
-        r'importe\\s*total\\s*[\\.]+\\s*(\\d+[.,]\\d{2})',
-        r'total\\s*[\\.]+\\s*(\\d+[.,]\\d{2})',
-        r'total\\s*(?:factura|a\\s*pagar)?[:\\s]*(\\d+[.,]\\d{2})\\s*€?',
-        r'importe\\s*total[:\\s]*(\\d+[.,]\\d{2})\\s*€?',
-        r'total\\s*€?\\s*(\\d+[.,]\\d{2})',
-        r'(\\d+[.,]\\d{2})\\s*€\\s*$',
-        r'total[:\\s\\.]*(\\d{1,3}(?:[.,]\\d{3})*[.,]\\d{2})',
+        r'importe\s*total\s*[\.]+\s*(\d+[.,]\d{2})',
+        r'total\s*[\.]+\s*(\d+[.,]\d{2})',
+        r'total\s*(?:factura|a\s*pagar)?[:\s]*(\d+[.,]\d{2})\s*€?',
+        r'importe\s*total[:\s]*(\d+[.,]\d{2})\s*€?',
+        r'total\s*€?\s*(\d+[.,]\d{2})',
+        r'(\d+[.,]\d{2})\s*€\s*$',
+        r'total[:\s\.]*(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})',
     ]
     
     PATRONES_REF = [
-        r'Numero\\s+Fecha.*?\\n\\s*(\\d{6,})',
-        r'(?:n[úu]mero|n[º°]|ref|factura)[:\\s]*([A-Z0-9/-]{3,})',
-        r'factura[:\\s]*([A-Z0-9/-]{3,})',
-        r'(?:factura|fra)[.\\s]*n[º°]?\\s*([A-Z0-9/-]{3,})',
+        r'Numero\s+Fecha.*?\n\s*(\d{6,})',
+        r'(?:n[úu]mero|n[º°]|ref|factura)[:\s]*([A-Z0-9/-]{3,})',
+        r'factura[:\s]*([A-Z0-9/-]{3,})',
+        r'(?:factura|fra)[.\s]*n[º°]?\s*([A-Z0-9/-]{3,})',
     ]
     
     # v1.7: Palabras que NO son referencias válidas (capturadas por error)
@@ -752,7 +474,7 @@ class ExtractorPDF:
         'DOS', 'UNO', 'TRES',
     }
     
-    PATRON_IBAN = r'([A-Z]{2}\\d{2}[\\s]?\\d{4}[\\s]?\\d{4}[\\s]?\\d{2}[\\s]?\\d{10})'
+    PATRON_IBAN = r'([A-Z]{2}\d{2}[\s]?\d{4}[\s]?\d{4}[\s]?\d{2}[\s]?\d{10})'
     
     MESES_ES = {
         'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
@@ -797,7 +519,6 @@ class ExtractorPDF:
     def _extraer_texto_pdfplumber(self) -> str:
         """Extrae texto usando pdfplumber"""
         try:
-            import io
             texto_completo = []
             with pdfplumber.open(io.BytesIO(self.contenido)) as pdf:
                 for page in pdf.pages:
@@ -814,7 +535,6 @@ class ExtractorPDF:
             return ""
         
         try:
-            import io
             from pdf2image import convert_from_bytes
             
             images = convert_from_bytes(self.contenido)
@@ -962,8 +682,7 @@ class GmailClient:
         Se llama automáticamente cuando se detecta un error de red.
         """
         self.logger.warning("Reconectando con Gmail API...")
-        import time
-        
+
         for intento in range(CONFIG.REINTENTOS):
             try:
                 # Refrescar credenciales si expiraron
@@ -999,7 +718,6 @@ class GmailClient:
             
             if es_error_red:
                 self.logger.warning(f"Error de red detectado: {e}. Reconectando...")
-                import time
                 time.sleep(CONFIG.ESPERA_RECONEXION)
                 self._reconectar()
                 # Reintentar UNA vez tras reconexión
@@ -1730,7 +1448,7 @@ class Notificador:
         </head>
         <body>
             <div class="header">
-                <h2>📧 Gmail Module v1.4 - Resumen de Procesamiento</h2>
+                <h2>📧 Gmail Module v1.14 - Resumen de Procesamiento</h2>
                 <p>{datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
             </div>
         """
@@ -1806,7 +1524,7 @@ class Notificador:
         </html>
         """
         
-        asunto = f"Gmail Module v1.4 - {datetime.now().strftime('%d/%m/%Y')} - {total} facturas"
+        asunto = f"Gmail Module v1.14 - {datetime.now().strftime('%d/%m/%Y')} - {total} facturas"
         if alertas_rojas > 0:
             asunto = f"🔴 ALERTAS ROJAS - {asunto}"
         
@@ -1872,7 +1590,7 @@ class BackupManager:
 # ============================================================================
 
 class GmailProcessor:
-    """Procesador principal del módulo v1.4"""
+    """Procesador principal del módulo v1.14"""
     
     def __init__(self, modo_test: bool = False):
         self.modo_test = modo_test
@@ -1891,7 +1609,7 @@ class GmailProcessor:
     def ejecutar(self) -> bool:
         """Ejecuta el procesamiento completo"""
         self.logger.info("=" * 60)
-        self.logger.info(f"GMAIL MODULE v1.13 - {'MODO TEST' if self.modo_test else 'PRODUCCIÓN'}")
+        self.logger.info(f"GMAIL MODULE v1.14 - {'MODO TEST' if self.modo_test else 'PRODUCCIÓN'}")
         self.logger.info("=" * 60)
         
         try:
@@ -2085,7 +1803,6 @@ class GmailProcessor:
             except Exception as e:
                 if intento < CONFIG.REINTENTOS - 1:
                     self.logger.warning(f"  ↳ Retry mover email (intento {intento+1}): {e}")
-                    import time
                     time.sleep(2 ** intento)  # Backoff: 1s, 2s, 4s
                 else:
                     self.logger.error(f"  ↳ No se pudo mover email a PROCESADAS: {e}")
@@ -2109,7 +1826,6 @@ class GmailProcessor:
         # v1.12: Extraer texto del PDF una sola vez para reutilizar
         texto_pdf_cache = ""
         try:
-            import io
             with pdfplumber.open(io.BytesIO(contenido)) as pdf:
                 for page in pdf.pages[:2]:
                     t = page.extract_text()
@@ -2291,8 +2007,6 @@ class GmailProcessor:
         Los extractores de PARSEO son CLASES que heredan de ExtractorBase.
         """
         try:
-            import importlib.util
-            
             ruta_extractor = os.path.join(CONFIG.EXTRACTORES_PATH, proveedor.archivo_extractor)
             
             if not os.path.exists(ruta_extractor):
@@ -2317,7 +2031,6 @@ class GmailProcessor:
             spec.loader.exec_module(modulo)
             
             # Guardar PDF temporalmente
-            import tempfile
             with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
                 tmp.write(contenido)
                 tmp_path = tmp.name
@@ -2364,8 +2077,7 @@ class GmailProcessor:
                                 with pdfplumber.open(tmp_path) as pdf:
                                     for page in pdf.pages:
                                         img = page.to_image(resolution=300)
-                                        import tempfile as _tmpmod
-                                        with _tmpmod.NamedTemporaryFile(suffix='.png', delete=False) as img_tmp:
+                                        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as img_tmp:
                                             img.save(img_tmp.name)
                                             ocr_text = pytesseract.image_to_string(
                                                 Image.open(img_tmp.name), lang='spa'
@@ -2466,7 +2178,6 @@ class GmailProcessor:
         
         except Exception as e:
             self.logger.debug(f"  ↳ Error en extractor {proveedor.archivo_extractor}: {e}")
-            import traceback
             self.logger.debug(f"  ↳ Traceback: {traceback.format_exc()}")
             return None
     
@@ -2552,7 +2263,7 @@ class GmailProcessor:
 # ============================================================================
 
 def main():
-    parser = argparse.ArgumentParser(description="Gmail Module v1.6 - Procesador de Facturas")
+    parser = argparse.ArgumentParser(description="Gmail Module v1.14 - Procesador de Facturas")
     parser.add_argument("--produccion", action="store_true", help="Ejecutar en modo producción")
     parser.add_argument("--test", action="store_true", help="Ejecutar en modo test")
     

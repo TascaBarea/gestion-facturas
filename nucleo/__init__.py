@@ -2,17 +2,22 @@
 Módulo núcleo del sistema ParsearFacturas.
 
 Contiene las funciones principales de procesamiento:
+- maestro: Gestión centralizada del MAESTRO_PROVEEDORES
 - factura: Clases Factura y LineaFactura
 - pdf: Extracción de texto de PDFs
 - parser: Parseo de fecha, CIF, IBAN, total, referencia
 - validacion: Cuadre y detección de duplicados
 
 Uso:
+    from nucleo import Proveedor, MaestroProveedores
     from nucleo import Factura, LineaFactura
     from nucleo import extraer_texto_pdf
     from nucleo import extraer_fecha, extraer_cif, extraer_total
     from nucleo import validar_cuadre, detectar_duplicado
 """
+
+# Maestro proveedores
+from .maestro import Proveedor, MaestroProveedores, normalizar_nombre_proveedor
 
 # Clases de datos
 from .factura import Factura, LineaFactura
@@ -55,6 +60,10 @@ from .validacion import (
 )
 
 __all__ = [
+    # Maestro
+    'Proveedor',
+    'MaestroProveedores',
+    'normalizar_nombre_proveedor',
     # Clases
     'Factura',
     'LineaFactura',
