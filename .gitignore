@@ -10,6 +10,7 @@ credentials.json
 token.json
 token.json.backup
 datos_sensibles.py
+secrets.toml
 
 # Datos financieros (Excel, banco, JSON procesados)
 datos/Movimientos*.xlsx

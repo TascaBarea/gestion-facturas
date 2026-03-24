@@ -54,6 +54,7 @@ except ImportError:
 
 # Maestro proveedores (centralizado en nucleo/)
 from nucleo.maestro import Proveedor, MaestroProveedores, normalizar_nombre_proveedor
+from nucleo.parser import extraer_fecha, extraer_total, extraer_referencia, extraer_iban
 
 # Excel
 from openpyxl import Workbook, load_workbook
@@ -438,33 +439,10 @@ class ControlDuplicados:
 # ============================================================================
 
 class ExtractorPDF:
-    """Extrae datos de facturas en PDF"""
-    
-    PATRONES_FECHA = [
-        r'(?:fecha[:\s]*)?(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})',
-        r'(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})',
-        r'(\d{4})[/-](\d{1,2})[/-](\d{1,2})',
-    ]
-    
-    PATRONES_TOTAL = [
-        r'importe\s*total\s*[\.]+\s*(\d+[.,]\d{2})',
-        r'total\s*[\.]+\s*(\d+[.,]\d{2})',
-        r'total\s*(?:factura|a\s*pagar)?[:\s]*(\d+[.,]\d{2})\s*€?',
-        r'importe\s*total[:\s]*(\d+[.,]\d{2})\s*€?',
-        r'total\s*€?\s*(\d+[.,]\d{2})',
-        r'(\d+[.,]\d{2})\s*€\s*$',
-        r'total[:\s\.]*(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})',
-    ]
-    
-    PATRONES_REF = [
-        r'Numero\s+Fecha.*?\n\s*(\d{6,})',
-        r'(?:n[úu]mero|n[º°]|ref|factura)[:\s]*([A-Z0-9/-]{3,})',
-        r'factura[:\s]*([A-Z0-9/-]{3,})',
-        r'(?:factura|fra)[.\s]*n[º°]?\s*([A-Z0-9/-]{3,})',
-    ]
-    
+    """Extrae datos de facturas en PDF usando nucleo/parser para el parseo"""
+
     # v1.7: Palabras que NO son referencias válidas (capturadas por error)
-    # Incluye sufijos de palabras comunes: ERENTE←gerente, ERENCIA←referencia
+    # Usado también por _usar_extractor_dedicado
     REF_INVALIDAS = {
         'ERENCE', 'FERENCE', 'REFERENCE', 'REFERENCIA',
         'ERENCIA', 'ERENTE', 'RENCIA',
@@ -473,31 +451,23 @@ class ExtractorPDF:
         'IVA', 'BASE', 'DATOS', 'PAGO', 'BANCO',
         'DOS', 'UNO', 'TRES',
     }
-    
-    PATRON_IBAN = r'([A-Z]{2}\d{2}[\s]?\d{4}[\s]?\d{4}[\s]?\d{2}[\s]?\d{10})'
-    
-    MESES_ES = {
-        'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
-        'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
-        'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
-    }
-    
+
     def __init__(self, contenido: bytes):
         self.contenido = contenido
         self.texto = ""
         self.metodo = ""
-    
+
     def extraer(self) -> FacturaExtraida:
         """Extrae datos del PDF usando pdfplumber y OCR como fallback"""
         resultado = FacturaExtraida()
-        
+
         self.texto = self._extraer_texto_pdfplumber()
         self.metodo = "pdfplumber"
-        
+
         if self.texto:
             resultado = self._parsear_texto()
             resultado.metodo = "pdfplumber"
-        
+
         if OCR_DISPONIBLE and (not self.texto or not resultado.fecha or not resultado.total):
             texto_ocr = self._extraer_texto_ocr()
             if texto_ocr:
@@ -505,17 +475,17 @@ class ExtractorPDF:
                 self.metodo = "ocr"
                 resultado_ocr = self._parsear_texto()
                 resultado_ocr.metodo = "ocr"
-                
+
                 if not resultado.fecha and resultado_ocr.fecha:
                     resultado.fecha = resultado_ocr.fecha
                 if not resultado.total and resultado_ocr.total:
                     resultado.total = resultado_ocr.total
                 if not resultado.referencia and resultado_ocr.referencia:
                     resultado.referencia = resultado_ocr.referencia
-        
+
         resultado.exito = resultado.fecha is not None or resultado.total is not None
         return resultado
-    
+
     def _extraer_texto_pdfplumber(self) -> str:
         """Extrae texto usando pdfplumber"""
         try:
@@ -528,100 +498,54 @@ class ExtractorPDF:
             return "\n".join(texto_completo)
         except Exception:
             return ""
-    
+
     def _extraer_texto_ocr(self) -> str:
         """Extrae texto usando OCR"""
         if not OCR_DISPONIBLE:
             return ""
-        
+
         try:
             from pdf2image import convert_from_bytes
-            
+
             images = convert_from_bytes(self.contenido)
             texto_completo = []
-            
+
             for img in images:
                 texto = pytesseract.image_to_string(img, lang='spa')
                 if texto:
                     texto_completo.append(texto)
-            
+
             return "\n".join(texto_completo)
         except Exception:
             return ""
-    
+
     def _parsear_texto(self) -> FacturaExtraida:
-        """Parsea el texto extraído"""
+        """Parsea el texto usando funciones centralizadas de nucleo/parser"""
         resultado = FacturaExtraida()
-        texto_lower = self.texto.lower()
-        
-        for patron in self.PATRONES_FECHA:
-            match = re.search(patron, texto_lower, re.IGNORECASE)
-            if match:
-                fecha = self._parsear_fecha(match)
-                if fecha:
-                    resultado.fecha = fecha
-                    limite_futuro = datetime.now() + timedelta(days=CONFIG.MARGEN_FECHA_FUTURA_DIAS)
-                    if fecha > limite_futuro:
-                        resultado.fecha_futura = True
-                    break
-        
-        for patron in self.PATRONES_TOTAL:
-            match = re.search(patron, texto_lower, re.IGNORECASE)
-            if match:
-                total = self._parsear_total(match.group(1))
-                if total:
-                    resultado.total = total
-                    break
-        
-        for patron in self.PATRONES_REF:
-            match = re.search(patron, self.texto, re.IGNORECASE)
-            if match:
-                ref = match.group(1).strip()
-                # v1.6: Validar que no sea basura
-                if ref.upper() not in self.REF_INVALIDAS and len(ref) >= 2:
-                    resultado.referencia = ref
-                    break
-        
-        match_iban = re.search(self.PATRON_IBAN, self.texto.upper())
-        if match_iban:
-            iban = match_iban.group(1).replace(" ", "")
-            if iban.startswith("ES") and len(iban) == 24:
-                resultado.iban_detectado = iban
-        
+
+        # Fecha: nucleo/parser devuelve str "DD/MM/YYYY" → convertir a datetime
+        fecha_str = extraer_fecha(self.texto)
+        if fecha_str:
+            try:
+                resultado.fecha = datetime.strptime(fecha_str, "%d/%m/%Y")
+                limite_futuro = datetime.now() + timedelta(days=CONFIG.MARGEN_FECHA_FUTURA_DIAS)
+                if resultado.fecha > limite_futuro:
+                    resultado.fecha_futura = True
+            except ValueError:
+                pass
+
+        # Total
+        resultado.total = extraer_total(self.texto)
+
+        # Referencia
+        resultado.referencia = extraer_referencia(self.texto) or ""
+
+        # IBAN
+        iban = extraer_iban(self.texto)
+        if iban:
+            resultado.iban_detectado = iban.replace(" ", "")
+
         return resultado
-    
-    def _parsear_fecha(self, match) -> Optional[datetime]:
-        """Parsea una fecha desde un match de regex"""
-        try:
-            grupos = match.groups()
-            
-            if len(grupos) == 3 and grupos[1].isalpha():
-                dia = int(grupos[0])
-                mes = self.MESES_ES.get(grupos[1].lower())
-                año = int(grupos[2])
-                if mes:
-                    return datetime(año, mes, dia)
-            
-            nums = [int(g) for g in grupos if g.isdigit()]
-            if len(nums) >= 3:
-                if nums[0] > 31:
-                    return datetime(nums[0], nums[1], nums[2])
-                else:
-                    año = nums[2]
-                    if año < 100:
-                        año += 2000
-                    return datetime(año, nums[1], nums[0])
-        except (ValueError, TypeError):
-            pass
-        return None
-    
-    def _parsear_total(self, texto: str) -> Optional[float]:
-        """Parsea un total desde texto"""
-        try:
-            texto = texto.replace(".", "").replace(",", ".")
-            return float(texto)
-        except ValueError:
-            return None
 
 
 # ============================================================================
