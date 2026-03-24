@@ -69,5 +69,6 @@ st.markdown(
     """
     **Módulos disponibles:**
     - **Alta de Evento** — Crear talleres, catas y eventos en la tienda online
+    - **Calendario de Eventos** — Ver eventos, asistentes y plazas libres
     """
 )

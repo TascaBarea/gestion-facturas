@@ -78,3 +78,50 @@ def listar_productos(wc, **params) -> list:
         if len(resp) < 100:
             break
     return productos
+
+
+def nombre_corto_evento(nombre_raw):
+    """Extrae nombre corto de un producto WC (antes del HTML)."""
+    nombre = re.split(r"<br>|<small>|<br/>", nombre_raw, maxsplit=1)[0]
+    return re.sub(r"<[^>]+>", "", nombre).strip()
+
+
+def cargar_eventos_futuros(wc):
+    """Carga eventos ticket-event con stock_status instock o manage_stock.
+
+    Devuelve lista de dicts con id, nombre, stock_quantity, total_sales, manage_stock.
+    """
+    productos = listar_productos(wc, status="publish")
+    eventos = []
+    for p in productos:
+        if p.get("type") != "ticket-event":
+            continue
+        eventos.append({
+            "id": p["id"],
+            "nombre_raw": p.get("name", ""),
+            "nombre": nombre_corto_evento(p.get("name", "")),
+            "stock_quantity": p.get("stock_quantity"),
+            "manage_stock": p.get("manage_stock", False),
+            "total_sales": p.get("total_sales", 0),
+        })
+    return eventos
+
+
+def cargar_pedidos_evento(wc, product_id):
+    """Carga todos los pedidos (processing/completed) de un producto."""
+    pedidos = []
+    page = 1
+    while True:
+        resp = wc.get("orders", params={
+            "product": product_id,
+            "per_page": 100,
+            "page": page,
+            "status": "processing,completed",
+        }).json()
+        if not isinstance(resp, list) or not resp:
+            break
+        pedidos.extend(resp)
+        page += 1
+        if len(resp) < 100:
+            break
+    return pedidos
