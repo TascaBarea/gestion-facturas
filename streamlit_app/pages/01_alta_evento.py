@@ -11,7 +11,7 @@ if not st.session_state.get("autenticado", False):
     st.warning("Inicia sesión desde la página principal.")
     st.stop()
 
-from utils.wc_client import get_wc_api, cargar_categorias, crear_producto
+from utils.wc_client import get_wc_api, cargar_tipos_evento, crear_producto
 
 st.title("Alta de Evento")
 st.markdown("Crea talleres, catas y eventos en la tienda online de Comestibles Barea.")
@@ -25,25 +25,24 @@ except Exception as e:
     st.stop()
 
 
-# ── Cargar categorías (cacheado por sesión) ──────────────────────────────────
+# ── Cargar tipos de evento (cacheado por sesión) ─────────────────────────────
 
 @st.cache_data(ttl=300)
-def _categorias():
+def _tipos_evento():
     _wc = get_wc_api()
-    return cargar_categorias(_wc)
+    return cargar_tipos_evento(_wc)
 
 
-cats = _categorias()
-nombres_cats = ["(Sin categoría)"] + [nombre for _, nombre in cats]
+tipos = _tipos_evento()
 
 # ── Formulario ───────────────────────────────────────────────────────────────
 
 with st.form("form_evento"):
     st.subheader("Datos del evento")
 
-    # Nombres basados en categorías WC + opción libre
-    nombres_evento = [nombre for _, nombre in cats] + ["Otro (escribir)"]
-    seleccion_nombre = st.selectbox("Tipo de evento", nombres_evento)
+    # Nombres basados en eventos existentes en WC + opción libre
+    opciones_evento = tipos + ["Otro (escribir)"]
+    seleccion_nombre = st.selectbox("Tipo de evento", opciones_evento)
 
     nombre_libre = ""
     if seleccion_nombre == "Otro (escribir)":
@@ -81,8 +80,6 @@ with st.form("form_evento"):
         "Número de plazas (vacío = sin límite)",
         placeholder="20",
     )
-
-    cat_seleccion = st.selectbox("Categoría", nombres_cats)
 
     desc_extra = st.text_area(
         "Descripción adicional (opcional)",
@@ -143,14 +140,6 @@ if submitted:
         partes_desc.append(desc_extra.strip())
     descripcion = "\n".join(partes_desc)
 
-    # Categoría
-    cat_id = None
-    if cat_seleccion != "(Sin categoría)":
-        for cid, cname in cats:
-            if cname == cat_seleccion:
-                cat_id = cid
-                break
-
     # Resumen antes de publicar
     st.markdown("---")
     st.subheader("Resumen")
@@ -166,7 +155,6 @@ if submitted:
     with col_r2:
         st.markdown(f"**Precio:** {precio:.2f} €".replace(".", ","))
         st.markdown(f"**Plazas:** {plazas if plazas else 'Sin límite'}")
-        st.markdown(f"**Categoría:** {cat_seleccion}")
 
     # Crear producto en WooCommerce
     payload = {
@@ -180,8 +168,6 @@ if submitted:
     if plazas is not None:
         payload["stock_quantity"] = plazas
         payload["stock_status"] = "instock"
-    if cat_id:
-        payload["categories"] = [{"id": cat_id}]
 
     with st.spinner("Publicando en WooCommerce..."):
         resultado = crear_producto(wc, payload)
@@ -193,7 +179,7 @@ if submitted:
             st.markdown(f"[Ver en la tienda]({url})")
         st.info("Aparecerá en el email semanal del próximo lunes.")
         # Limpiar cache de categorías por si se creó una nueva
-        _categorias.clear()
+        _tipos_evento.clear()
     else:
         msg = resultado.get("message", str(resultado))
         st.error(f"Error de WooCommerce: {msg}")

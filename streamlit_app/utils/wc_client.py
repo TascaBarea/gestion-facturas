@@ -3,6 +3,7 @@ Wrapper WooCommerce API para Streamlit app.
 Extraido de ventas_semana/script_barea.py y alta_evento.py.
 """
 
+import re
 import streamlit as st
 from woocommerce import API as WC_API
 
@@ -31,6 +32,30 @@ def cargar_categorias(wc):
         if len(resp) < 100:
             break
     return [(c["id"], c["name"]) for c in cats if c.get("name") != "Sin categoría"]
+
+
+def cargar_tipos_evento(wc):
+    """Carga nombres únicos de eventos/cursos desde productos WooCommerce.
+
+    Filtra productos tipo ticket-event, excluye CERRADO,
+    y extrae el nombre corto (antes del HTML <br><small>).
+    Devuelve lista de nombres únicos ordenados.
+    """
+    productos = listar_productos(wc, status="publish")
+    nombres = set()
+    for p in productos:
+        if p.get("type") != "ticket-event":
+            continue
+        nombre = p.get("name", "")
+        # Excluir cerrados
+        if nombre.upper().startswith("CERRADO"):
+            continue
+        # Extraer nombre corto: antes de <br>, <small>, o HTML tags
+        nombre_corto = re.split(r"<br>|<small>|<br/>", nombre, maxsplit=1)[0]
+        nombre_corto = re.sub(r"<[^>]+>", "", nombre_corto).strip()
+        if nombre_corto:
+            nombres.add(nombre_corto)
+    return sorted(nombres)
 
 
 def crear_producto(wc, payload: dict) -> dict:
