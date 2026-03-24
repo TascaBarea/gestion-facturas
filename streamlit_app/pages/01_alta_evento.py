@@ -76,9 +76,12 @@ with st.form("form_evento"):
 
     st.subheader("Detalles")
 
-    plazas_str = st.text_input(
-        "Número de plazas (vacío = sin límite)",
-        placeholder="20",
+    plazas = st.number_input(
+        "Número de plazas",
+        min_value=1,
+        max_value=30,
+        value=10,
+        step=1,
     )
 
     desc_extra = st.text_area(
@@ -110,20 +113,21 @@ if submitted:
         except ValueError:
             errores.append(f"Precio inválido: '{precio_str}'.")
 
-    # Plazas
-    plazas = None
-    if plazas_str and plazas_str.strip():
-        try:
-            plazas = int(plazas_str.strip())
-            if plazas <= 0:
-                errores.append("Las plazas deben ser un número positivo.")
-        except ValueError:
-            errores.append(f"Plazas inválido: '{plazas_str}'.")
-
     if errores:
         for e in errores:
             st.error(e)
         st.stop()
+
+    # Aviso si plazas fuera del rango habitual (7-11)
+    plazas_inusuales = plazas < 7 or plazas > 11
+    if plazas_inusuales:
+        if plazas < 7:
+            st.warning(f"Has puesto **{plazas} plazas**. Es menos de lo habitual (7-11).")
+        else:
+            st.warning(f"Has puesto **{plazas} plazas**. Es más de lo habitual (7-11).")
+        confirmado = st.checkbox("Confirmo que el número de plazas es correcto")
+        if not confirmado:
+            st.stop()
 
     # Construir nombre: "Cata de vinos 28/03/26"
     fecha_yy = fecha.strftime("%d/%m/%y")
@@ -154,7 +158,7 @@ if submitted:
             st.markdown(f"**Horario:** {horario_txt}")
     with col_r2:
         st.markdown(f"**Precio:** {precio:.2f} €".replace(".", ","))
-        st.markdown(f"**Plazas:** {plazas if plazas else 'Sin límite'}")
+        st.markdown(f"**Plazas:** {plazas}")
 
     # Crear producto en WooCommerce
     payload = {
@@ -163,11 +167,10 @@ if submitted:
         "status": "publish",
         "regular_price": str(precio),
         "description": descripcion,
-        "manage_stock": plazas is not None,
+        "manage_stock": True,
+        "stock_quantity": plazas,
+        "stock_status": "instock",
     }
-    if plazas is not None:
-        payload["stock_quantity"] = plazas
-        payload["stock_status"] = "instock"
 
     with st.spinner("Publicando en WooCommerce..."):
         resultado = crear_producto(wc, payload)
