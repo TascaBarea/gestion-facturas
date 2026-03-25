@@ -11,16 +11,20 @@ import streamlit as st
 
 logger = logging.getLogger(__name__)
 
-_BASE = st.secrets.get("NETLIFY_DATA_URL", "")
+
+def _get_base() -> str:
+    """Lee NETLIFY_DATA_URL en tiempo de ejecución (no al importar)."""
+    return st.secrets.get("NETLIFY_DATA_URL", "")
 
 
 @st.cache_data(ttl=3600)
 def _fetch_json(filename: str) -> dict | None:
     """Descarga un fichero JSON desde Netlify. Devuelve None si falla."""
-    if not _BASE:
+    base = _get_base()
+    if not base:
         logger.warning("NETLIFY_DATA_URL no configurado en secrets")
         return None
-    url = f"{_BASE}/data/{filename}"
+    url = f"{base}/data/{filename}"
     try:
         # Crear contexto SSL que no verifique certificados (Streamlit Cloud compatible)
         ctx = ssl.create_default_context()
@@ -32,8 +36,6 @@ def _fetch_json(filename: str) -> dict | None:
             return data
     except Exception as e:
         logger.error(f"Error fetching {url}: {e}")
-        # Mostrar error en la app para diagnóstico
-        st.toast(f"Error cargando {filename}: {e}", icon="⚠️")
         return None
 
 
