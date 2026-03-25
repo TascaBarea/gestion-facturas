@@ -160,6 +160,123 @@ def _normalizar_df(df_i, df_r):
     return df_i, df_r
 
 
+def _preparar_df(df):
+    """Filtra DataFrame de ventas: parsea fechas, excluye cancelados, solo ventas."""
+    df = df.copy()
+    df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
+    if "Estado" in df.columns:
+        df = df[df["Estado"] != "Cancelado"]
+    if "Tipo de recibo" in df.columns:
+        df = df[df["Tipo de recibo"] == "Venta"]
+    df["mes"] = df["Fecha"].dt.month
+    return df
+
+
+def _calcular_mensual_base(df_items, df_recibos):
+    """Calcula métricas mensuales base: euros, unidades, tickets, prom_ticket, cats_pct.
+
+    Devuelve dict {str(mes): {euros, unidades, tickets, prom_ticket, cats}}.
+    Compartido entre Comestibles (calcular_D) y Tasca (calcular_RAW).
+    """
+    mensual = {}
+    for m in range(1, 13):
+        mensual[str(m)] = {"euros": 0, "unidades": 0, "tickets": 0,
+                           "prom_ticket": 0, "cats": {}}
+
+    if df_items is None or df_items.empty:
+        return mensual
+
+    df = _preparar_df(df_items)
+    dr = _preparar_df(df_recibos) if df_recibos is not None and not df_recibos.empty else None
+
+    for m in range(1, 13):
+        dm = df[df["mes"] == m]
+        if dm.empty:
+            continue
+
+        euros = _round(dm["Ventas netas"].sum())
+        unidades = _round(dm["Cantidad"].sum())
+
+        if dr is not None:
+            dr_m = dr[dr["Fecha"].dt.month == m]
+            tickets = dr_m["Número de recibo"].nunique()
+        else:
+            tickets = dm["Número de recibo"].nunique()
+
+        prom_ticket = _round(euros / tickets) if tickets > 0 else 0
+
+        cats_euros = dm.groupby("Categoria")["Ventas netas"].sum()
+        total_cat = cats_euros.sum()
+        cats_pct = {}
+        if total_cat > 0:
+            for cat, val in cats_euros.items():
+                if pd.notna(cat) and str(cat).strip():
+                    cats_pct[str(cat)] = _round(val / total_cat * 100, 1)
+
+        mensual[str(m)] = {
+            "euros": euros,
+            "unidades": _round(unidades, 2),
+            "tickets": int(tickets),
+            "prom_ticket": _round(prom_ticket, 2),
+            "cats": cats_pct,
+        }
+
+    return mensual
+
+
+def _calcular_pbm(df_items):
+    """Calcula productos por mes/categoría: pbm[month][cat] = [{art, euros, cant}].
+
+    Compartido entre Comestibles (calcular_D) y Tasca (calcular_PBM_tasca).
+    """
+    pbm = {str(m): {} for m in range(1, 13)}
+
+    if df_items is None or df_items.empty:
+        return pbm
+
+    df = _preparar_df(df_items)
+
+    for m in range(1, 13):
+        dm = df[df["mes"] == m]
+        if dm.empty:
+            continue
+        for cat, grp in dm.groupby("Categoria"):
+            if pd.isna(cat) or not str(cat).strip():
+                continue
+            cat = str(cat)
+            art_agg = grp.groupby("Artículo").agg(
+                euros=("Ventas netas", "sum"),
+                cant=("Cantidad", "sum"),
+            ).reset_index().sort_values("euros", ascending=False)
+            pbm[str(m)][cat] = [
+                {"art": row["Artículo"], "euros": _round(row["euros"]),
+                 "cant": _round(row["cant"], 2)}
+                for _, row in art_agg.iterrows()
+                if row["euros"] > 0
+            ]
+
+    return pbm
+
+
+def _calcular_cats_year(mensual):
+    """Calcula cats_total y cats_euros a nivel año desde datos mensuales."""
+    total_year = sum(mensual[str(m)]["euros"] for m in range(1, 13))
+    cats_euros_year = defaultdict(float)
+    for m in range(1, 13):
+        cats = mensual[str(m)].get("cats", {})
+        m_euros = mensual[str(m)]["euros"]
+        for cat, pct in cats.items():
+            cats_euros_year[cat] += pct / 100 * m_euros
+
+    cats_total = {}
+    if total_year > 0:
+        for cat, val in cats_euros_year.items():
+            cats_total[cat] = _round(val / total_year * 100, 1)
+
+    cats_euros_dict = {cat: _round(val) for cat, val in cats_euros_year.items()}
+    return cats_total, cats_euros_dict
+
+
 COMES_OTROS_UMBRAL = 1.0  # Categorías con <1% del total anual → "OTROS"
 
 
@@ -273,91 +390,9 @@ def calcular_D(items_por_año, recibos_por_año, df_woo):
         df_items = items_por_año.get(year)
         df_recibos = recibos_por_año.get(year)
 
-        mensual = {}
-        pbm = {}
-
-        for m in range(1, 13):
-            mensual[str(m)] = {"euros": 0, "unidades": 0, "tickets": 0,
-                               "prom_ticket": 0, "cats": {}}
-            pbm[str(m)] = {}
-
-        if df_items is not None and not df_items.empty:
-            df = df_items.copy()
-            df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
-            if "Estado" in df.columns:
-                df = df[df["Estado"] != "Cancelado"]
-            if "Tipo de recibo" in df.columns:
-                df = df[df["Tipo de recibo"] == "Venta"]
-            df["mes"] = df["Fecha"].dt.month
-
-            for m in range(1, 13):
-                dm = df[df["mes"] == m]
-                if dm.empty:
-                    continue
-
-                euros = _round(dm["Ventas netas"].sum())
-                unidades = _round(dm["Cantidad"].sum())
-
-                if df_recibos is not None and not df_recibos.empty:
-                    dr = df_recibos.copy()
-                    dr["Fecha"] = pd.to_datetime(dr["Fecha"], errors="coerce")
-                    if "Estado" in dr.columns:
-                        dr = dr[dr["Estado"] != "Cancelado"]
-                    if "Tipo de recibo" in dr.columns:
-                        dr = dr[dr["Tipo de recibo"] == "Venta"]
-                    dr_m = dr[dr["Fecha"].dt.month == m]
-                    tickets = dr_m["Número de recibo"].nunique()
-                else:
-                    tickets = dm["Número de recibo"].nunique()
-
-                prom_ticket = _round(euros / tickets) if tickets > 0 else 0
-
-                cats_euros = dm.groupby("Categoria")["Ventas netas"].sum()
-                total_cat = cats_euros.sum()
-                cats_pct = {}
-                if total_cat > 0:
-                    for cat, val in cats_euros.items():
-                        if pd.notna(cat) and str(cat).strip():
-                            cats_pct[str(cat)] = _round(val / total_cat * 100, 1)
-
-                mensual[str(m)] = {
-                    "euros": euros,
-                    "unidades": _round(unidades, 2),
-                    "tickets": int(tickets),
-                    "prom_ticket": _round(prom_ticket, 2),
-                    "cats": cats_pct,
-                }
-
-                for cat, grp in dm.groupby("Categoria"):
-                    if pd.isna(cat) or not str(cat).strip():
-                        continue
-                    cat = str(cat)
-                    art_agg = grp.groupby("Artículo").agg(
-                        euros=("Ventas netas", "sum"),
-                        cant=("Cantidad", "sum"),
-                    ).reset_index()
-                    art_agg = art_agg.sort_values("euros", ascending=False)
-                    pbm[str(m)][cat] = [
-                        {"art": row["Artículo"], "euros": _round(row["euros"]),
-                         "cant": _round(row["cant"], 2)}
-                        for _, row in art_agg.iterrows()
-                        if row["euros"] > 0
-                    ]
-
-        total_year = sum(mensual[str(m)]["euros"] for m in range(1, 13))
-        cats_euros_year = defaultdict(float)
-        for m in range(1, 13):
-            cats = mensual[str(m)]["cats"]
-            m_euros = mensual[str(m)]["euros"]
-            for cat, pct in cats.items():
-                cats_euros_year[cat] += pct / 100 * m_euros
-
-        cats_total = {}
-        if total_year > 0:
-            for cat, val in cats_euros_year.items():
-                cats_total[cat] = _round(val / total_year * 100, 1)
-
-        cats_euros_dict = {cat: _round(val) for cat, val in cats_euros_year.items()}
+        mensual = _calcular_mensual_base(df_items, df_recibos)
+        pbm = _calcular_pbm(df_items)
+        cats_total, cats_euros_dict = _calcular_cats_year(mensual)
         rotation = _calcular_rotation(df_items, year)
 
         D[year] = {
@@ -369,7 +404,7 @@ def calcular_D(items_por_año, recibos_por_año, df_woo):
             "cats": sorted(cats_total.keys()),
         }
 
-    # Agrupar categorias pequenas en "OTROS"
+    # Agrupar categorias pequeñas en "OTROS"
     for year in YEAR_LIST:
         if year in D:
             _agrupar_otros(D[year])
@@ -383,13 +418,7 @@ def _calcular_rotation(df_items, year):
     if df_items is None or df_items.empty:
         return []
 
-    df = df_items.copy()
-    df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
-    if "Estado" in df.columns:
-        df = df[df["Estado"] != "Cancelado"]
-    if "Tipo de recibo" in df.columns:
-        df = df[df["Tipo de recibo"] == "Venta"]
-    df["mes"] = df["Fecha"].dt.month
+    df = _preparar_df(df_items)
 
     avail_months = sorted(df["mes"].dropna().unique())
     n_avail = len(avail_months)
@@ -596,14 +625,9 @@ def calcular_DIAS(items_por_año, recibos_por_año):
                 heatmap[str(d)][str(m)] = 0
 
         if df_items is not None and not df_items.empty:
-            df = df_items.copy()
-            df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
-            if "Estado" in df.columns:
-                df = df[df["Estado"] != "Cancelado"]
-            if "Tipo de recibo" in df.columns:
-                df = df[df["Tipo de recibo"] == "Venta"]
+            df = _preparar_df(df_items)
             df["dia"] = df["Fecha"].dt.dayofweek
-            df["mes"] = df["Fecha"].dt.month
+            dr = _preparar_df(df_recibos) if df_recibos is not None and not df_recibos.empty else None
 
             # Totales por día de la semana
             for d in range(7):
@@ -612,14 +636,7 @@ def calcular_DIAS(items_por_año, recibos_por_año):
                     continue
                 euros = _round(dd["Ventas netas"].sum())
 
-                # Tickets desde recibos
-                if df_recibos is not None and not df_recibos.empty:
-                    dr = df_recibos.copy()
-                    dr["Fecha"] = pd.to_datetime(dr["Fecha"], errors="coerce")
-                    if "Estado" in dr.columns:
-                        dr = dr[dr["Estado"] != "Cancelado"]
-                    if "Tipo de recibo" in dr.columns:
-                        dr = dr[dr["Tipo de recibo"] == "Venta"]
+                if dr is not None:
                     dr["dia"] = dr["Fecha"].dt.dayofweek
                     dr_d = dr[dr["dia"] == d]
                     tickets = int(dr_d["Número de recibo"].nunique())
@@ -766,7 +783,7 @@ def cargar_datos_tasca():
 def calcular_RAW(items_por_año, recibos_por_año):
     """
     Genera la estructura RAW para Tasca:
-    RAW[year].mensual[month] = {euros, unidades, tickets, prom_ticket}
+    RAW[year].mensual[month] = {euros, unidades, tickets, prom_ticket, cats}
     RAW[year].categorias_mes[month] = {cat: pct}
     RAW[year].cats_total, cats_euros, cats
     """
@@ -776,74 +793,10 @@ def calcular_RAW(items_por_año, recibos_por_año):
         df_items = items_por_año.get(year)
         df_recibos = recibos_por_año.get(year)
 
-        mensual = {}
-        categorias_mes = {}
-
-        for m in range(1, 13):
-            mensual[str(m)] = {"euros": 0, "unidades": 0, "tickets": 0, "prom_ticket": 0}
-            categorias_mes[str(m)] = {}
-
-        if df_items is not None and not df_items.empty:
-            df = df_items.copy()
-            df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
-            if "Estado" in df.columns:
-                df = df[df["Estado"] != "Cancelado"]
-            if "Tipo de recibo" in df.columns:
-                df = df[df["Tipo de recibo"] == "Venta"]
-            df["mes"] = df["Fecha"].dt.month
-
-            for m in range(1, 13):
-                dm = df[df["mes"] == m]
-                if dm.empty:
-                    continue
-
-                euros = _round(dm["Ventas netas"].sum())
-                unidades = _round(dm["Cantidad"].sum())
-
-                if df_recibos is not None and not df_recibos.empty:
-                    dr = df_recibos.copy()
-                    dr["Fecha"] = pd.to_datetime(dr["Fecha"], errors="coerce")
-                    if "Estado" in dr.columns:
-                        dr = dr[dr["Estado"] != "Cancelado"]
-                    if "Tipo de recibo" in dr.columns:
-                        dr = dr[dr["Tipo de recibo"] == "Venta"]
-                    dr_m = dr[dr["Fecha"].dt.month == m]
-                    tickets = dr_m["Número de recibo"].nunique()
-                else:
-                    tickets = dm["Número de recibo"].nunique()
-
-                prom_ticket = _round(euros / tickets) if tickets > 0 else 0
-
-                mensual[str(m)] = {
-                    "euros": euros,
-                    "unidades": _round(unidades, 2),
-                    "tickets": int(tickets),
-                    "prom_ticket": _round(prom_ticket, 2),
-                }
-
-                # Categorias: % de ventas por mes (para chart evolucion categorias)
-                cats_euros = dm.groupby("Categoria")["Ventas netas"].sum()
-                total_cat = cats_euros.sum()
-                if total_cat > 0:
-                    for cat, val in cats_euros.items():
-                        if pd.notna(cat) and str(cat).strip():
-                            categorias_mes[str(m)][str(cat)] = _round(val / total_cat * 100, 1)
-
-        # cats_total y cats_euros para el año
-        total_year = sum(mensual[str(m)]["euros"] for m in range(1, 13))
-        cats_euros_year = defaultdict(float)
-        for m in range(1, 13):
-            cm = categorias_mes[str(m)]
-            m_euros = mensual[str(m)]["euros"]
-            for cat, pct in cm.items():
-                cats_euros_year[cat] += pct / 100 * m_euros
-
-        cats_total = {}
-        if total_year > 0:
-            for cat, val in cats_euros_year.items():
-                cats_total[cat] = _round(val / total_year * 100, 1)
-
-        cats_euros_dict = {cat: _round(val) for cat, val in cats_euros_year.items()}
+        mensual = _calcular_mensual_base(df_items, df_recibos)
+        # categorias_mes es lo mismo que cats en mensual
+        categorias_mes = {m: mensual[m]["cats"] for m in mensual}
+        cats_total, cats_euros_dict = _calcular_cats_year(mensual)
 
         RAW[year] = {
             "mensual": mensual,
@@ -861,43 +814,7 @@ def calcular_PBM_tasca(items_por_año):
     PBM = {}
 
     for year in TASCA_YEAR_LIST:
-        df_items = items_por_año.get(year)
-        PBM[year] = {}
-
-        for m in range(1, 13):
-            PBM[year][str(m)] = {}
-
-        if df_items is None or df_items.empty:
-            continue
-
-        df = df_items.copy()
-        df["Fecha"] = pd.to_datetime(df["Fecha"], errors="coerce")
-        if "Estado" in df.columns:
-            df = df[df["Estado"] != "Cancelado"]
-        if "Tipo de recibo" in df.columns:
-            df = df[df["Tipo de recibo"] == "Venta"]
-        df["mes"] = df["Fecha"].dt.month
-
-        for m in range(1, 13):
-            dm = df[df["mes"] == m]
-            if dm.empty:
-                continue
-
-            for cat, grp in dm.groupby("Categoria"):
-                if pd.isna(cat) or not str(cat).strip():
-                    continue
-                cat = str(cat)
-                art_agg = grp.groupby("Artículo").agg(
-                    euros=("Ventas netas", "sum"),
-                    cant=("Cantidad", "sum"),
-                ).reset_index()
-                art_agg = art_agg.sort_values("euros", ascending=False)
-                PBM[year][str(m)][cat] = [
-                    {"art": row["Artículo"], "euros": _round(row["euros"]),
-                     "cant": _round(row["cant"], 2)}
-                    for _, row in art_agg.iterrows()
-                    if row["euros"] > 0
-                ]
+        PBM[year] = _calcular_pbm(items_por_año.get(year))
 
     return PBM
 
