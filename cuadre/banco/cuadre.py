@@ -117,6 +117,19 @@ except ImportError:
 # Fuzzy matching
 from rapidfuzz import fuzz
 
+# Reglas de clasificación (constantes, patrones, tablas lookup)
+from cuadre.banco.reglas import (
+    COMERCIOS_TPV, REGLAS_ESPECIALES_TARJETA,
+    SUSCRIPCIONES_SIN_FACTURA, SUSCRIPCIONES_CON_FACTURA,
+    UMBRAL_FUZZY_MINIMO, UMBRAL_FUZZY_INDICAR,
+    CASOS_SIMPLES, CASOS_SIMPLES_STARTSWITH,
+    NOMBRES_ALQUILER, PROVEEDORES_PAGOS_PARCIALES,
+    PATRONES_COMUNIDAD, PATRON_ISTA,
+    PATRON_SOM_ENERGIA, PATRON_SOM_REF,
+    PATRON_YOIGO, PATRON_YOIGO_REGEX,
+    PATRON_TPV_REMESA, PATRON_TPV_COMERCIOS,
+)
+
 
 # ==============================================================================
 # CONFIGURACIÓN
@@ -135,42 +148,11 @@ HOJA_FACTURAS = "Facturas"
 # Mapeo de columnas: Excel entrada → nombre interno clasificadores
 MAPEO_FACTURAS = {
     "#": "Cód.",
-    "TITULO": "Título", 
+    "TITULO": "Título",
     "TOTAL FACTURA": "Total",
     "Fec.Fac.": "Fec.Fac.",
     "REF": "Factura",
 }
-
-# Comercios TPV conocidos
-COMERCIOS_TPV = {
-    "0337410674": "TASCA",
-    "0354768939": "COMESTIBLES",
-    "0354272759": "TALLERES",
-}
-
-# Casos especiales para compra tarjeta
-REGLAS_ESPECIALES_TARJETA = [
-    {"clave": "PANIFIESTO LAVAPIES", "titulo": "PANIFIESTO LAVAPIES SL"},
-    {"clave": "AY MADRE LA FRUTA", "titulo": "GARCIA VIVAS JULIO"},
-]
-
-# Suscripciones sin factura (no generan factura fiscal)
-SUSCRIPCIONES_SIN_FACTURA = [
-    {"clave": "LOYVERSE", "tipo": "LOYVERSE", "detalle": "Sin factura"},
-    {"clave": "SPOTIFY", "tipo": "GASTOS VARIOS", "detalle": "Sin factura"},
-    {"clave": "NETFLIX", "tipo": "GASTOS VARIOS", "detalle": "Sin factura"},
-    {"clave": "AMAZON PRIME", "tipo": "GASTOS VARIOS", "detalle": "Sin factura"},
-]
-
-# Suscripciones CON factura (texto en concepto → título en facturas)
-SUSCRIPCIONES_CON_FACTURA = [
-    {"clave": "MAKE.COM", "titulo": "CELONIS INC.", "aliases": ["CELONIS", "MAKE", "ONE WORLD TRADE"]},
-    {"clave": "OPENAI", "titulo": "OPENAI LLC", "aliases": ["OPENAI", "CHATGPT"]},
-]
-
-# NUEVO v1.2: Umbral de fuzzy para asignación automática
-UMBRAL_FUZZY_MINIMO = 0.70  # 70%
-UMBRAL_FUZZY_INDICAR = 0.85  # Por debajo de este, indicar % en detalle
 
 
 # ==============================================================================
@@ -312,9 +294,6 @@ def generar_columna_origen(df_fact_original: pd.DataFrame) -> pd.Series:
         Series con los valores de Origen
     """
     global vinculos_factura_movimiento
-    
-    # Proveedores con pagos parciales (muchas compras pequeñas → 1 factura mensual)
-    PROVEEDORES_PAGOS_PARCIALES = ["GARCIA VIVAS", "PANIFIESTO"]
     
     origenes = []
     
@@ -698,13 +677,13 @@ def clasificar_comunidad_vecinos(concepto: str, fecha_valor=None, df_fact=None) 
     global facturas_usadas
     concepto_upper = str(concepto).upper().strip()
 
-    if "COM PROP" not in concepto_upper and "COMUNIDAD PROP" not in concepto_upper:
+    if not any(p in concepto_upper for p in PATRONES_COMUNIDAD):
         return None, None
 
     # Buscar facturas ISTA METERING para vincular
     if df_fact is not None and fecha_valor is not None:
         df_ista = df_fact[
-            df_fact["Título"].str.upper().str.contains("ISTA METERING", na=False)
+            df_fact["Título"].str.upper().str.contains(PATRON_ISTA, na=False)
         ].copy()
 
         if not df_ista.empty:
@@ -810,16 +789,16 @@ def clasificar_tpv(concepto: str, fecha_valor, importe: float, df_mov: pd.DataFr
         return None, None
     
     # Detectar número de comercio
-    comercio_match = re.search(r"\b(0337410674|0354768939|0354272759)\b", concepto)
+    comercio_match = re.search(PATRON_TPV_COMERCIOS, concepto)
     if not comercio_match:
         log(f"  → TPV: Número de Comercio desconocido")
         return "REVISAR", "Número de Comercio desconocido"
-    
+
     numero_comercio = comercio_match.group()
     nombre_comercio = COMERCIOS_TPV.get(numero_comercio, "DESCONOCIDO")
-    
+
     # Detectar número de remesa (último número de 10 dígitos)
-    remesa_match = re.findall(r"\b\d{10}\b", concepto)
+    remesa_match = re.findall(PATRON_TPV_REMESA, concepto)
     numero_remesa = remesa_match[-1] if remesa_match else "SIN_REMESA"
     
     # Control de duplicados
@@ -888,11 +867,11 @@ def clasificar_transferencia(concepto: str, importe: float, fecha_valor, fecha_o
     concepto = concepto.upper().strip()
     
     # Caso especial: alquiler — buscar las 2 facturas de los propietarios
-    if "BENJAMIN ORTEGA Y JAIME" in concepto:
+    if NOMBRES_ALQUILER[0] in concepto:  # "BENJAMIN ORTEGA Y JAIME"
         fecha_v = pd.to_datetime(fecha_valor, errors="coerce", dayfirst=True)
         facturas_encontradas = []
-        for titulos in [["ORTEGA ALONSO BENJAMIN", "BENJAMIN ORTEGA"],
-                        ["FERNANDEZ MORENO JAIME", "JAIME FERNANDEZ"]]:
+        for titulos in [[NOMBRES_ALQUILER[1], "BENJAMIN ORTEGA"],
+                        [NOMBRES_ALQUILER[2], "JAIME FERNANDEZ"]]:
             patron = "|".join([t.upper() for t in titulos])
             df_prop = df_fact[
                 df_fact["Título"].str.upper().str.contains(patron, na=False, regex=True)
@@ -1048,11 +1027,11 @@ def clasificar_som_energia(concepto: str, importe: float, df_fact: pd.DataFrame)
     
     concepto_upper = str(concepto).upper()
     
-    if "SOM ENERGIA" not in concepto_upper:
+    if PATRON_SOM_ENERGIA not in concepto_upper:
         return None, None
-    
+
     # Buscar número de factura en el concepto
-    match = re.search(r"(FE?\d{6,})", concepto_upper)
+    match = re.search(PATRON_SOM_REF, concepto_upper)
     if match:
         num_factura = match.group(1)
         # Buscar en columna Factura
@@ -1069,7 +1048,7 @@ def clasificar_som_energia(concepto: str, importe: float, df_fact: pd.DataFrame)
     # Buscar por importe
     importe_abs = round(abs(float(importe)), 2)
     candidatas = df_fact[abs(df_fact["Total"] - importe_abs) <= 0.01]
-    som_matches = candidatas[candidatas["Título"].str.upper().str.contains("SOM ENERGIA", na=False)]
+    som_matches = candidatas[candidatas["Título"].str.upper().str.contains(PATRON_SOM_ENERGIA, na=False)]
     
     if len(som_matches) == 1:
         fila = som_matches.iloc[0]
@@ -1102,11 +1081,11 @@ def clasificar_yoigo(concepto: str, df_fact: pd.DataFrame) -> Tuple[Optional[str
 
     concepto_upper = str(concepto).upper()
 
-    if "YOIGO" not in concepto_upper:
+    if PATRON_YOIGO not in concepto_upper:
         return None, None
 
     # Regex flexible: captura YCxxxxxxxxxx o Cxxxxxxxxxx
-    match = re.search(r"Y?(C\d{9,})", concepto_upper)
+    match = re.search(PATRON_YOIGO_REGEX, concepto_upper)
     if not match:
         log(f"  → REVISAR: YOIGO sin número de factura en concepto")
         return "REVISAR", "YOIGO: No se encontró número de factura"
@@ -1167,40 +1146,22 @@ def clasificar_yoigo(concepto: str, df_fact: pd.DataFrame) -> Tuple[Optional[str
 
 def clasificar_casos_simples(concepto: str) -> Tuple[Optional[str], Optional[str]]:
     """
-    Clasifica casos simples por palabras clave.
-    
+    Clasifica casos simples por palabras clave (tabla lookup en reglas.py).
+
     Returns:
         (Categoria_Tipo, Categoria_Detalle) o (None, None) si no aplica
     """
     concepto_upper = str(concepto).upper()
-    
-    if "TRASPASO" in concepto_upper:
-        log(f"  → TRASPASO")
-        return "TRASPASO", ""
-    
-    if "COMISIÓN DIVISA" in concepto_upper or "COMISION DIVISA" in concepto_upper:
-        log(f"  → COMISION DIVISA")
-        return "COMISION DIVISA", "Pago en moneda no euro"
-    
-    if "IMPUESTO" in concepto_upper or "TGSS" in concepto_upper or "AEAT" in concepto_upper:
-        log(f"  → IMPUESTOS")
-        return "IMPUESTOS", ""
-    
-    if "NÓMINA" in concepto_upper or "NOMINA" in concepto_upper:
-        log(f"  → NOMINAS")
-        return "NOMINAS", ""
-    
-    if "TRANSFERENCIA A ELENA DE MIGUEL" in concepto_upper:
-        log(f"  → NOMINAS: Elena de Miguel")
-        return "NOMINAS", "Elena de Miguel"
-    
-    if concepto_upper.startswith("INGRESO"):
-        log(f"  → INGRESO")
-        return "INGRESO", ""
 
-    if "SERVICIO DE TPV" in concepto_upper:
-        log(f"  → SERVICIO DE TPV")
-        return "SERVICIO DE TPV", ""
+    for claves, tipo, detalle in CASOS_SIMPLES:
+        if any(c in concepto_upper for c in claves):
+            log(f"  → {tipo}" + (f": {detalle}" if detalle else ""))
+            return tipo, detalle
+
+    for prefijo, tipo, detalle in CASOS_SIMPLES_STARTSWITH:
+        if concepto_upper.startswith(prefijo):
+            log(f"  → {tipo}" + (f": {detalle}" if detalle else ""))
+            return tipo, detalle
 
     return None, None
 
@@ -1241,13 +1202,13 @@ def clasificar_movimiento(concepto: str, importe: float, fecha_valor, fecha_oper
             return tipo, detalle or ""
     
     # 4. Som Energia (antes de adeudo genérico)
-    if "SOM ENERGIA" in concepto_upper:
+    if PATRON_SOM_ENERGIA in concepto_upper:
         tipo, detalle = clasificar_som_energia(concepto, importe, df_fact)
         if tipo is not None:
             return tipo, detalle or ""
-    
+
     # 5. Yoigo (antes de adeudo genérico)
-    if "YOIGO" in concepto_upper:
+    if PATRON_YOIGO in concepto_upper:
         tipo, detalle = clasificar_yoigo(concepto, df_fact)
         if tipo is not None:
             return tipo, detalle or ""
