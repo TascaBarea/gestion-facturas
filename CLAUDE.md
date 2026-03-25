@@ -27,7 +27,7 @@ gestion-facturas/
 ├── datos/                  # Excel (gitignored) — avisar antes de escribir
 ├── config/                 # datos_sensibles.py — NO TOCAR
 ├── nucleo/                 # Módulo core compartido con Parseo/ (symlink)
-├── cuadre/                 # Ⓓ CUADRE v1.6
+├── cuadre/                 # Ⓓ CUADRE v1.7
 ├── outputs/                # Logs gitignored
 └── docs/ESQUEMA_PROYECTO_DEFINITIVO_v2_6.md
 ```
@@ -39,7 +39,7 @@ gestion-facturas/
 | Gmail   | v1.14   | gmail/gmail.py                     |
 | Ventas  | v4.7    | ventas_semana/script_barea.py      |
 | Cuadre  | v1.7    | cuadre/banco/cuadre.py             |
-| ESQUEMA | v4.4    | docs/ESQUEMA_PROYECTO_DEFINITIVO   |
+| ESQUEMA | v5.0    | docs/ESQUEMA_PROYECTO_DEFINITIVO   |
 
 ---
 

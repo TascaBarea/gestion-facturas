@@ -2181,6 +2181,49 @@ class GmailProcessor:
         self.logger.info(f"  Errores: {len(self.errores)}")
         self.logger.info("=" * 60)
 
+        # Exportar resumen como JSON para Streamlit
+        self._exportar_resumen_json()
+
+    def _exportar_resumen_json(self):
+        """Exporta resumen de la ejecución como JSON para el puente de datos Streamlit."""
+        try:
+            total = len(self.resultados)
+            exitosos = sum(1 for r in self.resultados if r.archivo_generado and not r.requiere_revision)
+            revision = sum(1 for r in self.resultados if r.requiere_revision)
+
+            proveedores_ok = []
+            revision_list = []
+            for r in self.resultados:
+                nombre = r.proveedor.nombre if r.proveedor else r.remitente
+                if r.archivo_generado and not r.requiere_revision:
+                    if nombre and nombre not in proveedores_ok:
+                        proveedores_ok.append(nombre)
+                elif r.requiere_revision:
+                    if nombre and nombre not in revision_list:
+                        revision_list.append(nombre)
+
+            resumen = {
+                "fecha_ejecucion": datetime.now().isoformat(timespec="seconds"),
+                "total_procesados": total,
+                "exitosos": exitosos,
+                "requieren_revision": revision,
+                "errores": len(self.errores),
+                "proveedores_ok": sorted(proveedores_ok),
+                "revision": sorted(revision_list),
+                "errores_detalle": self.errores[:20]
+            }
+
+            ruta_json = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "outputs", "logs_gmail", "gmail_resumen.json"
+            )
+            os.makedirs(os.path.dirname(ruta_json), exist_ok=True)
+            with open(ruta_json, "w", encoding="utf-8") as f:
+                json.dump(resumen, f, ensure_ascii=False, indent=2)
+            self.logger.info(f"Resumen JSON exportado: {ruta_json}")
+        except Exception as e:
+            self.logger.warning(f"No se pudo exportar resumen JSON: {e}")
+
 
 # ============================================================================
 # MAIN

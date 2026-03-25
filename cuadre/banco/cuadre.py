@@ -92,6 +92,7 @@ USO:
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import re
@@ -1425,6 +1426,61 @@ def generar_nombre_salida(df_movimientos: Dict[str, pd.DataFrame]) -> str:
 
 
 # ==============================================================================
+# EXPORTACIÓN JSON PARA STREAMLIT
+# ==============================================================================
+
+def _exportar_resumen_json(resultados, ruta_salida, total_mov, total_ok, total_revisar):
+    """Exporta resumen del cuadre como JSON para el puente de datos Streamlit."""
+    try:
+        hojas = {}
+        revisar_detalle = []
+
+        for nombre_hoja, df in resultados.items():
+            n_total = len(df)
+            n_revisar = len(df[df["Categoria_Tipo"] == "REVISAR"])
+            n_ok = n_total - n_revisar
+            hojas[nombre_hoja] = {
+                "total": n_total,
+                "ok": n_ok,
+                "revisar": n_revisar,
+                "pct_ok": round(100 * n_ok / n_total, 1) if n_total > 0 else 0
+            }
+
+            # Detalle de movimientos REVISAR (max 50 total)
+            df_rev = df[df["Categoria_Tipo"] == "REVISAR"]
+            for _, row in df_rev.head(25).iterrows():
+                revisar_detalle.append({
+                    "hoja": nombre_hoja,
+                    "fecha": str(row.get("Fecha", "")) if "Fecha" in row.index else "",
+                    "concepto": str(row.get("Concepto", ""))[:80] if "Concepto" in row.index else "",
+                    "importe": float(row.get("Importe", 0)) if "Importe" in row.index else 0,
+                    "detalle": str(row.get("Categoria_Detalle", ""))[:100]
+                })
+
+        resumen = {
+            "fecha_ejecucion": datetime.now().isoformat(timespec="seconds"),
+            "archivo": str(ruta_salida.name) if hasattr(ruta_salida, "name") else str(ruta_salida),
+            "hojas": hojas,
+            "total": {
+                "total": total_mov,
+                "ok": total_ok,
+                "revisar": total_revisar,
+                "pct_ok": round(100 * total_ok / total_mov, 1) if total_mov > 0 else 0
+            },
+            "revisar_detalle": revisar_detalle[:50]
+        }
+
+        ruta_json = Path(os.path.dirname(os.path.dirname(os.path.dirname(
+            os.path.abspath(__file__))))) / "outputs" / "cuadre_resumen.json"
+        ruta_json.parent.mkdir(parents=True, exist_ok=True)
+        with open(ruta_json, "w", encoding="utf-8") as f:
+            json.dump(resumen, f, ensure_ascii=False, indent=2)
+        print(f"   📋 Resumen JSON exportado: {ruta_json}")
+    except Exception as e:
+        print(f"   ⚠️  No se pudo exportar resumen JSON: {e}")
+
+
+# ==============================================================================
 # FUNCIÓN PRINCIPAL
 # ==============================================================================
 
@@ -1605,7 +1661,10 @@ def main():
     log(f"Total movimientos: {total_mov}")
     log(f"Clasificados: {total_ok} ({100*total_ok/total_mov:.1f}%)")
     log(f"A revisar: {total_revisar} ({100*total_revisar/total_mov:.1f}%)")
-    
+
+    # Exportar resumen JSON para Streamlit
+    _exportar_resumen_json(resultados, ruta_salida, total_mov, total_ok, total_revisar)
+
     # Mostrar mensaje de éxito
     if TKINTER_AVAILABLE:
         root = tk.Tk()

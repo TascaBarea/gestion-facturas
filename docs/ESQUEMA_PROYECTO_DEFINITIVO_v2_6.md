@@ -1,8 +1,8 @@
 1
 # 📐 ESQUEMA PROYECTO GESTIÓN-FACTURAS
 
-**Versión:** 4.4
-**Fecha:** 20/03/2026
+**Versión:** 5.0
+**Fecha:** 25/03/2026
 **Estado:** DEFINITIVO - Base para desarrollo
 
 ---
@@ -18,7 +18,7 @@
 │   ┌─────────┐    ┌─────────┐    ┌─────────┐    ┌─────────┐                 │
 │   │    Ⓐ    │    │    Ⓑ    │    │    Ⓒ    │    │    Ⓓ    │                 │
 │   │ PARSEO  │    │  GMAIL  │    │ VENTAS  │    │ CUADRE  │                 │
-│   │  ✅ 85% │    │  ✅ 97% │    │  ✅ 95% │    │  ✅ 75% │                 │
+│   │  ✅ 85% │    │  ✅ 98% │    │  ✅ 95% │    │  ✅ 75% │                 │
 │   └────┬────┘    └────┬────┘    └────┬────┘    └────┬────┘                 │
 │        │              │              │              │                       │
 │        ▼              ▼              ▼              ▼                       │
@@ -58,7 +58,7 @@ FRECUENCIA:    Mensual/Trimestral
 ESTADO:        ✅ Funciona - 99 extractores dedicados
 ```
 
-### Ⓑ GMAIL (98% completado) ✅ v1.9
+### Ⓑ GMAIL (98% completado) ✅ v1.14
 ```
 UBICACIÓN:     C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\gmail\
 ENTRADA:       Gmail (etiqueta FACTURAS) + MAESTRO_PROVEEDORES
@@ -68,7 +68,7 @@ SALIDA:        - PDFs descargados y renombrados en Dropbox local
                - ⚠️_IBANS_SUGERIDOS_*.xlsx (verificación)
 INICIO:        AUTOMÁTICO (viernes 03:00) o MANUAL
 FRECUENCIA:    Semanal
-ESTADO:        ✅ v1.9 - Detección PROFORMA + OBS multi-flag + extractores corregidos
+ESTADO:        ✅ v1.14 - Fallback parcial extractores + cuadre alias MAKE.COM
 NOVEDADES v1.9 (28/02/2026):
                P1 - SISTEMA PROFORMA:
                - Nuevo método es_proforma() en ExtractorBase: detecta \bPROFORMA\b en texto
@@ -160,7 +160,7 @@ NOVEDADES v1.4:
                - Emails marcados como leídos
 ```
 
-### Ⓒ VENTAS (95% - FUNCIONAL) ✅ v4.0
+### Ⓒ VENTAS (95% - FUNCIONAL) ✅ v4.7
 ```
 UBICACIÓN:     gestion-facturas/ventas_semana/
 ENTRADA:       - API Loyverse (TASCA + COMESTIBLES) — recibos + items
@@ -175,11 +175,11 @@ SALIDA:        - Ventas Barea 2026.xlsx (5 pestañas):
                - PDFs resumen mensual:
                  dashboards/informe_barea_*.pdf (completo: Tasca + Comestibles)
                  dashboards/informe_comestibles_*.pdf (solo Comestibles)
-               - GitHub Pages: DESACTIVADO (repo ahora PRIVATE, no funciona en plan gratuito)
-                 Pendiente buscar alternativa (Netlify, Vercel, servidor propio)
+               - GitHub Pages: DESACTIVADO (alternativa: Netlify para datos JSON)
+               - Streamlit app: tascabarea.streamlit.app (multi-usuario con roles)
 INICIO:        AUTOMÁTICO (lunes 03:00) o MANUAL
 FRECUENCIA:    Semanal (ventas) + Mensual (dashboard cerrado + email + PDF)
-ESTADO:        ✅ v4.2 - Dual dashboard + PDF profesional + email segmentado (GitHub Pages desactivado)
+ESTADO:        ✅ v4.7 - Dual dashboard + PDF + email + Streamlit app multi-usuario
 CATEGORÍAS COMESTIBLES (13):
                ACEITES Y VINAGRES, BAZAR, BOCADILLOS, BODEGA, CHACINAS,
                CONSERVAS, CUPÓN REGALO, DESPENSA, DULCES, EXPERIENCIAS,
@@ -230,7 +230,7 @@ NOVEDADES v2.0 (27/02/2026):
                - WooCommerce con paginación + filtro semanal
 ```
 
-### Ⓓ CUADRE (75% - FUNCIONAL) ✅ v1.5b
+### Ⓓ CUADRE (75% - FUNCIONAL) ✅ v1.7
 ```
 UBICACIÓN:     gestion-facturas/cuadre/banco/cuadre.py
 ENTRADA:       - Excel gestoría (Tasca + Comestibles + Facturas)
@@ -240,7 +240,7 @@ SALIDA:        - Excel con Categoria_Tipo + Categoria_Detalle
                - Archivo LOG con decisiones
 INICIO:        MANUAL (GUI selección archivo)
 FRECUENCIA:    Mensual/Trimestral
-VERSIÓN:       v1.5b
+VERSIÓN:       v1.7
 ESTADO:        ✅ Funciona - SERVICIO DE TPV + aliases nuevos
 NOVEDADES v1.5b (27/02/2026):
                - Nuevo clasificador: SERVICIO DE TPV (12 movimientos recuperados)
@@ -270,8 +270,8 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │
 ├── gestion-facturas\                ← PROYECTO UNIFICADO (este repo)
 │   │
-│   ├── gmail\                       ← Ⓑ GMAIL (✅ v1.8)
-│   │   ├── gmail.py                 ← Módulo principal v1.9 (~2180 líneas)
+│   ├── gmail\                       ← Ⓑ GMAIL (✅ v1.14)
+│   │   ├── gmail.py                 ← Módulo principal v1.14 (~2200 líneas)
 │   │   ├── config.py                ← Configuración (rutas, umbrales, trimestres)
 │   │   ├── config_local.py          ← Overrides locales (gitignored)
 │   │   ├── auth.py                  ← Autenticación Gmail API
@@ -285,7 +285,7 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   │   ├── gmail_auto.bat           ← Script automatización v1.7 (curl HTTPS, alertas)
 │   │   └── gmail_auto_setup.bat     ← Setup tarea programada
 │   │
-│   ├── cuadre\                      ← Ⓓ CUADRE (✅ v1.5b)
+│   ├── cuadre\                      ← Ⓓ CUADRE (✅ v1.7)
 │   │   ├── banco\
 │   │   │   ├── cuadre.py            ← Clasificador principal (~1300 líneas)
 │   │   │   ├── router.py            ← Router de clasificadores
@@ -302,7 +302,7 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   │       ├── norma43.py            ← Parser ficheros N43 Sabadell
 │   │       └── archivados\           ← Ficheros N43 procesados
 │   │
-│   ├── ventas_semana\               ← Ⓒ VENTAS + DASHBOARDS (✅ v4.0)
+│   ├── ventas_semana\               ← Ⓒ VENTAS + DASHBOARDS (✅ v4.7)
 │   │   ├── script_barea.py          ← Loyverse + WooCommerce API → Excel
 │   │   ├── generar_dashboard.py     ← Generador dual: Comestibles + Tasca + PDF + email
 │   │   ├── dashboards\
@@ -316,6 +316,23 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   │   ├── barea_auto.bat           ← Runner tarea programada (anti-suspensión)
 │   │   ├── barea_auto_setup.bat     ← Setup tarea (1 vez, como admin)
 │   │   └── .env                     ← Credenciales API (no commitear)
+│   │
+│   ├── streamlit_app\               ← 🌐 APP WEB multi-usuario (✅ Fase 1)
+│   │   ├── app.py                   ← Login + st.navigation() por rol
+│   │   ├── pages\
+│   │   │   ├── alta_evento.py       ← Crear eventos WooCommerce
+│   │   │   ├── calendario_eventos.py ← Eventos futuros + asistentes + Excel
+│   │   │   ├── ventas.py            ← Dashboard Ventas (placeholder Fase 2)
+│   │   │   ├── cuadre.py            ← Cuadre Bancario (placeholder Fase 2)
+│   │   │   ├── log_gmail.py         ← Log Gmail (placeholder Fase 2)
+│   │   │   └── monitor.py           ← Monitor Sistema (placeholder Fase 2)
+│   │   ├── utils\
+│   │   │   ├── auth.py              ← Roles, require_role(), check_login()
+│   │   │   └── wc_client.py         ← Wrapper WC API + funciones eventos
+│   │   ├── requirements.txt         ← streamlit, WooCommerce, pandas, openpyxl
+│   │   └── .streamlit\
+│   │       ├── config.toml          ← Tema verde (#2E7D32)
+│   │       └── secrets.toml         ← Users + WC keys (gitignored)
 │   │
 │   ├── src\facturas\                ← Módulo PARSEO refactorizado (en desarrollo)
 │   │   ├── cli.py, models.py        ← Interfaz y modelos
@@ -607,13 +624,13 @@ PASO 6: El extractor se carga automáticamente (sin tocar __init__.py)
 
 ---
 
-## 6. Ⓑ GMAIL v1.8 - DETALLE TÉCNICO
+## 6. Ⓑ GMAIL v1.14 - DETALLE TÉCNICO
 
 ### 6.1 Flujo de Ejecución
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           Ⓑ GMAIL MODULE v1.8                               │
+│                           Ⓑ GMAIL MODULE v1.14                              │
 │                                                                             │
 │  ┌──────────────┐                                                           │
 │  │   GMAIL API  │                                                           │
@@ -669,7 +686,7 @@ PASO 6: El extractor se carga automáticamente (sin tocar __init__.py)
 
 ---
 
-## 7. Ⓓ CUADRE v1.5b - DETALLE
+## 7. Ⓓ CUADRE v1.7 - DETALLE
 
 ### 7.1 Clasificadores Implementados
 
@@ -686,7 +703,7 @@ PASO 6: El extractor se carga automáticamente (sin tocar __init__.py)
 | **Servicio TPV** | `SERVICIO DE TPV` | SERVICIO DE TPV | (cargo bancario) |
 | **Alquiler** | `BENJAMIN ORTEGA` | ALQUILER | Local |
 
-### 7.2 Arquitectura cuadre.py (v1.5b)
+### 7.2 Arquitectura cuadre.py (v1.7)
 
 ```
 main()
@@ -921,21 +938,36 @@ Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` p
 
 ## CHANGELOG
 
+### v5.0 (25/03/2026) — APP STREAMLIT MULTI-USUARIO + SYNC VERSIONES
+- ✅ **Streamlit app multi-usuario** — tascabarea.streamlit.app (Fase 1 completada)
+  - Login con usuario+contraseña, 4 roles: admin, socio, comes, eventos
+  - `st.navigation()` filtra páginas por rol (Streamlit >=1.32)
+  - `utils/auth.py`: check_login(), require_role(), ROLE_PAGES
+  - `utils/wc_client.py`: funciones eventos WC (tipos, futuros, pedidos)
+  - Usuarios: Jaime (admin), Roberto (socio), Elena (comes), Benjamin (eventos)
+- ✅ **Alta de Evento mejorada** — Selectbox con nombres reales de cursos WC
+  - Carga productos tipo `ticket-event` de WooCommerce API
+  - Opción "Otro (escribir)" para texto libre
+  - Validación plazas 1-30 con aviso fuera de rango 7-11
+- ✅ **Calendario de Eventos** — Nueva página con asistentes y export Excel
+  - Eventos futuros con fechas extraídas del nombre HTML del producto
+  - Asistentes: nombre, email, teléfono, tickets, fecha compra
+  - Métricas: total personas, tickets vendidos, plazas libres
+  - Exportación Excel con openpyxl y columnas auto-ajustadas
+- ✅ **Repo PUBLIC** — Necesario para Streamlit Community Cloud (free tier)
+  - Auditoría de seguridad completada antes de hacer público
+  - TASCA_BAREA_CONTEXT.md eliminado + purgado del historial git
+  - WooCommerce API keys rotadas (antiguas revocadas)
+- ✅ **Versiones sincronizadas** — ESQUEMA alineado con código fuente
+  - Gmail: v1.9 → v1.14 | Ventas: v4.2 → v4.7 | Cuadre: v1.5b → v1.7
+- ✅ **14 skills Claude Code** — 8 nuevas desde v4.3
+  - Nuevas: /cuadre, /debug-extractor, /nuevo-proveedor, /validar-patrones,
+    /lecciones, /plan, /revisar, /log-gmail
+
 ### v4.4 (20/03/2026) — DOCUMENTACIÓN IA + VERSIONES REVISADAS
-- ✅ **Creado `.github/copilot-instructions.md`** — instrucciones permanentes para GitHub Copilot en VS Code
-  - Carga automática al abrir el proyecto en VS Code
-  - Incluye: módulos, versiones, archivos prohibidos, reglas críticas, errores frecuentes, notas operativas
-  - Complementa `CLAUDE.md` (Claude Code) para cobertura dual de asistentes IA
-- ✅ **CLAUDE.md actualizado a v4.1**
-  - Añadido contexto de empresa + enlace a `docs/TASCA_BAREA_CONTEXT.md`
-  - Nueva sección "Prioridades de desarrollo activas" (3 pendientes más urgentes)
-  - Regla Excel corregida inline (eliminada referencia a archivo externo inexistente)
-  - Nueva sección "Asistentes IA configurados" con referencia a copilot-instructions.md
-  - Versión ESQUEMA corregida (referencia incorrecta v5.3 → v4.4)
-- ✅ **TASCA_BAREA_CONTEXT.md creado** — documento de contexto completo de empresa para IA
-  - Identidad legal, socios, empleados, unidades de negocio, finanzas, seguros, marca
-  - Referencia técnica al proyecto gestion-facturas
-  - Actualizado 18/03/2026
+- ✅ **CLAUDE.md actualizado a v4.0** — Skills, prioridades, errores conocidos
+- ✅ **Gmail v1.14** — Fallback parcial extractores + cuadre alias MAKE.COM
+- ✅ **Versión ESQUEMA corregida** (referencia incorrecta v5.3 → v4.4)
 
 ### v4.3 (03/03/2026) — CATEGORÍAS SIMPLIFICADAS
 - ✅ **Categorías Comestibles reducidas de 21 a 13** — Mapeo en `generar_dashboard.py`

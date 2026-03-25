@@ -19,6 +19,7 @@ import re
 import ast
 import shutil
 import subprocess
+import sys
 import tempfile
 import webbrowser
 from collections import defaultdict
@@ -34,6 +35,10 @@ import pandas as pd
 # ── Rutas ─────────────────────────────────────────────────────────────────────
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_SCRIPT_DIR)
+
+# Asegurar que config/ es importable desde cualquier directorio de ejecución
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
 PATH_VENTAS = os.path.join(_ROOT, "datos", "Ventas Barea 2026.xlsx")
 PATH_HISTORICO = os.path.join(_ROOT, "datos", "Ventas Barea Historico.xlsx")
@@ -466,40 +471,64 @@ def _calcular_woo(df_woo):
 
     df = df_woo.copy()
 
-    if "status" in df.columns:
-        df = df[df["status"].isin(["completed", "processing", "on-hold"])]
+    # Compatibilidad: columna puede ser "status" (API) o "estado" (Excel limpio)
+    col_status = "status" if "status" in df.columns else "estado"
+    if col_status in df.columns:
+        estados_validos = {"completed", "processing", "on-hold", "Completado", "En proceso"}
+        df = df[df[col_status].isin(estados_validos)]
 
-    df["fecha"] = pd.to_datetime(df["date_created"], errors="coerce")
-    df = df[df["fecha"].dt.year == int(YEAR_LIST[-1])]
-    df["mes"] = df["fecha"].dt.month
+    # Compatibilidad: columna puede ser "date_created" (API) o "fecha" (Excel limpio)
+    col_fecha = "date_created" if "date_created" in df.columns else "fecha"
+    df["_fecha"] = pd.to_datetime(df[col_fecha], format="mixed", dayfirst=True, errors="coerce")
+    df = df[df["_fecha"].dt.year == int(YEAR_LIST[-1])]
+    df["mes"] = df["_fecha"].dt.month
+
+    # Compatibilidad: total puede ser float (API) o string con coma (Excel limpio)
+    if df["total"].dtype == object:
+        df["_total"] = pd.to_numeric(
+            df["total"].astype(str).str.replace("€", "").str.replace(" ", "").str.replace(",", "."),
+            errors="coerce"
+        ).fillna(0)
+    else:
+        df["_total"] = df["total"].fillna(0)
 
     for m in range(1, 13):
         dm = df[df["mes"] == m]
         if dm.empty:
             continue
 
-        euros = _round(float(dm["total"].sum()))
+        euros = _round(float(dm["_total"].sum()))
         pedidos = len(dm)
 
         products = defaultdict(float)
-        for _, row in dm.iterrows():
-            line_items_raw = row.get("line_items", "")
-            if not line_items_raw or pd.isna(line_items_raw):
-                continue
-            try:
-                if isinstance(line_items_raw, str):
-                    items_list = ast.literal_eval(line_items_raw)
-                else:
-                    items_list = line_items_raw
-
-                if isinstance(items_list, list):
-                    for item in items_list:
-                        name = _clean_html(item.get("name", ""))
-                        total_item = float(item.get("total", 0) or 0)
-                        if name and total_item > 0:
-                            products[name] += total_item
-            except (ValueError, SyntaxError):
-                pass
+        # Formato API: line_items con lista de dicts
+        if "line_items" in dm.columns:
+            for _, row in dm.iterrows():
+                line_items_raw = row.get("line_items", "")
+                if not line_items_raw or pd.isna(line_items_raw):
+                    continue
+                try:
+                    if isinstance(line_items_raw, str):
+                        items_list = ast.literal_eval(line_items_raw)
+                    else:
+                        items_list = line_items_raw
+                    if isinstance(items_list, list):
+                        for item in items_list:
+                            name = _clean_html(item.get("name", ""))
+                            total_item = float(item.get("total", 0) or 0)
+                            if name and total_item > 0:
+                                products[name] += total_item
+                except (ValueError, SyntaxError):
+                    pass
+        # Formato Excel limpio: items_resumen con texto descriptivo
+        elif "items_resumen" in dm.columns:
+            for _, row in dm.iterrows():
+                resumen = str(row.get("items_resumen", ""))
+                if resumen and resumen != "nan":
+                    # Usar el resumen como nombre de producto, asignar el total del pedido
+                    nombre = resumen[:80].strip()
+                    if nombre:
+                        products[nombre] += float(row.get("_total", 0))
 
         woo[str(m)] = {
             "euros": euros,
@@ -2388,7 +2417,159 @@ h1{{font-size:28px;color:#e8c97a;margin-bottom:8px;}}
 </html>"""
 
 
-def publicar_github_pages(path_comes, path_tasca):
+def exportar_json_streamlit(D, MD, DIAS, RAW, PBM):
+    """Exporta datos agregados como JSON para el puente Streamlit ↔ Netlify.
+
+    Genera ficheros en un directorio temporal data/ que se incluirán en el
+    ZIP de Netlify. Solo contiene datos agregados (sin CIFs, IBANs, etc.).
+    """
+    data_dir = os.path.join(tempfile.gettempdir(), "barea_streamlit_data", "data")
+    os.makedirs(data_dir, exist_ok=True)
+
+    # ── ventas_comes.json ──
+    comes = {"años": {}, "woo": {}}
+    for year in D:
+        if year == "woo":
+            # WooCommerce: euros y pedidos por mes
+            for mes, val in D["woo"].items():
+                comes["woo"][mes] = {
+                    "euros": round(val.get("euros", 0), 2),
+                    "pedidos": val.get("pedidos", 0)
+                }
+            continue
+        y = D[year]
+        comes["años"][year] = {"mensual": {}, "categorias": {}, "top_productos": {}, "margenes": {}}
+        # Mensual
+        for mes, val in y.get("mensual", {}).items():
+            comes["años"][year]["mensual"][mes] = {
+                "euros": round(val.get("euros", 0), 2),
+                "unidades": round(val.get("unidades", 0), 1),
+                "tickets": val.get("tickets", 0),
+                "prom_ticket": round(val.get("prom_ticket", 0), 2)
+            }
+            # Categorías (% del mes)
+            comes["años"][year]["categorias"][mes] = val.get("cats", {})
+        # Top productos por mes (max 10 por categoría)
+        for mes, cats in y.get("pbm", {}).items():
+            top_mes = []
+            for cat, productos in cats.items():
+                for p in sorted(productos, key=lambda x: x.get("euros", 0), reverse=True)[:10]:
+                    top_mes.append({"art": p["art"], "cat": cat,
+                                    "euros": round(p.get("euros", 0), 2),
+                                    "cant": round(p.get("cant", 0), 1)})
+            comes["años"][year]["top_productos"][mes] = sorted(
+                top_mes, key=lambda x: x["euros"], reverse=True)[:20]
+        # Márgenes por categoría (de MD)
+        if year in MD:
+            for mes, val in MD[year].items():
+                cats_margen = {}
+                for cat, datos in val.get("cats", {}).items():
+                    cats_margen[cat] = {
+                        "euros": round(datos.get("euros", 0), 2),
+                        "margen_pct": round(datos.get("margen_pct", 0), 1)
+                    }
+                comes["años"][year]["margenes"][mes] = cats_margen
+
+    with open(os.path.join(data_dir, "ventas_comes.json"), "w", encoding="utf-8") as f:
+        json.dump(comes, f, ensure_ascii=False, separators=(",", ":"), cls=_NumpyEncoder)
+    print(f"  ventas_comes.json generado")
+
+    # ── ventas_tasca.json ──
+    tasca = {"años": {}, "dias_semana": {}}
+    for year in RAW:
+        r = RAW[year]
+        tasca["años"][year] = {"mensual": {}, "categorias": {}, "top_productos": {}}
+        for mes, val in r.get("mensual", {}).items():
+            tasca["años"][year]["mensual"][mes] = {
+                "euros": round(val.get("euros", 0), 2),
+                "unidades": round(val.get("unidades", 0), 1),
+                "tickets": val.get("tickets", 0),
+                "prom_ticket": round(val.get("prom_ticket", 0), 2)
+            }
+        for mes, cats in r.get("categorias_mes", {}).items():
+            tasca["años"][year]["categorias"][mes] = cats
+        # Top productos de PBM
+        if year in PBM:
+            for mes, cats in PBM[year].items():
+                top_mes = []
+                for cat, productos in cats.items():
+                    for p in sorted(productos, key=lambda x: x.get("euros", 0), reverse=True)[:10]:
+                        top_mes.append({"art": p["art"], "cat": cat,
+                                        "euros": round(p.get("euros", 0), 2),
+                                        "cant": round(p.get("cant", 0), 1)})
+                tasca["años"][year]["top_productos"][mes] = sorted(
+                    top_mes, key=lambda x: x["euros"], reverse=True)[:20]
+    # Días de la semana
+    for year in DIAS:
+        if year == "dias_nombres":
+            continue
+        tasca["dias_semana"][year] = {}
+        for dia_idx, val in DIAS[year].items():
+            if dia_idx == "heatmap":
+                continue
+            tasca["dias_semana"][year][str(dia_idx)] = {
+                "euros": round(val.get("euros", 0), 2),
+                "tickets": val.get("tickets", 0),
+                "ticket_medio": round(val.get("ticket_medio", 0), 2)
+            }
+
+    with open(os.path.join(data_dir, "ventas_tasca.json"), "w", encoding="utf-8") as f:
+        json.dump(tasca, f, ensure_ascii=False, separators=(",", ":"), cls=_NumpyEncoder)
+    print(f"  ventas_tasca.json generado")
+
+    # ── Copiar gmail_resumen.json y cuadre_resumen.json si existen ──
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    archivos_opcionales = [
+        (os.path.join(base_dir, "outputs", "logs_gmail", "gmail_resumen.json"), "gmail.json"),
+        (os.path.join(base_dir, "outputs", "cuadre_resumen.json"), "cuadre.json"),
+    ]
+    for src, dst in archivos_opcionales:
+        if os.path.exists(src):
+            shutil.copy2(src, os.path.join(data_dir, dst))
+            print(f"  {dst} copiado desde {os.path.basename(src)}")
+
+    # ── monitor.json ──
+    procesos = {}
+    logs_gmail = os.path.join(base_dir, "outputs", "logs_gmail")
+    logs_barea = os.path.join(base_dir, "outputs", "logs_barea")
+    for nombre, directorio in [("gmail", logs_gmail), ("ventas", logs_barea)]:
+        if os.path.isdir(directorio):
+            auto_logs = sorted([f for f in os.listdir(directorio) if f.startswith("auto_") and f.endswith(".log")])
+            if auto_logs:
+                ultimo = auto_logs[-1]
+                # Extraer fecha del nombre: auto_YYYY-MM-DD.log
+                fecha_str = ultimo.replace("auto_", "").replace(".log", "")
+                procesos[nombre] = {"ultima_ejecucion": fecha_str, "log": ultimo}
+    # Cuadre: leer timestamp de cuadre_resumen.json si existe
+    cuadre_json_path = os.path.join(base_dir, "outputs", "cuadre_resumen.json")
+    if os.path.exists(cuadre_json_path):
+        try:
+            with open(cuadre_json_path, "r", encoding="utf-8") as f:
+                cuadre_data = json.load(f)
+            procesos["cuadre"] = {"ultima_ejecucion": cuadre_data.get("fecha_ejecucion", "")}
+        except Exception:
+            pass
+
+    with open(os.path.join(data_dir, "monitor.json"), "w", encoding="utf-8") as f:
+        json.dump({"procesos": procesos}, f, ensure_ascii=False, indent=2)
+    print(f"  monitor.json generado")
+
+    # ── meta.json ──
+    from datetime import datetime as _dt
+    archivos_presentes = [f for f in os.listdir(data_dir) if f.endswith(".json") and f != "meta.json"]
+    meta = {
+        "exportado": _dt.now().isoformat(timespec="seconds"),
+        "version": "1.0",
+        "archivos": sorted(archivos_presentes)
+    }
+    with open(os.path.join(data_dir, "meta.json"), "w", encoding="utf-8") as f:
+        json.dump(meta, f, ensure_ascii=False, indent=2)
+    print(f"  meta.json generado ({len(archivos_presentes)} ficheros)")
+
+    return os.path.dirname(data_dir)  # devuelve el dir padre que contiene data/
+
+
+def publicar_github_pages(path_comes, path_tasca, data_dir=None):
     """Publica ambos dashboards en Netlify (reemplaza GitHub Pages)."""
     if not NETLIFY_TOKEN or not NETLIFY_SITE_ID:
         print("  Aviso: NETLIFY_TOKEN o NETLIFY_SITE_ID no configurados")
@@ -2406,6 +2587,14 @@ def publicar_github_pages(path_comes, path_tasca):
             zf.write(path_comes, "comestibles.html")
             zf.write(path_tasca, "tasca.html")
             zf.writestr("index.html", index_html)
+            # Incluir JSON de datos para Streamlit
+            if data_dir:
+                json_dir = os.path.join(data_dir, "data")
+                if os.path.isdir(json_dir):
+                    for fname in os.listdir(json_dir):
+                        if fname.endswith(".json"):
+                            zf.write(os.path.join(json_dir, fname), f"data/{fname}")
+                    print(f"  JSON incluidos en ZIP: {len(os.listdir(json_dir))} ficheros")
 
         # Subir a Netlify via API
         url = f"https://api.netlify.com/api/v1/sites/{NETLIFY_SITE_ID}/deploys"
@@ -2479,9 +2668,14 @@ def main(abrir_navegador=True, solo_meses_cerrados=False, enviar_email=False):
     PBM = calcular_PBM_tasca(t_items)
     path_tasca = generar_html_tasca(RAW, PBM)
 
-    # ── 3. GitHub Pages ──
-    print("\n--- GitHub Pages ---")
-    publicar_github_pages(path_comes, path_tasca)
+    # ── 3. JSON Streamlit + Netlify ──
+    print("\n--- JSON Streamlit + Netlify ---")
+    try:
+        data_dir = exportar_json_streamlit(D, MD, DIAS, RAW, PBM)
+    except Exception as e:
+        print(f"  Error exportando JSON Streamlit: {e}")
+        data_dir = None
+    publicar_github_pages(path_comes, path_tasca, data_dir=data_dir)
 
     # ── 4. PDF + Email ──
     if enviar_email:
