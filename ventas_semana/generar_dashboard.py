@@ -32,6 +32,12 @@ from email import encoders
 import numpy as np
 import pandas as pd
 
+from nucleo.utils import (
+    to_float, round_safe, fmt_eur, clean_html,
+    NumpyEncoder, json_dumps,
+    MESES as _MESES_SHARED, MESES_FULL as _MESES_FULL_SHARED,
+)
+
 # ── Rutas ─────────────────────────────────────────────────────────────────────
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _ROOT = os.path.dirname(_SCRIPT_DIR)
@@ -96,10 +102,8 @@ def _remapear_categorias(df):
         df["Categoria"] = df["Categoria"].replace(CAT_MAP)
     return df
 
-MESES_FULL = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-              "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-MESES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun",
-               "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+MESES_FULL = _MESES_FULL_SHARED
+MESES_CORTO = _MESES_SHARED
 
 # Meses con apertura parcial (no comparables) — 8 = Agosto
 MESES_PARCIALES = [8]
@@ -125,54 +129,13 @@ _GMAIL_TOKEN = os.path.join(_GMAIL_DIR, "token.json")
 
 
 # ── Utilidades ────────────────────────────────────────────────────────────────
-class _NumpyEncoder(json.JSONEncoder):
-    """Convierte tipos numpy a tipos nativos Python para JSON."""
-    def default(self, obj):
-        if isinstance(obj, (np.integer,)):
-            return int(obj)
-        if isinstance(obj, (np.floating,)):
-            return float(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return super().default(obj)
-
-
-def _json_dumps(obj):
-    """json.dumps con soporte para tipos numpy."""
-    return json.dumps(obj, ensure_ascii=False, separators=(",", ":"), cls=_NumpyEncoder)
-
-
-def _to_float(val):
-    """Convierte a float, soportando formato español ('3,51') y NaN."""
-    if pd.isna(val):
-        return 0.0
-    if isinstance(val, (int, float)):
-        return float(val)
-    s = str(val).strip()
-    if not s:
-        return 0.0
-    return float(s.replace(",", "."))
-
-
-def _clean_html(text):
-    """Elimina tags HTML de un string."""
-    if not text or pd.isna(text):
-        return ""
-    return re.sub(r"<[^>]+>", "", str(text)).strip()
-
-
-def _round(n, d=2):
-    return round(n, d)
-
-
-def _fmt_eur(n, decimals=2):
-    """Formatea número como moneda española: x.xxx,xx €"""
-    if decimals == 0:
-        s = f"{abs(n):,.0f}"
-    else:
-        s = f"{abs(n):,.{decimals}f}"
-    s = s.replace(",", "X").replace(".", ",").replace("X", ".")
-    return f"{'-' if n < 0 else ''}{s} €"
+# Aliases locales para compatibilidad (funciones ahora en nucleo/utils.py)
+_NumpyEncoder = NumpyEncoder
+_json_dumps = json_dumps
+_to_float = to_float
+_clean_html = clean_html
+_round = round_safe
+_fmt_eur = fmt_eur
 
 
 def _normalizar_df(df_i, df_r):
