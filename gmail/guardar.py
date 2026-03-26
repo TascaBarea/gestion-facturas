@@ -14,7 +14,7 @@ import shutil
 from datetime import datetime
 from typing import Optional
 
-from config import DROPBOX_FACTURAS_BASE
+from gmail_config import DROPBOX_FACTURAS_BASE
 
 
 # =============================================================================
@@ -185,7 +185,7 @@ def guardar_lote_dropbox(archivos_procesados: list, modo_test: bool = False) -> 
         
         # Calcular trimestre desde fecha
         if fecha:
-            from config import calcular_trimestre
+            from gmail_config import calcular_trimestre
             trimestre = calcular_trimestre(fecha)
         else:
             # Fallback: trimestre actual

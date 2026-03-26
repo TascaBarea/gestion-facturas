@@ -17,7 +17,7 @@ from datetime import datetime
 from typing import Optional
 import pdfplumber
 
-from config import (
+from gmail_config import (
     calcular_trimestre,
     PREFIJO_ATRASADA,
     PREFIJO_PROFORMA,

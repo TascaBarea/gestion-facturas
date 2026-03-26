@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 from email.message import Message
 
-from config import (
+from gmail_config import (
     EXTENSIONES_VALIDAS,
     EXTENSIONES_IGNORAR,
     PALABRAS_FACTURA_NOMBRE,

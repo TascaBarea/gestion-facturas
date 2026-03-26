@@ -63,31 +63,33 @@ class Job:
 
 SCRIPTS = {
     "gmail": {
-        "module": "gmail.gmail",
+        "script": os.path.join("gmail", "gmail.py"),
+        "cwd": os.path.join(PROJECT_ROOT, "gmail"),
         "args_default": ["--produccion"],
         "description": "Procesar emails y facturas",
     },
     "gmail_test": {
-        "module": "gmail.gmail",
+        "script": os.path.join("gmail", "gmail.py"),
+        "cwd": os.path.join(PROJECT_ROOT, "gmail"),
         "args_default": ["--test"],
         "description": "Gmail en modo test (sin modificar archivos)",
     },
     "ventas": {
-        "module": "ventas_semana.script_barea",
+        "script": os.path.join("ventas_semana", "script_barea.py"),
         "description": "Descargar ventas semanales",
     },
     "dashboard": {
-        "module": "ventas_semana.generar_dashboard",
+        "script": os.path.join("ventas_semana", "generar_dashboard.py"),
         "args_default": ["--no-open", "--solo-cerrados"],
         "description": "Generar dashboards HTML + PDF",
     },
     "dashboard_email": {
-        "module": "ventas_semana.generar_dashboard",
+        "script": os.path.join("ventas_semana", "generar_dashboard.py"),
         "args_default": ["--no-open", "--solo-cerrados", "--email"],
         "description": "Generar dashboards + enviar email",
     },
     "cuadre": {
-        "module": "cuadre.banco.cuadre",
+        "script": os.path.join("cuadre", "banco", "cuadre.py"),
         "args_default": [],
         "description": "Cuadre bancario (requiere --archivo)",
         "requires_file": True,
@@ -181,20 +183,25 @@ def _run_job(job: Job, cfg: dict):
     job.status = JobStatus.RUNNING
     job.started_at = datetime.now().isoformat(timespec="seconds")
 
-    cmd = [sys.executable, "-m", cfg["module"]] + job.args
+    script_path = os.path.join(PROJECT_ROOT, cfg["script"])
+    work_dir = cfg.get("cwd", PROJECT_ROOT)
+    cmd = [sys.executable, script_path] + job.args
     job.log_lines.append(f"[{job.started_at}] Ejecutando: {' '.join(cmd)}")
-    job.log_lines.append(f"[{job.started_at}] Directorio: {PROJECT_ROOT}")
+    job.log_lines.append(f"[{job.started_at}] Directorio: {work_dir}")
+
+    # PYTHONPATH incluye project root para resolver nucleo/, config/, etc.
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONPATH": PROJECT_ROOT}
 
     try:
         proc = subprocess.Popen(
             cmd,
-            cwd=PROJECT_ROOT,
+            cwd=work_dir,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
             encoding="utf-8",
             errors="replace",
-            env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+            env=env,
         )
 
         # Leer output línea a línea

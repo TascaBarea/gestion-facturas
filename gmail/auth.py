@@ -11,7 +11,7 @@ from email.message import Message
 from typing import Optional
 import ssl
 
-from config import (
+from gmail_config import (
     GMAIL_EMAIL,
     GMAIL_IMAP_SERVER,
     GMAIL_IMAP_PORT,

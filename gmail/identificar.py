@@ -15,7 +15,7 @@ import pandas as pd
 from typing import Optional
 from thefuzz import fuzz, process
 
-from config import (
+from gmail_config import (
     MAESTRO_PROVEEDORES,
     UMBRAL_FUZZY_PROVEEDOR,
     UMBRAL_FUZZY_INDICAR
