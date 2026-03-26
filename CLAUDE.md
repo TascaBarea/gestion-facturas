@@ -1,5 +1,5 @@
 # CLAUDE.md — gestion-facturas
-<!-- Versión: 4.1 — 20/03/2026 -->
+<!-- Versión: 4.2 — 26/03/2026 -->
 <!-- IMPORTANTE: Leer tasks/lessons.md al iniciar cada sesión -->
 
 ## Proyecto
@@ -31,6 +31,12 @@ gestion-facturas/
 ├── outputs/                # Logs gitignored
 └── docs/ESQUEMA_PROYECTO_DEFINITIVO_v2_6.md
 ```
+
+## Documentación y reglas
+- **Reglas automáticas**: `.claude/rules/` — se cargan según directorio (api, extractores, Excel)
+- **API reference**: `docs/api.md` — endpoints, auth, runner, MAESTRO CRUD
+- **Errores conocidos**: `tasks/lessons.md` — leer al iniciar sesión
+- **Tests**: `pytest tests/unit/` — 4 suites (security, maestro, nucleo, runner)
 
 ## Versiones actuales
 <!-- Al modificar un módulo: actualizar aquí Y en ESQUEMA -->
@@ -69,14 +75,7 @@ gestion-facturas/
 
 ---
 
-## Errores conocidos → ver tasks/lessons.md para lista completa
-
-| Error | Regla rápida |
-|-------|-------------|
-| Excel abierto | Avisar SIEMPRE antes de escribir. Leer antes de sobrescribir. Hacer backup. |
-| ERRORLEVEL en batch | Usar goto + labels, nunca if anidado |
-| Token Gmail caducado | Ejecutar gmail/renovar_token_business.py |
-| MIME type Gmail | text/html con barra normal, nunca invertida |
+## Errores conocidos → ver `tasks/lessons.md`
 
 ---
 
@@ -99,8 +98,3 @@ gestion-facturas/
 | `/validar-patrones`   | Testear regex del extractor genérico contra textos de prueba    |
 | `/frontend-design`    | Genera interfaces HTML/CSS/JS con personalidad, sin AI slop     |
 
----
-
-## Asistentes IA configurados
-- **Claude Code**: usa este archivo (carga automática)
-- **GitHub Copilot (VS Code)**: ver `.github/copilot-instructions.md`
