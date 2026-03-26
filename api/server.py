@@ -6,17 +6,20 @@ Ejecutar: python -m api.server
 """
 
 import json
+import logging
 import os
 import platform
 import tempfile
 import uuid
 from datetime import datetime
 
+logger = logging.getLogger("api.server")
+
 from fastapi import Depends, FastAPI, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.auth import require_api_key
-from api.config import PROJECT_ROOT, API_HOST, API_PORT
+from api.auth import require_api_key, require_admin_key
+from api.config import PROJECT_ROOT, API_HOST, API_PORT, CORS_ORIGINS
 from pydantic import BaseModel
 
 from api.runner import (
@@ -30,11 +33,15 @@ from api.maestro import (
 app = FastAPI(title="Barea API", version="0.1.0")
 
 # ── CORS ──────────────────────────────────────────────────────────────────────
+# Orígenes permitidos: desde .env (CORS_ORIGINS) o fallback seguro.
+# En DEV_MODE se permite localhost; en producción solo orígenes explícitos.
+_default_origins = ["http://127.0.0.1:8501", "http://localhost:8501"]
+_origins = CORS_ORIGINS if CORS_ORIGINS else _default_origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_origins,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
@@ -72,8 +79,9 @@ def status():
                 "ultima_ejecucion": data.get("fecha_ejecucion", ""),
                 "estado": "ok",
             }
-        except Exception:
-            pass
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Error leyendo cuadre_resumen.json: %s", e)
+            procesos["cuadre"] = {"estado": "error", "detalle": str(e)}
 
     return {
         "procesos": procesos,
@@ -119,8 +127,8 @@ def alerts():
                 ultimas = f.readlines()[-10:]
             texto = " ".join(ultimas).upper()
             tiene_error = "ERROR" in texto and "EXITO" not in texto
-        except Exception:
-            pass
+        except OSError as e:
+            logger.warning("Error leyendo log %s: %s", path, e)
 
         if tiene_error:
             alertas.append({
@@ -144,22 +152,29 @@ def alerts():
 @app.get("/api/data/{filename}", dependencies=[Depends(require_api_key)])
 def get_data_file(filename: str):
     """Sirve ficheros JSON de datos (ventas_comes, ventas_tasca, etc.)."""
-    data_dir = os.path.join(tempfile.gettempdir(), "barea_streamlit_data", "data")
+    # Seguridad: solo nombre base, sin separadores de directorio
+    safe_name = os.path.basename(filename)
+    if safe_name != filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Nombre de fichero no válido")
 
-    if not filename.endswith(".json"):
+    if not safe_name.endswith(".json"):
         raise HTTPException(status_code=400, detail="Solo ficheros .json")
 
-    candidatos = [
-        os.path.join(data_dir, filename),
-        os.path.join(PROJECT_ROOT, "outputs", filename),
-    ]
+    data_dir = os.path.join(tempfile.gettempdir(), "barea_streamlit_data", "data")
+    dirs_permitidos = [data_dir, os.path.join(PROJECT_ROOT, "outputs")]
 
-    for path in candidatos:
-        if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
+    for base_dir in dirs_permitidos:
+        candidato = os.path.join(base_dir, safe_name)
+        # Verificar que el path resuelto está dentro del directorio permitido
+        real_path = os.path.realpath(candidato)
+        real_base = os.path.realpath(base_dir)
+        if not real_path.startswith(real_base + os.sep) and real_path != real_base:
+            continue
+        if os.path.exists(real_path):
+            with open(real_path, "r", encoding="utf-8") as f:
                 return json.load(f)
 
-    raise HTTPException(status_code=404, detail=f"{filename} no encontrado")
+    raise HTTPException(status_code=404, detail=f"{safe_name} no encontrado")
 
 
 # ── Endpoints de ejecución de scripts ─────────────────────────────────────────
@@ -174,7 +189,7 @@ def scripts_available():
     }
 
 
-@app.post("/api/scripts/{script_name}", dependencies=[Depends(require_api_key)])
+@app.post("/api/scripts/{script_name}", dependencies=[Depends(require_admin_key)])
 def run_script(script_name: str, archivo: str | None = None):
     """Lanza un script en background. Devuelve job_id para seguimiento.
 
@@ -183,6 +198,19 @@ def run_script(script_name: str, archivo: str | None = None):
     """
     extra_args = []
     if archivo:
+        # Seguridad: validar que el path no contiene traversal y está en directorio permitido
+        if ".." in archivo:
+            raise HTTPException(status_code=400, detail="Path no permitido: contiene '..'")
+        real_path = os.path.realpath(archivo)
+        dirs_permitidos = [
+            os.path.realpath(tempfile.gettempdir()),
+            os.path.realpath(os.path.join(PROJECT_ROOT, "datos")),
+        ]
+        if not any(real_path.startswith(d + os.sep) or real_path == d for d in dirs_permitidos):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Path fuera de directorios permitidos (temp, datos/)",
+            )
         extra_args = ["--archivo", archivo]
 
     try:
@@ -208,13 +236,43 @@ def job_detail(job_id: str, full_log: bool = False):
     return job.to_dict(include_log=full_log)
 
 
-@app.post("/api/upload/n43", dependencies=[Depends(require_api_key)])
+_UPLOAD_MAX_BYTES = 10 * 1024 * 1024  # 10 MB
+_UPLOAD_EXTENSIONS = {".n43", ".xlsx", ".xls"}
+# Magic bytes: XLSX=PK (ZIP), XLS=D0CF (OLE), N43=texto (empieza con dígitos)
+_MAGIC_XLSX = b"PK"
+_MAGIC_XLS = b"\xd0\xcf\x11\xe0"
+
+
+@app.post("/api/upload/n43", dependencies=[Depends(require_admin_key)])
 async def upload_n43(file: UploadFile):
     """Sube un archivo N43/Excel para cuadre. Devuelve path temporal."""
     content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="Archivo vacío")
-    ext = os.path.splitext(file.filename or "upload.xlsx")[1] or ".xlsx"
+
+    # Validar tamaño
+    if len(content) > _UPLOAD_MAX_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Archivo demasiado grande ({len(content)} bytes). Máximo: {_UPLOAD_MAX_BYTES // (1024*1024)} MB",
+        )
+
+    # Validar extensión
+    ext = os.path.splitext(file.filename or "upload.xlsx")[1].lower() or ".xlsx"
+    if ext not in _UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Extensión '{ext}' no permitida. Permitidas: {', '.join(sorted(_UPLOAD_EXTENSIONS))}",
+        )
+
+    # Validar magic bytes según extensión
+    if ext == ".xlsx" and not content[:2].startswith(_MAGIC_XLSX):
+        raise HTTPException(status_code=400, detail="El archivo no parece ser un XLSX válido")
+    if ext == ".xls" and not content[:4].startswith(_MAGIC_XLS):
+        raise HTTPException(status_code=400, detail="El archivo no parece ser un XLS válido")
+    if ext == ".n43" and not content[:1].isdigit():
+        raise HTTPException(status_code=400, detail="El archivo no parece ser un N43 válido")
+
     tmp_path = os.path.join(
         tempfile.gettempdir(), f"cuadre_upload_{uuid.uuid4().hex[:8]}{ext}"
     )
@@ -239,7 +297,7 @@ def maestro_list():
     }
 
 
-@app.put("/api/maestro/{proveedor_name}", dependencies=[Depends(require_api_key)])
+@app.put("/api/maestro/{proveedor_name}", dependencies=[Depends(require_admin_key)])
 def maestro_update(proveedor_name: str, body: ProveedorUpdate):
     """Actualiza un proveedor existente (partial update)."""
     cambios = body.model_dump(exclude_none=True)
@@ -256,7 +314,7 @@ def maestro_update(proveedor_name: str, body: ProveedorUpdate):
     return {"proveedor": prov, "message": "Proveedor actualizado."}
 
 
-@app.post("/api/maestro", dependencies=[Depends(require_api_key)])
+@app.post("/api/maestro", dependencies=[Depends(require_admin_key)])
 def maestro_create(body: ProveedorCreate):
     """Crea un nuevo proveedor."""
     data = body.model_dump(exclude_none=True)
@@ -267,6 +325,48 @@ def maestro_create(body: ProveedorCreate):
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
     return {"proveedor": prov, "message": "Proveedor creado."}
+
+
+# ── Endpoints read-only adicionales ──────────────────────────────────────────
+
+@app.get("/api/cuadre/detail", dependencies=[Depends(require_api_key)])
+def cuadre_detail():
+    """Detalle del último cuadre: resumen JSON generado por cuadre.py."""
+    cuadre_path = os.path.join(PROJECT_ROOT, "outputs", "cuadre_resumen.json")
+    if not os.path.exists(cuadre_path):
+        raise HTTPException(status_code=404, detail="Sin datos de cuadre disponibles")
+    try:
+        with open(cuadre_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data
+    except (json.JSONDecodeError, OSError) as e:
+        raise HTTPException(status_code=500, detail=f"Error leyendo cuadre: {e}")
+
+
+@app.get("/api/gmail/stats", dependencies=[Depends(require_api_key)])
+def gmail_stats():
+    """Estadísticas del módulo Gmail: última ejecución, facturas procesadas."""
+    json_path = os.path.join(PROJECT_ROOT, "outputs", "gmail_resumen.json")
+    if not os.path.exists(json_path):
+        # Intentar leer del log más reciente
+        logs_dir = os.path.join(PROJECT_ROOT, "outputs", "logs_gmail")
+        if not os.path.isdir(logs_dir):
+            raise HTTPException(status_code=404, detail="Sin datos de Gmail disponibles")
+        logs = sorted(f for f in os.listdir(logs_dir) if f.endswith(".log"))
+        if not logs:
+            raise HTTPException(status_code=404, detail="Sin logs de Gmail")
+        ultimo = logs[-1]
+        return {
+            "ultimo_log": ultimo,
+            "fecha": ultimo.replace(".log", ""),
+            "detalle": "Resumen JSON no disponible. Consulta el log.",
+        }
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data
+    except (json.JSONDecodeError, OSError) as e:
+        raise HTTPException(status_code=500, detail=f"Error leyendo stats Gmail: {e}")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -289,7 +389,8 @@ def _leer_ultimo_log(procesos: dict, nombre: str, directorio: str):
         with open(path, "r", encoding="utf-8", errors="replace") as f:
             lineas = f.readlines()
         ultimas = [l.rstrip() for l in lineas[-5:]]
-    except Exception:
+    except OSError as e:
+        logger.warning("Error leyendo log %s: %s", path, e)
         ultimas = []
 
     procesos[nombre] = {

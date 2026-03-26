@@ -55,6 +55,11 @@ def fmt_eur(n, decimals=2) -> str:
     return f"{'-' if n < 0 else ''}{s} €"
 
 
+def fmt_num(n) -> str:
+    """Formatea entero con separador de miles español: 1.234"""
+    return f"{int(n):,}".replace(",", ".")
+
+
 # ── HTML ─────────────────────────────────────────────────────────────────────
 
 def clean_html(text) -> str:

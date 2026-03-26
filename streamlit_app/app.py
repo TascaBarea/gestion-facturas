@@ -3,9 +3,15 @@ Tasca Barea — Panel de gestión
 Streamlit multi-page app con roles de acceso.
 """
 
+import time
+
 import streamlit as st
 from utils.auth import check_login, page_ids_for_role, get_role, get_user_name
 from utils.data_client import backend_disponible, fetch_backend_json
+
+# ── Rate limiting login ──────────────────────────────────────────────────────
+_MAX_LOGIN_ATTEMPTS = 5
+_LOCKOUT_SECONDS = 60
 
 st.set_page_config(
     page_title="Tasca Barea",
@@ -188,6 +194,16 @@ def _show_login():
     username = st.text_input("Usuario", key="login_user")
     password = st.text_input("Contraseña", type="password", key="login_pwd")
 
+    # Rate limiting: comprobar lockout
+    attempts = st.session_state.get("login_attempts", 0)
+    locked_until = st.session_state.get("login_locked_until", 0)
+    now = time.time()
+
+    if now < locked_until:
+        remaining = int(locked_until - now)
+        st.error(f"Demasiados intentos. Espera {remaining}s.")
+        return
+
     if st.button("Entrar", type="primary", use_container_width=True):
         if not username or not password:
             st.error("Introduce usuario y contraseña.")
@@ -197,9 +213,17 @@ def _show_login():
             st.session_state.autenticado = True
             st.session_state.user_role = user_data["role"]
             st.session_state.user_name = user_data["name"]
+            st.session_state.login_attempts = 0
+            st.session_state.login_locked_until = 0
             st.rerun()
         else:
-            st.error("Usuario o contraseña incorrectos.")
+            attempts += 1
+            st.session_state.login_attempts = attempts
+            if attempts >= _MAX_LOGIN_ATTEMPTS:
+                st.session_state.login_locked_until = now + _LOCKOUT_SECONDS
+                st.error(f"Demasiados intentos ({attempts}). Bloqueado {_LOCKOUT_SECONDS}s.")
+            else:
+                st.error(f"Usuario o contraseña incorrectos ({attempts}/{_MAX_LOGIN_ATTEMPTS}).")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

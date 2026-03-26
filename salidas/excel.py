@@ -36,14 +36,19 @@ if TYPE_CHECKING:
 
 
 def _verificar_archivo_no_abierto(ruta) -> bool:
-    """Comprueba que el archivo Excel no esté abierto. Devuelve True si está libre."""
+    """Comprueba que el archivo Excel no esté abierto. Devuelve True si está libre.
+
+    Método: rename temporal (más fiable que open('a') en Windows con Excel).
+    """
     ruta = Path(ruta)
     if not ruta.exists():
         return True
     try:
-        with open(ruta, 'a'):
-            return True
-    except PermissionError:
+        tmp = ruta.with_suffix(ruta.suffix + ".check_lock")
+        ruta.rename(tmp)
+        tmp.rename(ruta)
+        return True
+    except (PermissionError, OSError):
         print(f"  ERROR: El archivo '{ruta.name}' está abierto en Excel. Ciérralo y reintenta.")
         return False
 
@@ -323,17 +328,6 @@ def buscar_cuenta_titulo(proveedor: str, ruta_diccionario: Optional[Path] = None
         if ratio > mejor_ratio and ratio > 0.70:
             mejor_ratio = ratio
             mejor_match = ('cuenta', cliente, cuenta)
-    
-    if mejor_match:
-        if mejor_match[0] == 'alias':
-            titulo = mejor_match[2]
-            if titulo in dict_cuentas:
-                return (dict_cuentas[titulo], titulo)
-        else:
-            return (mejor_match[2], mejor_match[1])
-    
-    # No encontrado
-    return ('PENDIENTE', proveedor)
     
     if mejor_match:
         if mejor_match[0] == 'alias':

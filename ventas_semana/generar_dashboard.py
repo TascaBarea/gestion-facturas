@@ -15,7 +15,6 @@ Uso:
 import json
 import os
 import re
-import ast
 import sys
 import webbrowser
 from collections import defaultdict
@@ -111,14 +110,12 @@ except ImportError:
 
 
 
-# ── Utilidades ────────────────────────────────────────────────────────────────
-# Aliases locales para compatibilidad (funciones ahora en nucleo/utils.py)
-_NumpyEncoder = NumpyEncoder
-_json_dumps = json_dumps
+# Aliases locales para brevedad en templates HTML
 _to_float = to_float
 _clean_html = clean_html
 _round = round_safe
 _fmt_eur = fmt_eur
+_json_dumps = json_dumps
 
 
 def _normalizar_df(df_i, df_r):
@@ -484,7 +481,7 @@ def _calcular_woo(df_woo):
                     continue
                 try:
                     if isinstance(line_items_raw, str):
-                        items_list = ast.literal_eval(line_items_raw)
+                        items_list = json.loads(line_items_raw)
                     else:
                         items_list = line_items_raw
                     if isinstance(items_list, list):
@@ -493,7 +490,7 @@ def _calcular_woo(df_woo):
                             total_item = float(item.get("total", 0) or 0)
                             if name and total_item > 0:
                                 products[name] += total_item
-                except (ValueError, SyntaxError):
+                except (ValueError, json.JSONDecodeError, TypeError):
                     pass
         # Formato Excel limpio: items_resumen con texto descriptivo
         elif "items_resumen" in dm.columns:

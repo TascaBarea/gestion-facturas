@@ -103,13 +103,18 @@ def leer_maestro_simple() -> list[dict]:
 def verificar_no_abierto():
     """Comprueba que el Excel no esté abierto.
 
+    Método: rename temporal (más fiable que open/openpyxl en Windows).
+
     Raises:
         PermissionError: si el archivo está bloqueado (abierto en Excel).
     """
+    if not os.path.exists(MAESTRO_PATH):
+        return
     try:
-        wb = load_workbook(MAESTRO_PATH)
-        wb.close()
-    except PermissionError:
+        tmp = MAESTRO_PATH + ".check_lock"
+        os.rename(MAESTRO_PATH, tmp)
+        os.rename(tmp, MAESTRO_PATH)
+    except (PermissionError, OSError):
         raise PermissionError(
             "El archivo MAESTRO_PROVEEDORES.xlsx está abierto en Excel. "
             "Ciérralo antes de guardar cambios."

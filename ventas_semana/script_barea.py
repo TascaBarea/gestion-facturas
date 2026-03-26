@@ -22,25 +22,10 @@ from datetime import datetime, timedelta
 # Cargar configuración (relativo al script, no al cwd)
 _script_dir = os.path.dirname(os.path.abspath(__file__))
 
-# --- Logging -----------------------------------------------------------
-_logs_dir = os.path.join(os.path.dirname(_script_dir), "outputs", "logs_ventas")
-os.makedirs(_logs_dir, exist_ok=True)
-_log_file = os.path.join(_logs_dir, f"{datetime.now().strftime('%Y-%m-%d')}.log")
-
-log = logging.getLogger("barea")
-log.setLevel(logging.DEBUG)
-
-_fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
-
-_fh = logging.FileHandler(_log_file, encoding="utf-8")
-_fh.setLevel(logging.DEBUG)
-_fh.setFormatter(_fmt)
-log.addHandler(_fh)
-
-_ch = logging.StreamHandler(sys.stdout)
-_ch.setLevel(logging.INFO)
-_ch.setFormatter(logging.Formatter("%(message)s"))
-log.addHandler(_ch)
+# --- Logging (centralizado via nucleo) ------------------------------------
+from nucleo.logging_config import setup_logging
+from nucleo.utils import fmt_eur as _fmt_eur, fmt_num as _fmt_num
+log = setup_logging("barea", log_subdir="logs_ventas", consola_simple=True)
 # ------------------------------------------------------------------------
 
 _env_path = os.path.join(_script_dir, ".env")
@@ -133,7 +118,11 @@ def fetch_loyverse(token, endpoint, created_at_min=None, created_at_max=None):
                 log.warning("API %s: HTTP %s", endpoint, response.status_code)
                 break
 
-            data = response.json()
+            try:
+                data = response.json()
+            except ValueError as e:
+                log.error("API %s: respuesta no es JSON válido: %s", endpoint, e)
+                break
             key = endpoint.split('/')[-1]
             items = data.get(key, [])
 
@@ -373,13 +362,19 @@ _COL_RENAMES = {
 
 
 def _verificar_archivo_no_abierto(ruta):
-    """Comprueba que el archivo Excel no esté abierto. Devuelve True si está libre."""
+    """Comprueba que el archivo Excel no esté abierto. Devuelve True si está libre.
+
+    Método: rename temporal (más fiable que open('a') en Windows con Excel).
+    """
     if not os.path.exists(ruta):
         return True
     try:
-        with open(ruta, 'a'):
-            return True
-    except PermissionError:
+        # En Windows, os.rename falla si el archivo está bloqueado por Excel
+        tmp = ruta + ".check_lock"
+        os.rename(ruta, tmp)
+        os.rename(tmp, ruta)
+        return True
+    except (PermissionError, OSError):
         log.error("El archivo '%s' está abierto en Excel. Ciérralo y reintenta.",
                   os.path.basename(ruta))
         return False
@@ -788,27 +783,7 @@ def check_iva_anomalies(path, sheet_name):
         log.info("  %s: IVA sin anomalías", sheet_name)
 
 
-def _to_float(val):
-    """Convierte a float, soportando formato español ('3,51') y NaN."""
-    if pd.isna(val):
-        return 0.0
-    if isinstance(val, (int, float)):
-        return float(val)
-    s = str(val).strip()
-    if not s:
-        return 0.0
-    return float(s.replace(",", "."))
-
-
-def _fmt_eur(n):
-    """Formatea número como moneda española: x.xxx,xx €"""
-    s = f"{abs(n):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    return f"{'-' if n < 0 else ''}{s} €"
-
-
-def _fmt_num(n):
-    """Formatea entero con separador de miles."""
-    return f"{int(n):,}".replace(",", ".")
+# _to_float, _fmt_eur, _fmt_num: importados de nucleo.utils (ver imports arriba)
 
 
 def _pct_var(actual, anterior):
@@ -1573,7 +1548,12 @@ def generar_inventario_talleres():
     page = 1
 
     while True:
-        productos = wc.get("products", params={"per_page": 100, "page": page, "status": "publish"}).json()
+        resp = wc.get("products", params={"per_page": 100, "page": page, "status": "publish"})
+        try:
+            productos = resp.json()
+        except ValueError as e:
+            log.error("WooCommerce products: respuesta no es JSON válido: %s", e)
+            break
         if not isinstance(productos, list) or not productos:
             break
 
@@ -1700,12 +1680,17 @@ def main():
         all_orders = []
         page = 1
         while True:
-            orders = wc.get("orders", params={
+            resp_orders = wc.get("orders", params={
                 "per_page": 100,
                 "page": page,
                 "after": desde_iso,
                 "before": hasta_iso,
-            }).json()
+            })
+            try:
+                orders = resp_orders.json()
+            except ValueError as e:
+                log.error("WooCommerce orders: respuesta no es JSON válido: %s", e)
+                break
             if not isinstance(orders, list) or len(orders) == 0:
                 break
             all_orders.extend(orders)

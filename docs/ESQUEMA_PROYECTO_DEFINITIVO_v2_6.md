@@ -1,8 +1,8 @@
 1
 # 📐 ESQUEMA PROYECTO GESTIÓN-FACTURAS
 
-**Versión:** 5.0
-**Fecha:** 25/03/2026
+**Versión:** 5.3
+**Fecha:** 26/03/2026
 **Estado:** DEFINITIVO - Base para desarrollo
 
 ---
@@ -176,7 +176,7 @@ SALIDA:        - Ventas Barea 2026.xlsx (5 pestañas):
                  dashboards/informe_barea_*.pdf (completo: Tasca + Comestibles)
                  dashboards/informe_comestibles_*.pdf (solo Comestibles)
                - GitHub Pages: DESACTIVADO (alternativa: Netlify para datos JSON)
-               - Streamlit app: tascabarea.streamlit.app (multi-usuario con roles)
+               - Streamlit app: tascabarea.streamlit.app (multi-usuario, diseño corporativo)
 INICIO:        AUTOMÁTICO (lunes 03:00) o MANUAL
 FRECUENCIA:    Semanal (ventas) + Mensual (dashboard cerrado + email + PDF)
 ESTADO:        ✅ v4.7 - Dual dashboard + PDF + email + Streamlit app multi-usuario
@@ -317,21 +317,24 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   │   ├── barea_auto_setup.bat     ← Setup tarea (1 vez, como admin)
 │   │   └── .env                     ← Credenciales API (no commitear)
 │   │
-│   ├── streamlit_app\               ← 🌐 APP WEB multi-usuario (✅ Fase 1)
-│   │   ├── app.py                   ← Login + st.navigation() por rol
+│   ├── streamlit_app\               ← 🌐 APP WEB multi-usuario (✅ Fase 2)
+│   │   ├── app.py                   ← Login + st.navigation() + CSS corporativo (Syne + DM Sans)
 │   │   ├── pages\
 │   │   │   ├── alta_evento.py       ← Crear eventos WooCommerce
 │   │   │   ├── calendario_eventos.py ← Eventos futuros + asistentes + Excel
-│   │   │   ├── ventas.py            ← Dashboard Ventas (placeholder Fase 2)
-│   │   │   ├── cuadre.py            ← Cuadre Bancario (placeholder Fase 2)
-│   │   │   ├── log_gmail.py         ← Log Gmail (placeholder Fase 2)
-│   │   │   └── monitor.py           ← Monitor Sistema (placeholder Fase 2)
+│   │   │   ├── ventas.py            ← Dashboard Ventas (Plotly + fmt_eur)
+│   │   │   ├── maestro.py           ← Editor MAESTRO_PROVEEDORES (solo admin)
+│   │   │   ├── cuadre.py            ← Cuadre Bancario (placeholder)
+│   │   │   ├── log_gmail.py         ← Log Gmail (placeholder)
+│   │   │   ├── monitor.py           ← Monitor Sistema (placeholder)
+│   │   │   └── ejecutar.py          ← Ejecutar Scripts (placeholder)
 │   │   ├── utils\
 │   │   │   ├── auth.py              ← Roles, require_role(), check_login()
+│   │   │   ├── data_client.py       ← fetch/put/post_backend_json() + backend_disponible()
 │   │   │   └── wc_client.py         ← Wrapper WC API + funciones eventos
-│   │   ├── requirements.txt         ← streamlit, WooCommerce, pandas, openpyxl
+│   │   ├── requirements.txt         ← streamlit, WooCommerce, pandas, openpyxl, plotly
 │   │   └── .streamlit\
-│   │       ├── config.toml          ← Tema verde (#2E7D32)
+│   │       ├── config.toml          ← Tema corporativo (#8B0000, #FFF8F0, #E8F0E4)
 │   │       └── secrets.toml         ← Users + WC keys (gitignored)
 │   │
 │   ├── src\facturas\                ← Módulo PARSEO refactorizado (en desarrollo)
@@ -353,6 +356,9 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   │   ├── datos_sensibles.py.example ← Plantilla para nuevos despliegues
 │   │   └── settings.py              ← Versión, rutas por defecto
 │   │
+│   ├── scripts\                     ← Scripts auxiliares (one-time)
+│   │   └── generar_hashes.py        ← Genera hashes scrypt para secrets.toml
+│   │
 │   ├── datos\                       ← Documentos maestros (gitignored excepto diccionarios)
 │   │   ├── MAESTRO_PROVEEDORES.xlsx ← 195 proveedores, ~585 aliases (gitignored)
 │   │   ├── DiccionarioProveedoresCategoria.xlsx
@@ -360,20 +366,46 @@ C:\_ARCHIVOS\TRABAJO\Facturas\
 │   │   ├── EXTRACTORES_COMPLETO.xlsx
 │   │   └── emails_procesados.json   ← Control duplicados Gmail (gitignored)
 │   │
-│   ├── .claude\skills\              ← 6 skills personalizadas Claude Code
+│   ├── api\                         ← 🔌 API REST (FastAPI, puerto 8000)
+│   │   ├── server.py               ← Endpoints: health, status, alerts, data, scripts, maestro, cuadre, gmail
+│   │   ├── auth.py                 ← RBAC: require_api_key (readonly) + require_admin_key (mutación)
+│   │   ├── runner.py               ← Ejecución scripts en background (jobs)
+│   │   ├── maestro.py              ← CRUD MAESTRO_PROVEEDORES (leer, actualizar, crear)
+│   │   ├── config.py               ← Rutas, CORS_ORIGINS, API keys desde .env
+│   │   └── barea_api.bat           ← Watchdog: auto-restart si crash, shutdown limpio si exit 0
+│   │
+│   ├── .claude\skills\              ← 15 skills personalizadas Claude Code
 │   │   ├── estado/SKILL.md          ← /estado: resumen proyecto
 │   │   ├── dashboard/SKILL.md       ← /dashboard: generar dashboards
 │   │   ├── log-gmail/SKILL.md       ← /log-gmail: analizar logs
 │   │   ├── extractor/SKILL.md       ← /extractor: crear extractores
 │   │   ├── esquema/SKILL.md         ← /esquema: actualizar ESQUEMA
-│   │   └── ventas/SKILL.md          ← /ventas: descargar ventas
+│   │   ├── ventas/SKILL.md          ← /ventas: descargar ventas
+│   │   └── frontend-design/SKILL.md ← /frontend-design: interfaces HTML/CSS con personalidad
 │   │
 │   ├── alerta_fallo.py              ← Email alerta si fallo (token refresh + scope gmail.send)
 │   ├── requirements.txt             ← 16 dependencias fijadas (pip install -r)
 │   ├── .gitignore                   ← Excluye credenciales, datos, outputs, tokens
+│   ├── nucleo\                       ← Módulo core compartido
+│   │   ├── maestro.py               ← MaestroProveedores + cache singleton (obtener_maestro)
+│   │   ├── utils.py                 ← fmt_eur, fmt_num, to_float, NumpyEncoder
+│   │   ├── logging_config.py        ← Logging centralizado (RotatingFileHandler 5MB×5)
+│   │   └── parser.py                ← Extracción fecha/total/ref de PDFs
+│   │
+│   ├── tests\                        ← 🧪 Tests (pytest, 136 tests)
+│   │   ├── conftest.py              ← Fixtures: api_client, temp_excel, sample_maestro
+│   │   ├── unit\
+│   │   │   ├── test_api_security.py ← 22 tests seguridad API (path traversal, CORS, auth)
+│   │   │   ├── test_nucleo.py       ← 48 tests (to_float, fmt_eur, parse_date, NumpyEncoder)
+│   │   │   ├── test_maestro.py      ← 46 tests (MaestroProveedores, normalización, API CRUD)
+│   │   │   └── test_runner.py       ← 20 tests (jobs, scripts, lanzamiento)
+│   │   └── integration\             ← (pendiente)
+│   │
+│   ├── pyproject.toml               ← Config pytest, markers (unit/integration/slow)
+│   ├── .github\workflows\
+│   │   └── tests.yml                ← CI: pytest + coverage en push/PR a main
+│   │
 │   ├── estadisticas.py              ← Generador estadísticas facturas (OK/SIN_LINEAS/SIN_CUADRAR)
-│   ├── clasificador.py              ← Clasificador movimientos v2.0 (N43 + Excel interactivo)
-│   ├── procesador_jpg.py            ← Procesador fallback JPG (extrae datos del nombre)
 │   │
 │   └── outputs\                     ← Archivos generados (NO versionados, .gitignore)
 │       ├── Cuadre_*.xlsx            ← Cuadres generados
@@ -918,25 +950,123 @@ Se ejecutó `git filter-repo` en dos pasadas para eliminar datos sensibles del h
 Cambiado de PUBLIC a PRIVATE el 03/03/2026 (contenía datos financieros en dashboards).
 GitHub Pages **no funciona** en repos privados con plan gratuito — pendiente buscar alternativa.
 
-### 13.5 Dependencias (requirements.txt)
+### 13.5 API Security (v5.3)
+
+| Protección | Implementación | Archivo |
+|------------|---------------|---------|
+| **Path traversal** | `os.path.basename()` + `os.path.realpath()` + verificación directorio | `api/server.py` |
+| **CORS** | Lista explícita desde `.env` (CORS_ORIGINS), no `*` | `api/server.py`, `api/config.py` |
+| **API key obligatoria** | Si `API_KEY` vacío → error 500 (sin bypass) | `api/auth.py` |
+| **RBAC** | 2 niveles: `require_api_key` (lectura) + `require_admin_key` (mutación) | `api/auth.py` |
+| **Upload validación** | 10MB máx, extensiones `.n43/.xlsx/.xls`, magic bytes | `api/server.py` |
+| **Argumento archivo** | Whitelist directorios (temp, datos/), rechazo `..` | `api/server.py` |
+| **Passwords hashed** | scrypt (n=16384, r=8, p=1) con salt 16 bytes + timing constante | `streamlit_app/utils/auth.py` |
+| **Rate limiting login** | 5 intentos → lockout 60s (session_state) | `streamlit_app/app.py` |
+| **JSON safe** | `json.loads` en vez de `ast.literal_eval` para datos WC | `ventas_semana/generar_dashboard.py` |
+| **File locking** | `msvcrt.locking`/`fcntl.flock` para JSON Gmail | `gmail/gmail.py` |
+
+### 13.6 Tests (v5.3)
+
+136 tests unitarios en 4 archivos, ejecutados con pytest:
+- `test_api_security.py` — 22 tests (path traversal, CORS, auth, upload, RBAC)
+- `test_nucleo.py` — 48 tests (to_float, fmt_eur, parse_date, NumpyEncoder)
+- `test_maestro.py` — 46 tests (normalización, búsqueda, cache, API CRUD)
+- `test_runner.py` — 20 tests (jobs, scripts, validaciones)
+
+CI: GitHub Actions en push/PR a main (`pytest tests/unit/ --cov`)
+
+### 13.7 Logging centralizado (v5.3)
+
+`nucleo/logging_config.py` — `setup_logging(nombre)`:
+- `RotatingFileHandler`: 5MB max, 5 backups, encoding UTF-8
+- Formato: `HH:MM:SS | LEVEL | mensaje`
+- Migrado en: gmail.py, script_barea.py, API
+
+### 13.8 Dependencias (requirements.txt)
 
 16 paquetes con versiones fijadas. Instalar: `pip install -r requirements.txt`
 
-### 13.6 Protección de datos (save_to_excel)
+### 13.9 Protección de datos (save_to_excel)
 
-`script_barea.py` lee el Excel existente ANTES de abrir el writer. Si la lectura falla (fichero abierto, corrupto), **aborta** la escritura en vez de sobreescribir con datos vacíos.
+`script_barea.py` lee el Excel existente ANTES de abrir el writer. Si la lectura falla (fichero abierto, corrupto), **aborta** la escritura en vez de sobreescribir con datos vacíos. Detección de Excel abierto: `os.rename` temporal (más fiable que `open('a')` en Windows).
 
-### 13.7 Alertas de fallo (alerta_fallo.py)
+### 13.10 Alertas de fallo (alerta_fallo.py)
 
 Tanto `gmail_auto.bat` como `barea_auto.bat` envían email a `tascabarea@gmail.com` si el script Python termina con exit code ≠ 0. Usa Gmail API con scope mínimo (`gmail.send`) y token refresh automático.
 
-### 13.8 Timeouts HTTP
+### 13.11 Timeouts HTTP
 
 Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` para evitar cuelgues indefinidos en tareas programadas.
 
 ---
 
 ## CHANGELOG
+
+### v5.3 (26/03/2026) — SEGURIDAD + TESTS + LOGGING + LIMPIEZA
+
+- ✅ **Fase 1: Seguridad** — 10 vulnerabilidades corregidas
+  - Path traversal en `/api/data/{filename}`: sanitización con `basename` + `realpath`
+  - CORS restringido: lista explícita desde `.env` (no `*`)
+  - API key obligatoria: sin bypass si vacía → error 500
+  - RBAC: 2 niveles (`require_api_key` lectura, `require_admin_key` mutación)
+  - Uploads validados: 10MB máx, extensiones whitelist, magic bytes
+  - Argumento `archivo` en scripts: whitelist directorios, rechazo `..`
+  - Passwords hasheados: scrypt (n=16384, r=8, p=1) + timing constante
+  - Rate limiting login: 5 intentos → lockout 60s
+  - `ast.literal_eval` → `json.loads` en datos WooCommerce
+- ✅ **Fase 2: Tests** — 136 tests unitarios + CI
+  - `pyproject.toml` con config pytest, markers (unit/integration/slow)
+  - 4 archivos: test_api_security (22), test_nucleo (48), test_maestro (46), test_runner (20)
+  - `conftest.py` con fixtures: api_client (httpx AsyncClient), temp_excel, sample_maestro
+  - GitHub Actions CI: pytest + coverage en push/PR a main
+- ✅ **Fase 3: Error handling + Logging**
+  - `nucleo/logging_config.py`: logging centralizado con RotatingFileHandler (5MB×5)
+  - Migrado en gmail.py, script_barea.py, API server
+  - 6 `except Exception: pass` corregidos en gmail.py (ahora loggeados)
+  - 3 bare excepts corregidos en api/server.py (tipados + logging)
+  - File locking (`msvcrt.locking`/`fcntl.flock`) para JSON de control Gmail
+  - Detección Excel abierto: `os.rename` temporal (más fiable en Windows)
+  - 3 `.json()` sin try/except en script_barea.py → envueltos con ValueError
+- ✅ **Fase 4: Limpieza + Features**
+  - Código muerto eliminado: `clasificador.py` (205 líneas), `procesador_jpg.py` (334 líneas)
+  - Funciones deduplicadas: `_fmt_eur`/`_fmt_num` en script_barea.py → importan de `nucleo.utils`
+  - Cache singleton MAESTRO: `obtener_maestro()` con check mtime auto-reload
+  - API watchdog: `barea_api.bat` con loop auto-restart (10s backoff, exit 0 = no restart)
+  - Nuevos endpoints: `/api/cuadre/detail`, `/api/gmail/stats`
+  - `fmt_num()` añadido a `nucleo/utils.py`
+
+### v5.2 (26/03/2026) — DISEÑO CORPORATIVO + EDITOR PROVEEDORES + SKILL FRONTEND
+
+- ✅ **Diseño corporativo Streamlit** — Identidad visual Tasca Barea aplicada a toda la app
+  - Tipografía: Syne (títulos/marca) + DM Sans (cuerpo) via Google Fonts
+  - Sidebar oscuro: gradiente `#1A1A1A` → `#2A1A1A`, texto crema `#FFF8F0`
+  - Login branded: marca "Tasca Barea" en Syne 800, línea divisoria rojo `#8B0000`
+  - Métricas: fondo crema, borde rojo sutil, valor en Syne
+  - `config.toml` actualizado: primaryColor `#8B0000`, backgroundColor `#FFF8F0`
+  - Respeta `prefers-reduced-motion`
+- ✅ **Editor MAESTRO_PROVEEDORES** — Nueva página admin (Fase 2)
+  - `pages/maestro.py`: búsqueda por nombre/alias/CIF/email, filtros FORMA_PAGO y ACTIVO
+  - Métricas: total, filtrados, con extractor, activos
+  - Edición inline: formulario con todos los campos del MAESTRO (15 columnas)
+  - Crear nuevo proveedor desde la app
+  - `api/maestro.py`: CRUD completo con backup automático, validación y dedup
+  - Endpoints: `GET /api/maestro`, `PUT /api/maestro/{nombre}`, `POST /api/maestro`
+  - `utils/data_client.py`: nuevos helpers `put_backend_json()`, `post_backend_json()`
+- ✅ **Fix ventas.py Plotly 6.x** — TypeError por `margin` duplicado en `update_layout()`
+  - Plotly 6.x no permite kwargs duplicados: `**PLOTLY_LAYOUT` ya contenía `margin`
+  - Fix: merge con `{**PLOTLY_LAYOUT, "margin": dict(...)}` para override limpio
+- ✅ **Formato EUR español obligatorio** — Todas las cifras monetarias: `1.234,56 €`
+  - Helper `fmt_eur(valor, decimales=0)` en ventas.py
+  - Fórmula: `f"{v:,.Nf}".replace(",","X").replace(".",",").replace("X",".")`
+  - Aplicado en métricas, tablas y etiquetas de gráficos de ventas.py
+  - Regla documentada en CLAUDE.md (sección COMPORTAMIENTO)
+- ✅ **Skill /frontend-design** — Generador de interfaces HTML/CSS con personalidad
+  - Identidad Tasca Barea integrada: paleta corporativa, tipografía, tono de marca
+  - Identidad Comestibles Barea: sage `#ACC8A2`, dorado `#F6AA00`, olive `#1A2517`
+  - Reglas anti-AI-slop: PROHIBIDO Inter/Roboto, gradientes azul-púrpura, grid simétrico
+  - Proceso 5 pasos: contexto → diseño → reglas → código → iteración
+  - Output: HTML autocontenido, mobile-first, WCAG 2.1 AA
+- ✅ **15 skills Claude Code** — 1 nueva: /frontend-design
 
 ### v5.0 (25/03/2026) — APP STREAMLIT MULTI-USUARIO + SYNC VERSIONES
 - ✅ **Streamlit app multi-usuario** — tascabarea.streamlit.app (Fase 1 completada)
@@ -960,7 +1090,7 @@ Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` p
   - WooCommerce API keys rotadas (antiguas revocadas)
 - ✅ **Versiones sincronizadas** — ESQUEMA alineado con código fuente
   - Gmail: v1.9 → v1.14 | Ventas: v4.2 → v4.7 | Cuadre: v1.5b → v1.7
-- ✅ **14 skills Claude Code** — 8 nuevas desde v4.3
+- ✅ **14 skills Claude Code** — 8 nuevas desde v4.3 (15 con /frontend-design en v5.2)
   - Nuevas: /cuadre, /debug-extractor, /nuevo-proveedor, /validar-patrones,
     /lecciones, /plan, /revisar, /log-gmail
 
@@ -1264,4 +1394,4 @@ Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` p
 **Documento de referencia para todas las sesiones futuras.**
 
 ✅ **APROBADO POR:** Tasca
-📅 **FECHA:** 03/03/2026
+📅 **FECHA:** 26/03/2026

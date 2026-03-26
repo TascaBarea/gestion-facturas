@@ -199,39 +199,14 @@ class ResultadoProcesamiento:
 # ============================================================================
 
 def configurar_logging(modo_test: bool = False) -> logging.Logger:
-    """Configura el sistema de logging"""
-    os.makedirs(CONFIG.LOGS_PATH, exist_ok=True)
-    
-    fecha = datetime.now().strftime("%Y-%m-%d")
+    """Configura el sistema de logging usando nucleo.logging_config."""
+    from nucleo.logging_config import setup_logging
     sufijo = "_test" if modo_test else ""
-    log_file = os.path.join(CONFIG.LOGS_PATH, f"{fecha}{sufijo}.log")
-    
-    logger = logging.getLogger("gmail_module")
-    logger.setLevel(logging.DEBUG)
-    
-    # Limpiar handlers existentes
-    logger.handlers = []
-    
-    # Handler archivo
-    fh = logging.FileHandler(log_file, encoding='utf-8')
-    fh.setLevel(logging.DEBUG)
-    
-    # Handler consola
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    
-    # Formato
-    formatter = logging.Formatter(
-        '%(asctime)s | %(levelname)-8s | %(message)s',
-        datefmt='%H:%M:%S'
+    return setup_logging(
+        "gmail_module",
+        log_subdir="logs_gmail",
+        sufijo=sufijo,
     )
-    fh.setFormatter(formatter)
-    ch.setFormatter(formatter)
-    
-    logger.addHandler(fh)
-    logger.addHandler(ch)
-    
-    return logger
 
 
 # ============================================================================
@@ -363,16 +338,39 @@ class ControlDuplicados:
         self.datos["ultima_ejecucion"] = fecha_iso
     
     def guardar(self):
-        """Guarda el JSON de control (escritura atómica con archivo temporal)"""
+        """Guarda el JSON de control (escritura atómica con file lock)."""
         os.makedirs(os.path.dirname(self.ruta), exist_ok=True)
+        ruta_lock = self.ruta + ".lock"
         ruta_tmp = self.ruta + ".tmp"
-        with open(ruta_tmp, 'w', encoding='utf-8') as f:
-            json.dump(self.datos, f, indent=2, ensure_ascii=False)
-        # Renombrar atómicamente (en Windows reemplaza si existe)
-        if os.path.exists(self.ruta):
+
+        # File lock para evitar corrupción si 2 instancias escriben a la vez
+        lock_fd = None
+        try:
+            lock_fd = open(ruta_lock, "w")
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(lock_fd.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+            with open(ruta_tmp, 'w', encoding='utf-8') as f:
+                json.dump(self.datos, f, indent=2, ensure_ascii=False)
             os.replace(ruta_tmp, self.ruta)
-        else:
-            os.rename(ruta_tmp, self.ruta)
+
+        except (OSError, IOError) as e:
+            logging.getLogger("gmail_module").warning("No se pudo obtener lock para %s: %s", self.ruta, e)
+            # Fallback: escribir sin lock (mejor que perder datos)
+            with open(ruta_tmp, 'w', encoding='utf-8') as f:
+                json.dump(self.datos, f, indent=2, ensure_ascii=False)
+            os.replace(ruta_tmp, self.ruta)
+        finally:
+            if lock_fd:
+                lock_fd.close()
+            try:
+                os.remove(ruta_lock)
+            except OSError:
+                pass
     
     def email_procesado(self, email_id: str) -> bool:
         return email_id in self.datos["emails"]
@@ -496,7 +494,8 @@ class ExtractorPDF:
                     if texto:
                         texto_completo.append(texto)
             return "\n".join(texto_completo)
-        except Exception:
+        except Exception as e:
+            logging.getLogger("gmail_module").debug("Error pdfplumber: %s", e)
             return ""
 
     def _extraer_texto_ocr(self) -> str:
@@ -516,7 +515,8 @@ class ExtractorPDF:
                     texto_completo.append(texto)
 
             return "\n".join(texto_completo)
-        except Exception:
+        except Exception as e:
+            logging.getLogger("gmail_module").debug("Error OCR: %s", e)
             return ""
 
     def _parsear_texto(self) -> FacturaExtraida:
@@ -724,9 +724,10 @@ class GmailClient:
                 'date': headers.get('Date', ''),
                 'payload': msg['payload']
             }
-        except Exception:
+        except Exception as e:
+            self.logger.warning("Error obteniendo email %s: %s", email_id, e)
             return None
-    
+
     def descargar_adjuntos(self, email_data: Dict) -> List[Tuple[str, bytes]]:
         """Descarga adjuntos PDF/JPG de un email"""
         adjuntos = []
@@ -1583,10 +1584,10 @@ class GmailProcessor:
                 try:
                     self.control.guardar()
                     self.logger.info("JSON de control guardado tras error crítico")
-                except Exception:
-                    pass
+                except Exception as e2:
+                    self.logger.error("No se pudo guardar JSON de control: %s", e2)
             return False
-    
+
     def _conectar_servicios(self):
         """Conecta con Gmail y Dropbox Local"""
         self.logger.info("Conectando a Gmail...")
@@ -1755,8 +1756,8 @@ class GmailProcessor:
                     t = page.extract_text()
                     if t:
                         texto_pdf_cache += t + "\n"
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.debug("Error extrayendo texto PDF para cache: %s", e)
 
         nombre_remitente = resultado.remitente.split("<")[0].strip() if "<" in resultado.remitente else resultado.remitente
         proveedor = self.maestro.identificar_proveedor(
@@ -2037,8 +2038,8 @@ class GmailProcessor:
                             if hasattr(instancia, 'es_proforma'):
                                 try:
                                     datos['es_proforma'] = instancia.es_proforma(texto_pdf)
-                                except Exception:
-                                    pass
+                                except Exception as e:
+                                    self.logger.debug(f"  ↳ Error es_proforma: {e}")
 
                 # Fallback: funciones a nivel módulo
                 if not datos:

@@ -1,5 +1,5 @@
 {
-  "generado": "2026-03-23T03:14:30",
+  "generado": "2026-03-26T21:06:28",
   "talleres": [
     {
       "id": 3331,
@@ -47,7 +47,7 @@
       "fecha": "28/03/26",
       "hora_inicio": "14:30",
       "hora_fin": "16:30",
-      "stock_quantity": 7,
+      "stock_quantity": 4,
       "stock_status": "instock",
       "precio": 30.0
     },

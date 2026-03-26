@@ -1,0 +1,32 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar dependencias
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install openpyxl pdfplumber rapidfuzz pydantic httpx
+
+      - name: Ejecutar tests unitarios
+        run: pytest tests/unit/ -v --tb=short -m unit
+
+      - name: Ejecutar tests con cobertura
+        run: pytest tests/unit/ --cov=nucleo --cov=api --cov-report=term-missing --tb=short

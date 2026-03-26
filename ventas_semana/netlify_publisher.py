@@ -14,14 +14,18 @@ import numpy as np
 
 from nucleo.utils import NumpyEncoder
 
-# ── Config Netlify (import seguro) ───────────────────────────────────────────
-try:
-    from config.datos_sensibles import (NETLIFY_TOKEN, NETLIFY_SITE_ID,
-                                        NETLIFY_URL)
-except ImportError:
-    NETLIFY_TOKEN = ""
-    NETLIFY_SITE_ID = ""
-    NETLIFY_URL = ""
+# ── Config Netlify: prioridad env vars > datos_sensibles.py ──────────────────
+NETLIFY_TOKEN = os.getenv("NETLIFY_TOKEN", "")
+NETLIFY_SITE_ID = os.getenv("NETLIFY_SITE_ID", "")
+NETLIFY_URL = os.getenv("NETLIFY_URL", "")
+
+if not NETLIFY_TOKEN:
+    try:
+        from config.datos_sensibles import (
+            NETLIFY_TOKEN, NETLIFY_SITE_ID, NETLIFY_URL,
+        )
+    except ImportError:
+        pass
 
 
 def _generar_index_github_pages():

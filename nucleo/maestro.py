@@ -295,3 +295,29 @@ class MaestroProveedores:
             return resultado[0]
 
         return None
+
+
+# ── Cache singleton ──────────────────────────────────────────────────────────
+
+_cache_instance: Optional['MaestroProveedores'] = None
+_cache_mtime: float = 0.0
+
+
+def obtener_maestro(ruta: str, umbral_fuzzy: int = UMBRAL_FUZZY_DEFAULT) -> 'MaestroProveedores':
+    """Devuelve instancia cacheada de MaestroProveedores.
+
+    Recarga automáticamente si el archivo ha cambiado en disco.
+    """
+    global _cache_instance, _cache_mtime
+    import os
+
+    try:
+        mtime = os.path.getmtime(ruta)
+    except OSError:
+        mtime = 0.0
+
+    if _cache_instance is None or _cache_instance.ruta != ruta or mtime > _cache_mtime:
+        _cache_instance = MaestroProveedores(ruta, umbral_fuzzy)
+        _cache_mtime = mtime
+
+    return _cache_instance
