@@ -13,6 +13,141 @@ st.set_page_config(
     layout="centered",
 )
 
+# ── CSS corporativo ──────────────────────────────────────────────────────────
+
+_CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Syne:wght@600;700;800&display=swap');
+
+/* ── Tipografía global ────────────────────── */
+html, body, [class*="css"] {
+    font-family: 'DM Sans', sans-serif;
+}
+h1, h2, h3, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+    font-family: 'Syne', sans-serif;
+    letter-spacing: -0.02em;
+}
+
+/* ── Sidebar ──────────────────────────────── */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #1A1A1A 0%, #2A1A1A 100%);
+}
+section[data-testid="stSidebar"] * {
+    color: #FFF8F0 !important;
+}
+section[data-testid="stSidebar"] hr {
+    border-color: rgba(255,248,240,0.15);
+}
+section[data-testid="stSidebar"] .stButton > button {
+    background: transparent;
+    border: 1px solid rgba(255,248,240,0.25);
+    color: #FFF8F0 !important;
+    transition: all 0.2s ease-out;
+}
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background: rgba(139,0,0,0.4);
+    border-color: #8B0000;
+}
+
+/* ── Botones primary ──────────────────────── */
+.stButton > button[kind="primary"],
+button[data-testid="stFormSubmitButton"] > button {
+    background: #8B0000;
+    border: none;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    transition: all 0.2s ease-out;
+}
+.stButton > button[kind="primary"]:hover {
+    background: #6B0000;
+    transform: translateY(-1px);
+}
+
+/* ── Métricas ─────────────────────────────── */
+[data-testid="stMetric"] {
+    background: #FFF8F0;
+    border: 1px solid rgba(139,0,0,0.12);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+}
+[data-testid="stMetricValue"] {
+    font-family: 'Syne', sans-serif;
+    color: #8B0000;
+}
+
+/* ── Tabs ─────────────────────────────────── */
+.stTabs [data-baseweb="tab"] {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+}
+.stTabs [aria-selected="true"] {
+    border-bottom-color: #8B0000;
+}
+
+/* ── Login ─────────────────────────────────── */
+.login-container {
+    max-width: 360px;
+    margin: 4rem auto 0;
+    text-align: center;
+}
+.login-marca {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 2.4rem;
+    color: #8B0000;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.15rem;
+}
+.login-sub {
+    font-family: 'DM Sans', sans-serif;
+    color: #888;
+    font-size: 0.95rem;
+    margin-bottom: 2rem;
+}
+.login-linea {
+    width: 48px;
+    height: 3px;
+    background: #8B0000;
+    margin: 0.8rem auto 1.5rem;
+    border-radius: 2px;
+}
+
+/* ── Sidebar branding ─────────────────────── */
+.sidebar-marca {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.35rem;
+    color: #FFF8F0 !important;
+    letter-spacing: -0.02em;
+    margin: 0;
+}
+.sidebar-user {
+    font-family: 'DM Sans', sans-serif;
+    color: rgba(255,248,240,0.6) !important;
+    font-size: 0.8rem;
+    margin-top: 0.2rem;
+}
+.sidebar-divider {
+    width: 32px;
+    height: 2px;
+    background: #8B0000;
+    margin: 0.6rem auto 0;
+    border-radius: 1px;
+}
+
+/* ── Reduced motion ───────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+</style>
+"""
+
+st.markdown(_CSS, unsafe_allow_html=True)
+
 # ── Inicializar sesión ────────────────────────────────────────────────────────
 
 if "autenticado" not in st.session_state:
@@ -38,12 +173,13 @@ ALL_PAGES = {
 # ── Login ─────────────────────────────────────────────────────────────────────
 
 def _show_login():
-    """Muestra formulario de login con usuario y contraseña."""
+    """Muestra formulario de login con estilo corporativo."""
     st.markdown(
         """
-        <div style="text-align:center; padding:2rem 0 1rem">
-            <h1 style="color:#2E7D32">Tasca Barea</h1>
-            <p style="color:#888">Panel de gestión</p>
+        <div class="login-container">
+            <div class="login-marca">Tasca Barea</div>
+            <div class="login-linea"></div>
+            <div class="login-sub">Panel de gestión</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -52,7 +188,7 @@ def _show_login():
     username = st.text_input("Usuario", key="login_user")
     password = st.text_input("Contraseña", type="password", key="login_pwd")
 
-    if st.button("Entrar", type="primary"):
+    if st.button("Entrar", type="primary", use_container_width=True):
         if not username or not password:
             st.error("Introduce usuario y contraseña.")
             return
@@ -83,15 +219,16 @@ if not pages:
 # Sidebar
 st.sidebar.markdown(
     f"""
-    <div style="text-align:center; padding:1rem 0">
-        <h2 style="color:#2E7D32; margin:0">Tasca Barea</h2>
-        <p style="color:#888; font-size:0.85rem">{get_user_name()} ({get_role()})</p>
+    <div style="text-align:center; padding:1.2rem 0 0.5rem">
+        <div class="sidebar-marca">Tasca Barea</div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-user">{get_user_name()} · {get_role()}</div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-if st.sidebar.button("Cerrar sesión"):
+if st.sidebar.button("Cerrar sesión", use_container_width=True):
     st.session_state.autenticado = False
     st.session_state.user_role = ""
     st.session_state.user_name = ""

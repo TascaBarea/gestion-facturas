@@ -88,6 +88,17 @@ def plotly_config():
     return {"displayModeBar": False, "responsive": True}
 
 
+def fmt_eur(valor, decimales=0):
+    """Formato EUR español: 1.234,56 €"""
+    if decimales == 0:
+        s = f"{valor:,.0f}"
+    else:
+        s = f"{valor:,.{decimales}f}"
+    # Swap . y , para formato español
+    s = s.replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{s} €"
+
+
 # ══════════════════════════════════════════════════════════════════════════
 # KPIs (fuera de tabs, siempre visibles)
 # ══════════════════════════════════════════════════════════════════════════
@@ -107,11 +118,11 @@ if tiene_ant:
         variacion = (total_euros - euros_ant) / euros_ant * 100
 
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("Facturación", f"{total_euros:,.0f} €",
+col1.metric("Facturación", fmt_eur(total_euros),
             delta=f"{variacion:+.1f}%" if variacion is not None else None)
-col2.metric("Tickets", f"{total_tickets:,}")
-col3.metric("Ticket medio", f"{ticket_medio:.2f} €")
-col4.metric("Unidades", f"{total_unidades:,.0f}")
+col2.metric("Tickets", f"{total_tickets:,}".replace(",", "."))
+col3.metric("Ticket medio", fmt_eur(ticket_medio, 2))
+col4.metric("Unidades", f"{total_unidades:,.0f}".replace(",", "."))
 
 # ══════════════════════════════════════════════════════════════════════════
 # TABS
@@ -224,14 +235,14 @@ with tab_resumen:
                 textfont=dict(size=11),
                 hovertemplate="%{label}<br>%{value:,.0f} €<br>%{percent}<extra></extra>",
             )])
-            fig_donut.update_layout(**PLOTLY_LAYOUT, height=300, showlegend=False,
-                                     margin=dict(l=20, r=20, t=10, b=10))
+            fig_donut.update_layout(**{**PLOTLY_LAYOUT, "margin": dict(l=20, r=20, t=10, b=10)},
+                                     height=300, showlegend=False)
             st.plotly_chart(fig_donut, use_container_width=True, config=plotly_config())
 
         with col_tabla:
             df_cats = pd.DataFrame({
                 "Categoría": cat_names,
-                "Euros": [f"{e:,.0f} €" for e in cat_euros],
+                "Euros": [fmt_eur(e) for e in cat_euros],
                 "%": [f"{p:.1f}%" for p in cat_pcts],
             })
             st.dataframe(df_cats, use_container_width=True, hide_index=True, height=300)
@@ -325,16 +336,16 @@ with tab_productos:
             x=[p[1]["euros"] for p in top_list],
             orientation="h",
             marker_color=color_1,
-            text=[f"{p[1]['euros']:,.0f} €" for p in top_list],
+            text=[fmt_eur(p[1]["euros"]) for p in top_list],
             textposition="outside",
             hovertemplate="%{y}<br>%{x:,.0f} €<br>%{customdata} uds<extra></extra>",
             customdata=[round(p[1]["cant"], 1) for p in top_list],
         )])
         fig_top.update_layout(
-            **PLOTLY_LAYOUT, height=max(250, len(top_list) * 32),
+            **{**PLOTLY_LAYOUT, "margin": dict(l=10, r=80, t=10, b=30)},
+            height=max(250, len(top_list) * 32),
             xaxis_tickformat=",", xaxis_ticksuffix=" €",
             yaxis_autorange="reversed",
-            margin=dict(l=10, r=80, t=10, b=30),
         )
         st.plotly_chart(fig_top, use_container_width=True, config=plotly_config())
 
@@ -342,7 +353,7 @@ with tab_productos:
         with st.expander(f"Ver tabla completa ({len(prods_sorted)} productos)"):
             df_prods = pd.DataFrame([
                 {"#": i + 1, "Producto": k, "Categoría": v["cat"],
-                 "Ventas €": f"{v['euros']:,.2f}", "Unidades": round(v["cant"], 1)}
+                 "Ventas €": fmt_eur(v["euros"], 2), "Unidades": round(v["cant"], 1)}
                 for i, (k, v) in enumerate(prods_sorted)
             ])
             st.dataframe(df_prods, use_container_width=True, hide_index=True)
@@ -353,7 +364,7 @@ with tab_productos:
                 bottom_list = prods_sorted[-top_n:][::-1]
                 df_bottom = pd.DataFrame([
                     {"Producto": k, "Categoría": v["cat"],
-                     "Ventas €": f"{v['euros']:,.2f}", "Unidades": round(v["cant"], 1)}
+                     "Ventas €": fmt_eur(v["euros"], 2), "Unidades": round(v["cant"], 1)}
                     for k, v in bottom_list
                 ])
                 st.dataframe(df_bottom, use_container_width=True, hide_index=True)
@@ -375,9 +386,9 @@ if tienda == "Comestibles" and datos.get("woo"):
         st.divider()
         st.subheader("🌐 WooCommerce")
         c1, c2, c3 = st.columns(3)
-        c1.metric("Ventas online", f"{woo_euros:,.0f} €")
-        c2.metric("Pedidos", f"{woo_pedidos:,}")
-        c3.metric("Ticket medio", f"{woo_euros / woo_pedidos:.2f} €" if woo_pedidos > 0 else "—")
+        c1.metric("Ventas online", fmt_eur(woo_euros))
+        c2.metric("Pedidos", f"{woo_pedidos:,}".replace(",", "."))
+        c3.metric("Ticket medio", fmt_eur(woo_euros / woo_pedidos, 2) if woo_pedidos > 0 else "—")
 
         woo_sorted = sorted(woo_meses.items(), key=lambda x: int(x[0]))
         fig_woo = go.Figure(data=[go.Bar(
@@ -413,7 +424,7 @@ if tienda == "Tasca" and datos.get("dias_semana", {}).get(año):
     fig_dias = go.Figure(data=[go.Bar(
         x=df_dias["dia"], y=df_dias["euros"],
         marker_color=[color_1 if e == df_dias["euros"].max() else color_2 for e in df_dias["euros"]],
-        text=[f"{e:,.0f} €" for e in df_dias["euros"]], textposition="outside",
+        text=[fmt_eur(e) for e in df_dias["euros"]], textposition="outside",
         hovertemplate="%{x}<br>%{y:,.0f} €<extra></extra>",
     )])
     fig_dias.update_layout(**PLOTLY_LAYOUT, height=280, yaxis_tickformat=",",
@@ -422,8 +433,8 @@ if tienda == "Tasca" and datos.get("dias_semana", {}).get(año):
 
     # Tabla con % del total
     df_dias_show = pd.DataFrame([
-        {"Día": r["dia"], "Ventas": f"{r['euros']:,.0f} €", "Tickets": r["tickets"],
-         "Ticket medio": f"{r['tm']:.2f} €",
+        {"Día": r["dia"], "Ventas": fmt_eur(r["euros"]), "Tickets": r["tickets"],
+         "Ticket medio": fmt_eur(r["tm"], 2),
          "% total": f"{r['euros'] / total_dias * 100:.1f}%" if total_dias > 0 else "—"}
         for r in filas_dias if r["euros"] > 0
     ])

@@ -45,6 +45,12 @@ gestion-facturas/
 
 ## COMPORTAMIENTO específico de este repo
 
+### Formato de cifras (OBLIGATORIO)
+- Moneda: siempre EUR con formato español → `1.234,56 €`
+- Separador de miles: punto (.)
+- Separador decimal: coma (,)
+- Aplica en: Streamlit UI, dashboards, logs, outputs
+
 ### Verificación antes de completar
 - Scripts Python: ejecutar y confirmar sin errores
 - Extractores: test con PDF real del proveedor (ver Parseo/CLAUDE.md)
@@ -91,6 +97,7 @@ gestion-facturas/
 | `/debug-extractor`    | Diagnosticar y corregir errores en un extractor existente       |
 | `/nuevo-proveedor`    | Alta completa de proveedor nuevo (MAESTRO + alias + extractor)  |
 | `/validar-patrones`   | Testear regex del extractor genérico contra textos de prueba    |
+| `/frontend-design`    | Genera interfaces HTML/CSS/JS con personalidad, sin AI slop     |
 
 ---
 
