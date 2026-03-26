@@ -1447,22 +1447,34 @@ def _exportar_resumen_json(resultados, ruta_salida, total_mov, total_ok, total_r
 
 def main():
     """Punto de entrada principal."""
-    
+    import argparse as _ap
+    _parser = _ap.ArgumentParser(description="Cuadre bancario")
+    _parser.add_argument("--archivo", type=str, default=None,
+                         help="Ruta al archivo Excel (modo headless, sin tkinter)")
+    _args, _ = _parser.parse_known_args()
+
     print("=" * 70)
-    print("CUADRE.PY v1.6 - Clasificador de Movimientos Bancarios")
+    print("CUADRE.PY v1.7 - Clasificador de Movimientos Bancarios")
     print("=" * 70)
     print()
-    
+
     # Inicializar estado global al inicio
     reset_estado_global_inicio()
-    
-    log("CUADRE.PY v1.6")
+
+    log("CUADRE.PY v1.7")
     log(f"Fecha ejecución: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
+
     # 1. Seleccionar archivo de entrada
-    print("📂 Selecciona el archivo Excel con los movimientos...")
-    archivo_entrada = seleccionar_archivo_gui()
-    
+    if _args.archivo:
+        archivo_entrada = Path(_args.archivo) if Path(_args.archivo).exists() else None
+        if archivo_entrada:
+            print(f"   Archivo (CLI): {archivo_entrada.name}")
+        else:
+            print(f"   Archivo no encontrado: {_args.archivo}")
+    else:
+        print("Selecciona el archivo Excel con los movimientos...")
+        archivo_entrada = seleccionar_archivo_gui()
+
     if not archivo_entrada:
         print("❌ No se seleccionó ningún archivo. Saliendo.")
         return
@@ -1627,7 +1639,7 @@ def main():
     _exportar_resumen_json(resultados, ruta_salida, total_mov, total_ok, total_revisar)
 
     # Mostrar mensaje de éxito
-    if TKINTER_AVAILABLE:
+    if TKINTER_AVAILABLE and not _args.archivo:
         root = tk.Tk()
         root.withdraw()
         messagebox.showinfo(

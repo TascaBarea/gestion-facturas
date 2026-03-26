@@ -31,3 +31,8 @@ Pillow==11.2.1
 
 # Fuzzy matching (cuadre)
 rapidfuzz==3.13.0
+
+# API backend (Fase 0+1)
+fastapi==0.135.2
+uvicorn==0.42.0
+python-multipart==0.0.22

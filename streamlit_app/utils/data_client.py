@@ -1,6 +1,6 @@
 """
 data_client.py — Cliente de datos para Streamlit.
-Descarga JSON agregados desde Netlify CDN con cache de 1 hora.
+Modo dual: intenta API backend primero, fallback a Netlify CDN.
 """
 
 import json
@@ -12,65 +12,111 @@ import streamlit as st
 logger = logging.getLogger(__name__)
 
 
-def _get_base() -> str:
-    """Lee NETLIFY_DATA_URL en tiempo de ejecución (no al importar)."""
+def _get_netlify_base() -> str:
+    """URL base de Netlify CDN."""
     return st.secrets.get("NETLIFY_DATA_URL", "")
 
 
-@st.cache_data(ttl=3600)
-def _fetch_json(filename: str) -> dict | None:
-    """Descarga un fichero JSON desde Netlify. Devuelve None si falla."""
-    base = _get_base()
+def _get_backend_url() -> str:
+    """URL del backend FastAPI (vacío = no configurado)."""
+    return st.secrets.get("BACKEND_URL", "")
+
+
+def _get_api_key() -> str:
+    """API key para autenticar con el backend."""
+    return st.secrets.get("API_KEY", "")
+
+
+def _ssl_context():
+    """Contexto SSL permisivo para Streamlit Cloud."""
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+
+
+def _fetch_from_backend(filename: str) -> dict | None:
+    """Intenta obtener JSON del backend FastAPI."""
+    base = _get_backend_url()
+    if not base:
+        return None
+    url = f"{base}/api/data/{filename}"
+    headers = {"User-Agent": "TascaBarea/1.0"}
+    api_key = _get_api_key()
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=5, context=_ssl_context()) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        logger.debug(f"Backend no disponible ({url}): {e}")
+        return None
+
+
+def _fetch_from_netlify(filename: str) -> dict | None:
+    """Descarga JSON desde Netlify CDN (fallback)."""
+    base = _get_netlify_base()
     if not base:
         logger.warning("NETLIFY_DATA_URL no configurado en secrets")
         return None
     url = f"{base}/data/{filename}"
     try:
-        # Crear contexto SSL que no verifique certificados (Streamlit Cloud compatible)
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
         req = urllib.request.Request(url, headers={"User-Agent": "TascaBarea/1.0"})
-        with urllib.request.urlopen(req, timeout=15, context=ctx) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            return data
+        with urllib.request.urlopen(req, timeout=15, context=_ssl_context()) as resp:
+            return json.loads(resp.read().decode("utf-8"))
     except Exception as e:
         logger.error(f"Error fetching {url}: {e}")
         return None
 
 
+@st.cache_data(ttl=3600)
+def _fetch_json(filename: str) -> dict | None:
+    """Obtiene JSON: API backend primero, Netlify como fallback."""
+    data = _fetch_from_backend(filename)
+    if data is not None:
+        return data
+    return _fetch_from_netlify(filename)
+
+
+def backend_disponible() -> bool:
+    """Comprueba si el backend FastAPI responde al health check."""
+    base = _get_backend_url()
+    if not base:
+        return False
+    try:
+        req = urllib.request.Request(
+            f"{base}/health",
+            headers={"User-Agent": "TascaBarea/1.0"},
+        )
+        with urllib.request.urlopen(req, timeout=3, context=_ssl_context()) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return data.get("status") == "ok"
+    except Exception:
+        return False
+
+
+# ── API pública (misma interfaz que antes) ────────────────────────────────────
+
 def get_meta() -> dict | None:
-    """Metadatos de la última exportación (timestamp, ficheros disponibles)."""
     return _fetch_json("meta.json")
 
-
 def get_ventas_comes() -> dict | None:
-    """Datos de ventas Comestibles (mensual, categorías, top productos, márgenes)."""
     return _fetch_json("ventas_comes.json")
 
-
 def get_ventas_tasca() -> dict | None:
-    """Datos de ventas Tasca (mensual, categorías, top productos, días semana)."""
     return _fetch_json("ventas_tasca.json")
 
-
 def get_cuadre() -> dict | None:
-    """Resumen del cuadre bancario (clasificados, REVISAR, detalle)."""
     return _fetch_json("cuadre.json")
 
-
 def get_gmail() -> dict | None:
-    """Resumen de la última ejecución Gmail (procesados, errores)."""
     return _fetch_json("gmail.json")
 
-
 def get_monitor() -> dict | None:
-    """Estado de los procesos automáticos (última ejecución, estado)."""
     return _fetch_json("monitor.json")
 
-
 def ultima_actualizacion() -> str:
-    """Devuelve timestamp legible de la última exportación, o 'Desconocido'."""
     meta = get_meta()
     if meta and "exportado" in meta:
         return meta["exportado"].replace("T", " ")[:16]

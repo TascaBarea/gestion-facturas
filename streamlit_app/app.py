@@ -5,6 +5,7 @@ Streamlit multi-page app con roles de acceso.
 
 import streamlit as st
 from utils.auth import check_login, page_ids_for_role, get_role, get_user_name
+from utils.data_client import backend_disponible
 
 st.set_page_config(
     page_title="Tasca Barea",
@@ -29,6 +30,7 @@ ALL_PAGES = {
     "cuadre": st.Page("pages/cuadre.py", title="Cuadre Bancario", icon="🏦"),
     "log_gmail": st.Page("pages/log_gmail.py", title="Log Gmail", icon="📧"),
     "monitor": st.Page("pages/monitor.py", title="Monitor Sistema", icon="🖥️"),
+    "ejecutar": st.Page("pages/ejecutar.py", title="Ejecutar Scripts", icon="▶️"),
 }
 
 
@@ -93,6 +95,12 @@ if st.sidebar.button("Cerrar sesión"):
     st.session_state.user_role = ""
     st.session_state.user_name = ""
     st.rerun()
+
+# Indicador de estado del backend
+if backend_disponible():
+    st.sidebar.success("Backend conectado", icon="\U0001f7e2")
+else:
+    st.sidebar.info("Solo lectura (PC apagado)", icon="\U0001f534")
 
 # Navegación
 nav = st.navigation(pages)
