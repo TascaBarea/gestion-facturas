@@ -115,6 +115,60 @@ def fetch_backend_json(path: str, timeout: int = 5) -> dict | None:
         return None
 
 
+def put_backend_json(path: str, body: dict, timeout: int = 10) -> dict | None:
+    """PUT JSON al backend. Devuelve respuesta o None si falla."""
+    base = _get_backend_url()
+    if not base:
+        return None
+    url = f"{base}{path}"
+    headers = {"User-Agent": "TascaBarea/1.0", "Content-Type": "application/json"}
+    api_key = _get_api_key()
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    try:
+        data = json.dumps(body).encode("utf-8")
+        req = urllib.request.Request(url, data=data, headers=headers, method="PUT")
+        with urllib.request.urlopen(req, timeout=timeout, context=_ssl_context()) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode("utf-8", errors="replace")
+        logger.error(f"PUT {url} → {e.code}: {error_body}")
+        try:
+            return {"error": True, "status": e.code, "detail": json.loads(error_body).get("detail", error_body)}
+        except Exception:
+            return {"error": True, "status": e.code, "detail": error_body}
+    except Exception as e:
+        logger.error(f"PUT {url} failed: {e}")
+        return None
+
+
+def post_backend_json(path: str, body: dict, timeout: int = 10) -> dict | None:
+    """POST JSON al backend. Devuelve respuesta o None si falla."""
+    base = _get_backend_url()
+    if not base:
+        return None
+    url = f"{base}{path}"
+    headers = {"User-Agent": "TascaBarea/1.0", "Content-Type": "application/json"}
+    api_key = _get_api_key()
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    try:
+        data = json.dumps(body).encode("utf-8")
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(req, timeout=timeout, context=_ssl_context()) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode("utf-8", errors="replace")
+        logger.error(f"POST {url} → {e.code}: {error_body}")
+        try:
+            return {"error": True, "status": e.code, "detail": json.loads(error_body).get("detail", error_body)}
+        except Exception:
+            return {"error": True, "status": e.code, "detail": error_body}
+    except Exception as e:
+        logger.error(f"POST {url} failed: {e}")
+        return None
+
+
 # ── API pública (misma interfaz que antes) ────────────────────────────────────
 
 def get_meta() -> dict | None:

@@ -31,6 +31,7 @@ ALL_PAGES = {
     "log_gmail": st.Page("pages/log_gmail.py", title="Log Gmail", icon="📧"),
     "monitor": st.Page("pages/monitor.py", title="Monitor Sistema", icon="🖥️"),
     "ejecutar": st.Page("pages/ejecutar.py", title="Ejecutar Scripts", icon="▶️"),
+    "maestro": st.Page("pages/maestro.py", title="Proveedores", icon="📋"),
 }
 
 

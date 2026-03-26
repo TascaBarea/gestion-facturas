@@ -17,8 +17,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.auth import require_api_key
 from api.config import PROJECT_ROOT, API_HOST, API_PORT
+from pydantic import BaseModel
+
 from api.runner import (
     get_scripts_info, launch_script, get_job, get_running_job, list_jobs,
+)
+from api.maestro import (
+    leer_maestro_simple, actualizar_proveedor, crear_proveedor,
+    ProveedorUpdate, ProveedorCreate,
 )
 
 app = FastAPI(title="Barea API", version="0.1.0")
@@ -215,6 +221,52 @@ async def upload_n43(file: UploadFile):
     with open(tmp_path, "wb") as f:
         f.write(content)
     return {"path": tmp_path, "size": len(content), "filename": file.filename}
+
+
+# ── Endpoints MAESTRO_PROVEEDORES ─────────────────────────────────────────────
+
+@app.get("/api/maestro", dependencies=[Depends(require_api_key)])
+def maestro_list():
+    """Lista completa de proveedores del MAESTRO."""
+    try:
+        proveedores = leer_maestro_simple()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error leyendo MAESTRO: {e}")
+    return {
+        "proveedores": proveedores,
+        "total": len(proveedores),
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+    }
+
+
+@app.put("/api/maestro/{proveedor_name}", dependencies=[Depends(require_api_key)])
+def maestro_update(proveedor_name: str, body: ProveedorUpdate):
+    """Actualiza un proveedor existente (partial update)."""
+    cambios = body.model_dump(exclude_none=True)
+    if not cambios:
+        raise HTTPException(status_code=422, detail="No hay campos para actualizar.")
+    try:
+        prov = actualizar_proveedor(proveedor_name, cambios)
+    except PermissionError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {"proveedor": prov, "message": "Proveedor actualizado."}
+
+
+@app.post("/api/maestro", dependencies=[Depends(require_api_key)])
+def maestro_create(body: ProveedorCreate):
+    """Crea un nuevo proveedor."""
+    data = body.model_dump(exclude_none=True)
+    try:
+        prov = crear_proveedor(data)
+    except PermissionError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return {"proveedor": prov, "message": "Proveedor creado."}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
