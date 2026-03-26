@@ -5,7 +5,7 @@ Streamlit multi-page app con roles de acceso.
 
 import streamlit as st
 from utils.auth import check_login, page_ids_for_role, get_role, get_user_name
-from utils.data_client import backend_disponible
+from utils.data_client import backend_disponible, fetch_backend_json
 
 st.set_page_config(
     page_title="Tasca Barea",
@@ -97,10 +97,22 @@ if st.sidebar.button("Cerrar sesión"):
     st.rerun()
 
 # Indicador de estado del backend
-if backend_disponible():
+_backend_ok = backend_disponible()
+if _backend_ok:
     st.sidebar.success("Backend conectado", icon="\U0001f7e2")
 else:
     st.sidebar.info("Solo lectura (PC apagado)", icon="\U0001f534")
+
+# Alertas de procesos atrasados (solo admin, solo si backend disponible)
+if _backend_ok and get_role() == "admin":
+    _alertas = fetch_backend_json("/api/alerts")
+    if _alertas and _alertas.get("alerts"):
+        for _a in _alertas["alerts"]:
+            _msg = f"{_a['module'].capitalize()}: {_a['message']}"
+            if _a["level"] == "error":
+                st.sidebar.error(_msg, icon="\u274c")
+            else:
+                st.sidebar.warning(_msg, icon="\u26a0\ufe0f")
 
 # Navegación
 nav = st.navigation(pages)

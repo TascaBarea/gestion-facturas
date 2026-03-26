@@ -96,6 +96,25 @@ def backend_disponible() -> bool:
         return False
 
 
+def fetch_backend_json(path: str, timeout: int = 5) -> dict | None:
+    """Llama a un endpoint del backend directamente (sin cache, sin fallback)."""
+    base = _get_backend_url()
+    if not base:
+        return None
+    url = f"{base}{path}"
+    headers = {"User-Agent": "TascaBarea/1.0"}
+    api_key = _get_api_key()
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout, context=_ssl_context()) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        logger.debug(f"Backend call failed ({url}): {e}")
+        return None
+
+
 # ── API pública (misma interfaz que antes) ────────────────────────────────────
 
 def get_meta() -> dict | None:

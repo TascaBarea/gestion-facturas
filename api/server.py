@@ -75,6 +75,66 @@ def status():
     }
 
 
+@app.get("/api/alerts", dependencies=[Depends(require_api_key)])
+def alerts():
+    """Alertas activas: procesos atrasados o con errores."""
+    alertas = []
+    ahora = datetime.now()
+
+    checks = {
+        "gmail": {"dir": os.path.join(PROJECT_ROOT, "outputs", "logs_gmail"), "max_dias": 9},
+        "ventas": {"dir": os.path.join(PROJECT_ROOT, "outputs", "logs_barea"), "max_dias": 9},
+    }
+
+    for modulo, cfg in checks.items():
+        if not os.path.isdir(cfg["dir"]):
+            continue
+        auto_logs = sorted(
+            f for f in os.listdir(cfg["dir"])
+            if f.startswith("auto_") and f.endswith(".log")
+        )
+        if not auto_logs:
+            alertas.append({"module": modulo, "level": "warning", "message": "Sin ejecuciones"})
+            continue
+
+        ultimo = auto_logs[-1]
+        fecha_str = ultimo.replace("auto_", "").replace(".log", "")
+        try:
+            fecha_dt = datetime.strptime(fecha_str, "%Y-%m-%d")
+            dias = (ahora - fecha_dt).days
+        except ValueError:
+            continue
+
+        # Comprobar si el último log tiene errores
+        path = os.path.join(cfg["dir"], ultimo)
+        tiene_error = False
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                ultimas = f.readlines()[-10:]
+            texto = " ".join(ultimas).upper()
+            tiene_error = "ERROR" in texto and "EXITO" not in texto
+        except Exception:
+            pass
+
+        if tiene_error:
+            alertas.append({
+                "module": modulo, "level": "error",
+                "message": f"Última ejecución falló ({fecha_str})",
+            })
+        elif dias > cfg["max_dias"] * 2:
+            alertas.append({
+                "module": modulo, "level": "error",
+                "message": f"Hace {dias} días (sin ejecutar)",
+            })
+        elif dias > cfg["max_dias"]:
+            alertas.append({
+                "module": modulo, "level": "warning",
+                "message": f"Hace {dias} días (atención)",
+            })
+
+    return {"alerts": alertas, "timestamp": ahora.isoformat(timespec="seconds")}
+
+
 @app.get("/api/data/{filename}", dependencies=[Depends(require_api_key)])
 def get_data_file(filename: str):
     """Sirve ficheros JSON de datos (ventas_comes, ventas_tasca, etc.)."""
