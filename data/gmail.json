@@ -1,0 +1,16 @@
+{
+  "fecha_ejecucion": "2026-03-26T09:58:27",
+  "total_procesados": 4,
+  "exitosos": 3,
+  "requieren_revision": 1,
+  "errores": 0,
+  "proveedores_ok": [
+    "CERES CERVEZA SL",
+    "QUESOS DE ACEHUCHE TRADICIONAL SL.",
+    "WEBEMPRESA EUROPA SL"
+  ],
+  "revision": [
+    "ANGEL BORJA"
+  ],
+  "errores_detalle": []
+}

@@ -1,1 +1,42 @@
-<html><body><h1>Barea Dashboards</h1><p>Deploy pendiente</p></body></html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Barea · Dashboards</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0f0e0c;color:#f0ece4;font-family:'Segoe UI',sans-serif;
+      min-height:100vh;display:flex;flex-direction:column;align-items:center;
+      justify-content:center;padding:40px 20px;}
+h1{font-size:28px;color:#e8c97a;margin-bottom:8px;}
+.sub{color:#9a9488;font-size:13px;margin-bottom:40px;}
+.cards{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;}
+.card{background:#1a1916;border:1px solid #2e2c28;border-radius:12px;
+       padding:32px 40px;text-align:center;text-decoration:none;
+       transition:all .2s;min-width:240px;}
+.card:hover{border-color:#c9a84c;transform:translateY(-2px);
+             box-shadow:0 8px 24px rgba(0,0,0,.4);}
+.card h2{font-size:18px;margin-bottom:6px;}
+.card p{font-size:12px;color:#9a9488;}
+.card.tasca h2{color:#e8c97a;}
+.card.comes h2{color:#a8e8c0;}
+.footer{margin-top:40px;font-size:11px;color:#5a5650;}
+</style>
+</head>
+<body>
+  <h1>Barea</h1>
+  <p class="sub">Dashboards de ventas</p>
+  <div class="cards">
+    <a href="tasca.html" class="card tasca">
+      <h2>Tasca Barea</h2>
+      <p>2023 – 2026</p>
+    </a>
+    <a href="comestibles.html" class="card comes">
+      <h2>Comestibles Barea</h2>
+      <p>2025 – 2026</p>
+    </a>
+  </div>
+  <p class="footer">Actualizado: 27/03/2026 11:10</p>
+</body>
+</html>
