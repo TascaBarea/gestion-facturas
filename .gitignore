@@ -18,6 +18,12 @@ datos/MAESTRO_PROVEEDORES.xlsx
 datos/emails_procesados.json
 datos/Ventas*.xlsx
 datos/Articulos*.xlsx
+datos/Diccionario*.xlsx
+datos/EXTRACTORES_COMPLETO.xlsx
+datos/backups/
+datos/dia_tickets/
+datos/dia_session.json
+datos/*.json
 
 # Extractos bancarios (Norma 43)
 *.n43

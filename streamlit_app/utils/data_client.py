@@ -28,11 +28,17 @@ def _get_api_key() -> str:
 
 
 def _ssl_context():
-    """Contexto SSL permisivo para Streamlit Cloud."""
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    return ctx
+    """Contexto SSL para Streamlit Cloud.
+
+    Usa verificación estándar. Si hay problemas con certificados de Cloudflare
+    tunnel, se puede configurar BACKEND_SSL_VERIFY=false en secrets (no recomendado).
+    """
+    if st.secrets.get("BACKEND_SSL_VERIFY", "true").lower() == "false":
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        return ctx
+    return ssl.create_default_context()
 
 
 def _fetch_from_backend(filename: str) -> dict | None:
