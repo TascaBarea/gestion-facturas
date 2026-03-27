@@ -28,7 +28,7 @@ CAT_COLORS_TASCA = {
     "MOLLETES": "#c8b83e", "PROMOCIONES": "#dc7070", "OTROS": "#6a7a70",
 }
 
-NETLIFY_DASHBOARD = "https://barea-dashboards.netlify.app"
+NETLIFY_DASHBOARD = "https://tascabarea.github.io/gestion-facturas"
 
 role = get_role()
 

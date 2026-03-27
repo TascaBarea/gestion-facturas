@@ -1,6 +1,6 @@
 """
 data_client.py — Cliente de datos para Streamlit.
-Modo dual: intenta API backend primero, fallback a Netlify CDN.
+Modo dual: intenta API backend primero, fallback a GitHub Pages CDN.
 """
 
 import json
@@ -12,8 +12,8 @@ import streamlit as st
 logger = logging.getLogger(__name__)
 
 
-def _get_netlify_base() -> str:
-    """URL base de Netlify CDN."""
+def _get_cdn_base() -> str:
+    """URL base de GitHub Pages CDN (fallback cuando el backend no está disponible)."""
     return st.secrets.get("NETLIFY_DATA_URL", "")
 
 
@@ -54,11 +54,11 @@ def _fetch_from_backend(filename: str) -> dict | None:
         return None
 
 
-def _fetch_from_netlify(filename: str) -> dict | None:
-    """Descarga JSON desde Netlify CDN (fallback)."""
-    base = _get_netlify_base()
+def _fetch_from_cdn(filename: str) -> dict | None:
+    """Descarga JSON desde GitHub Pages CDN (fallback)."""
+    base = _get_cdn_base()
     if not base:
-        logger.warning("NETLIFY_DATA_URL no configurado en secrets")
+        logger.warning("NETLIFY_DATA_URL (CDN) no configurado en secrets")
         return None
     url = f"{base}/data/{filename}"
     try:
@@ -76,7 +76,7 @@ def _fetch_json(filename: str) -> dict | None:
     data = _fetch_from_backend(filename)
     if data is not None:
         return data
-    return _fetch_from_netlify(filename)
+    return _fetch_from_cdn(filename)
 
 
 def backend_disponible() -> bool:

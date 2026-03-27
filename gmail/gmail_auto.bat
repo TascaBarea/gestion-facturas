@@ -102,6 +102,7 @@ REM EJECUTAR GMAIL MODULE
 REM ============================================================================
 echo [%date% %time%] Ejecutando Gmail Module... >> "%LOG_FILE%"
 cd /d "%SCRIPT_DIR%"
+set "PYTHONPATH=%PROJECT_ROOT%"
 %PYTHON_PATH% "%SCRIPT_PATH%" --produccion >> "%LOG_FILE%" 2>&1
 set EXIT_CODE=%ERRORLEVEL%
 

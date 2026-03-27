@@ -18,6 +18,8 @@
 ### Scripts batch (.bat)
 - **ERRORLEVEL dentro de bloques if ()** → no se actualiza en Windows
   → REGLA: Usar goto + labels para manejo de errores. Nunca if ERRORLEVEL anidado.
+- **PYTHONPATH no configurado en gmail_auto.bat** → `ModuleNotFoundError: nucleo` tras reorganización de imports
+  → REGLA: Si un script usa módulos del proyecto (nucleo/, config/), el bat debe hacer `set "PYTHONPATH=%PROJECT_ROOT%"` antes de ejecutar Python. Verificar .bat tras cualquier cambio de imports.
 
 ### Gmail API
 - **Token OAuth2 caducado** → error silencioso o crash en gmail.py
@@ -63,3 +65,4 @@
 | 2026-03-13 | Parseo | ESQUEMA buscado en carpeta equivocada | ESQUEMA está en gestion-facturas/docs/, no en Parseo/ |
 | 2026-03-13 | Gmail | REF "86" de BERNAL rechazada por gmail.py | gmail.py exigía len>=3, extractor genérico len>=2. Alineado a >=2 |
 | 2026-03-13 | La Llildiria | Total 93.94 en vez de 172.75 | PyPDF no captura tabla totales en PDFs imagen. Añadido cálculo desde subtotales + cambio a OCR primario |
+| 2026-03-27 | Gmail/bat | gmail_auto.bat falló con ModuleNotFoundError: nucleo | Añadir `set "PYTHONPATH=%PROJECT_ROOT%"` en bat. Verificar bat tras cambios de imports |

@@ -94,6 +94,16 @@ SCRIPTS = {
         "description": "Cuadre bancario (requiere --archivo)",
         "requires_file": True,
     },
+    "dia_tickets": {
+        "script": os.path.join("scripts", "dia_tickets.py"),
+        "args_default": [],
+        "description": "Descargar tickets de Dia (requiere sesión activa)",
+    },
+    "dia_tickets_stats": {
+        "script": os.path.join("scripts", "dia_tickets.py"),
+        "args_default": ["--stats"],
+        "description": "Estadísticas de tickets Dia descargados",
+    },
 }
 
 # ── Estado global ─────────────────────────────────────────────────────────────

@@ -1,12 +1,14 @@
 """
-ventas_semana/netlify_publisher.py — Exportación JSON y publicación Netlify.
+ventas_semana/netlify_publisher.py — Exportación JSON y publicación GitHub Pages.
 
 Extrae la lógica de publicación de generar_dashboard.py para reducir tamaño.
+Migrado de Netlify a GitHub Pages (27/03/2026).
 """
 
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 from datetime import datetime
 
@@ -14,18 +16,7 @@ import numpy as np
 
 from nucleo.utils import NumpyEncoder
 
-# ── Config Netlify: prioridad env vars > datos_sensibles.py ──────────────────
-NETLIFY_TOKEN = os.getenv("NETLIFY_TOKEN", "")
-NETLIFY_SITE_ID = os.getenv("NETLIFY_SITE_ID", "")
-NETLIFY_URL = os.getenv("NETLIFY_URL", "")
-
-if not NETLIFY_TOKEN:
-    try:
-        from config.datos_sensibles import (
-            NETLIFY_TOKEN, NETLIFY_SITE_ID, NETLIFY_URL,
-        )
-    except ImportError:
-        pass
+GITHUB_PAGES_URL = "https://tascabarea.github.io/gestion-facturas"
 
 
 def _generar_index_github_pages():
@@ -220,47 +211,123 @@ def exportar_json_streamlit(D, MD, DIAS, RAW, PBM):
 
 
 def publicar_github_pages(path_comes, path_tasca, data_dir=None):
-    """Publica ambos dashboards en Netlify (reemplaza GitHub Pages)."""
-    if not NETLIFY_TOKEN or not NETLIFY_SITE_ID:
-        print("  Aviso: NETLIFY_TOKEN o NETLIFY_SITE_ID no configurados")
-        return
+    """Publica dashboards + JSONs en GitHub Pages (rama gh-pages).
 
-    import zipfile
-    import urllib.request
+    Usa git worktree temporal para no afectar el working tree actual.
+    """
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    worktree_dir = os.path.join(tempfile.gettempdir(), "barea_gh_pages")
 
     try:
-        tmp_zip = os.path.join(tempfile.gettempdir(), "barea_dashboards.zip")
-        index_html = _generar_index_github_pages()
+        # Limpiar worktree previo si existe
+        if os.path.exists(worktree_dir):
+            subprocess.run(
+                ["git", "worktree", "remove", "--force", worktree_dir],
+                cwd=project_root, capture_output=True,
+            )
+            if os.path.exists(worktree_dir):
+                shutil.rmtree(worktree_dir, ignore_errors=True)
 
-        with zipfile.ZipFile(tmp_zip, "w", zipfile.ZIP_DEFLATED) as zf:
-            zf.write(path_comes, "comestibles.html")
-            zf.write(path_tasca, "tasca.html")
-            zf.writestr("index.html", index_html)
-            if data_dir:
-                json_dir = os.path.join(data_dir, "data")
-                if os.path.isdir(json_dir):
-                    for fname in os.listdir(json_dir):
-                        if fname.endswith(".json"):
-                            zf.write(os.path.join(json_dir, fname), f"data/{fname}")
-                    print(f"  JSON incluidos en ZIP: {len(os.listdir(json_dir))} ficheros")
-
-        url = f"https://api.netlify.com/api/v1/sites/{NETLIFY_SITE_ID}/deploys"
-        with open(tmp_zip, "rb") as f:
-            data = f.read()
-
-        req = urllib.request.Request(
-            url, data=data, method="POST",
-            headers={
-                "Authorization": f"Bearer {NETLIFY_TOKEN}",
-                "Content-Type": "application/zip",
-            }
+        # Verificar si gh-pages existe en remote
+        result = subprocess.run(
+            ["git", "ls-remote", "--heads", "origin", "gh-pages"],
+            cwd=project_root, capture_output=True, text=True,
         )
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            result = json.loads(resp.read())
+        gh_pages_exists = "gh-pages" in result.stdout
 
-        os.remove(tmp_zip)
-        print(f"  Netlify actualizado: {NETLIFY_URL}")
-        return result.get("deploy_ssl_url", NETLIFY_URL)
+        if gh_pages_exists:
+            # Crear worktree desde rama existente
+            subprocess.run(
+                ["git", "worktree", "add", worktree_dir, "gh-pages"],
+                cwd=project_root, check=True, capture_output=True,
+            )
+        else:
+            # Crear rama orphan gh-pages
+            subprocess.run(
+                ["git", "worktree", "add", "--detach", worktree_dir],
+                cwd=project_root, check=True, capture_output=True,
+            )
+            subprocess.run(
+                ["git", "checkout", "--orphan", "gh-pages"],
+                cwd=worktree_dir, check=True, capture_output=True,
+            )
+            subprocess.run(
+                ["git", "rm", "-rf", "."],
+                cwd=worktree_dir, check=True, capture_output=True,
+            )
+
+        # Limpiar contenido existente (excepto .git)
+        for item in os.listdir(worktree_dir):
+            if item == ".git":
+                continue
+            path = os.path.join(worktree_dir, item)
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            else:
+                os.remove(path)
+
+        # Copiar archivos
+        index_html = _generar_index_github_pages()
+        with open(os.path.join(worktree_dir, "index.html"), "w", encoding="utf-8") as f:
+            f.write(index_html)
+
+        shutil.copy2(path_comes, os.path.join(worktree_dir, "comestibles.html"))
+        shutil.copy2(path_tasca, os.path.join(worktree_dir, "tasca.html"))
+
+        # Copiar JSONs de datos
+        n_json = 0
+        if data_dir:
+            json_src = os.path.join(data_dir, "data")
+            if os.path.isdir(json_src):
+                json_dst = os.path.join(worktree_dir, "data")
+                os.makedirs(json_dst, exist_ok=True)
+                for fname in os.listdir(json_src):
+                    if fname.endswith(".json"):
+                        shutil.copy2(
+                            os.path.join(json_src, fname),
+                            os.path.join(json_dst, fname),
+                        )
+                        n_json += 1
+
+        # .nojekyll para que GitHub Pages sirva ficheros sin procesar
+        with open(os.path.join(worktree_dir, ".nojekyll"), "w") as f:
+            pass
+
+        # Commit y push
+        subprocess.run(["git", "add", "-A"], cwd=worktree_dir, check=True, capture_output=True)
+
+        # Verificar si hay cambios
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=worktree_dir, capture_output=True, text=True,
+        )
+        if not status.stdout.strip():
+            print(f"  GitHub Pages: sin cambios, no se publica")
+            return GITHUB_PAGES_URL
+
+        fecha = datetime.now().strftime("%Y-%m-%d %H:%M")
+        subprocess.run(
+            ["git", "commit", "-m", f"Deploy dashboards {fecha}"],
+            cwd=worktree_dir, check=True, capture_output=True,
+        )
+        subprocess.run(
+            ["git", "push", "origin", "gh-pages", "--force"],
+            cwd=worktree_dir, check=True, capture_output=True,
+        )
+
+        print(f"  GitHub Pages actualizado: {GITHUB_PAGES_URL} ({n_json} JSONs)")
+        return GITHUB_PAGES_URL
 
     except Exception as e:
-        print(f"  Aviso Netlify: {e}")
+        print(f"  Error GitHub Pages: {e}")
+        return None
+
+    finally:
+        # Limpiar worktree
+        try:
+            subprocess.run(
+                ["git", "worktree", "remove", "--force", worktree_dir],
+                cwd=project_root, capture_output=True,
+            )
+        except Exception:
+            pass

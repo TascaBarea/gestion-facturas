@@ -23,14 +23,12 @@ _GMAIL_TOKEN = os.path.join(_GMAIL_DIR, "token.json")
 
 # ── Config email (import seguro) ─────────────────────────────────────────────
 try:
-    from config.datos_sensibles import (EMAILS_FULL, EMAILS_COMES_ONLY,
-                                        NETLIFY_URL)
+    from config.datos_sensibles import (EMAILS_FULL, EMAILS_COMES_ONLY)
 except ImportError:
     EMAILS_FULL = []
     EMAILS_COMES_ONLY = []
-    NETLIFY_URL = ""
 
-GITHUB_PAGES_URL = NETLIFY_URL
+GITHUB_PAGES_URL = "https://tascabarea.github.io/gestion-facturas"
 
 
 def _conectar_gmail():

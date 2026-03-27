@@ -30,11 +30,7 @@ TASCA_YEAR_LIST = ["2023", "2024", "2025", "2026"]
 
 MESES_PARCIALES = [8]
 
-try:
-    from config.datos_sensibles import NETLIFY_URL
-except ImportError:
-    NETLIFY_URL = ""
-GITHUB_PAGES_URL = NETLIFY_URL
+GITHUB_PAGES_URL = "https://tascabarea.github.io/gestion-facturas"
 
 
 # ── Funciones ───────────────────────────────────────────────────────────────
