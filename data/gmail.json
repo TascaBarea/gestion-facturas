@@ -1,15 +1,21 @@
 {
-  "fecha_ejecucion": "2026-03-26T09:58:27",
-  "total_procesados": 4,
-  "exitosos": 3,
-  "requieren_revision": 1,
+  "fecha_ejecucion": "2026-03-27T10:23:23",
+  "total_procesados": 11,
+  "exitosos": 7,
+  "requieren_revision": 3,
   "errores": 0,
   "proveedores_ok": [
     "CERES CERVEZA SL",
+    "EMJAMESA SL",
+    "KINEMA S.COOP.MAD.",
+    "MARTIN ABENZA",
+    "MOLLETES ARTESANOS DE ANTEQUERA SL",
     "QUESOS DE ACEHUCHE TRADICIONAL SL.",
     "WEBEMPRESA EUROPA SL"
   ],
   "revision": [
+    "\"noreply@coalla.es\" <noreply@coalla.es>",
+    "<contabilidad@quesosberzal.es>",
     "ANGEL BORJA"
   ],
   "errores_detalle": []
