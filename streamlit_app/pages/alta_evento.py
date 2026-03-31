@@ -32,6 +32,8 @@ TIPO_CATEGORIA = {
     "CATA": 40,
     "EVENTO": 44,
 }
+CAT_COMESTIBLES = 38  # Categoría padre "Comestibles Barea" (siempre incluir)
+TAG_DESTACADO = 35    # Tag "Producto_destacado" (necesario para aparecer en la web)
 
 SUBTIPOS = {
     "TALLER": ["Aperitivos", "Encurtidos", "Kombucha", "Vermut", "Queso", "Otros (escribir)"],
@@ -341,11 +343,15 @@ if submitted:
 
     # ── Payload WooCommerce ──────────────────────────────────────────────────
     cat_id = TIPO_CATEGORIA.get(tipo_principal)
+    categorias = [{"id": CAT_COMESTIBLES}]
+    if cat_id:
+        categorias.append({"id": cat_id})
+    tags = [{"id": TAG_DESTACADO}]
 
     if modo_test:
         payload = {
             "name": nombre_producto,
-            "type": "simple",
+            "type": "ticket-event",
             "status": "private",
             "catalog_visibility": "hidden",
             "regular_price": "0.01",
@@ -353,32 +359,35 @@ if submitted:
             "manage_stock": True,
             "stock_quantity": plazas_normales if not es_cerrado else (plazas_totales - plazas_pagadas),
             "stock_status": "instock",
-            "categories": [{"id": cat_id}] if cat_id else [],
+            "categories": categorias,
+            "tags": tags,
         }
     elif es_cerrado:
         stock_qty = plazas_totales - plazas_pagadas
         payload = {
             "name": nombre_producto,
-            "type": "simple",
+            "type": "ticket-event",
             "status": "publish",
             "regular_price": str(precio),
             "description": descripcion,
             "manage_stock": True,
             "stock_quantity": stock_qty,
             "stock_status": "instock" if stock_qty > 0 else "outofstock",
-            "categories": [{"id": cat_id}] if cat_id else [],
+            "categories": categorias,
+            "tags": tags,
         }
     else:
         payload = {
             "name": nombre_producto,
-            "type": "simple",
+            "type": "ticket-event",
             "status": "publish",
             "regular_price": str(precio),
             "description": descripcion,
             "manage_stock": True,
             "stock_quantity": plazas_normales,
             "stock_status": "instock",
-            "categories": [{"id": cat_id}] if cat_id else [],
+            "categories": categorias,
+            "tags": tags,
         }
 
     with st.spinner("Publicando en WooCommerce..."):
