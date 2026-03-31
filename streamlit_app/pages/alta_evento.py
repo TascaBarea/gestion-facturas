@@ -348,6 +348,17 @@ if submitted:
         categorias.append({"id": cat_id})
     tags = [{"id": TAG_DESTACADO}]
 
+    # Meta datos de fecha/hora (necesarios para el calendario de la web)
+    fecha_iso = fecha.strftime("%Y-%m-%d")
+    meta_evento = [
+        {"key": "_start_date_picker", "value": fecha_iso},
+        {"key": "_end_date_picker", "value": fecha_iso},
+    ]
+    if hora_inicio:
+        meta_evento.append({"key": "_start_time_picker", "value": hora_inicio.strftime("%H:%M")})
+    if hora_fin:
+        meta_evento.append({"key": "_end_time_picker", "value": hora_fin.strftime("%H:%M")})
+
     if modo_test:
         payload = {
             "name": nombre_producto,
@@ -361,6 +372,7 @@ if submitted:
             "stock_status": "instock",
             "categories": categorias,
             "tags": tags,
+            "meta_data": meta_evento,
         }
     elif es_cerrado:
         stock_qty = plazas_totales - plazas_pagadas
@@ -375,6 +387,7 @@ if submitted:
             "stock_status": "instock" if stock_qty > 0 else "outofstock",
             "categories": categorias,
             "tags": tags,
+            "meta_data": meta_evento,
         }
     else:
         payload = {
@@ -388,6 +401,7 @@ if submitted:
             "stock_status": "instock",
             "categories": categorias,
             "tags": tags,
+            "meta_data": meta_evento,
         }
 
     with st.spinner("Publicando en WooCommerce..."):
