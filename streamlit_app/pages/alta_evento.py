@@ -1,7 +1,7 @@
 """
 Alta de Evento / Taller / Cata en WooCommerce.
 Formulario Streamlit con detección de conflictos de fecha,
-selector en cascada tipo → subtipo, y soporte CERRADO.
+selector en cascada tipo → subtipo, soporte CERRADO y modo test.
 """
 
 import re
@@ -72,6 +72,64 @@ def _cargar_eventos_existentes():
             break
     return eventos
 
+
+# ── Detección de tests pendientes ────────────────────────────────────────────
+
+@st.cache_data(ttl=300)
+def _contar_tests():
+    """Cuenta productos [TEST] privados en WooCommerce."""
+    _wc = get_wc_api()
+    count = 0
+    page = 1
+    while True:
+        resp = _wc.get("products", params={
+            "per_page": 100, "page": page,
+            "status": "private",
+            "search": "[TEST]",
+        }).json()
+        if not isinstance(resp, list) or not resp:
+            break
+        count += sum(1 for p in resp if p.get("name", "").startswith("[TEST]"))
+        page += 1
+        if len(resp) < 100:
+            break
+    return count
+
+
+@st.cache_data(ttl=300)
+def _listar_tests():
+    """Lista productos [TEST] privados. Devuelve lista de dicts."""
+    _wc = get_wc_api()
+    tests = []
+    page = 1
+    while True:
+        resp = _wc.get("products", params={
+            "per_page": 100, "page": page,
+            "status": "private",
+            "search": "[TEST]",
+        }).json()
+        if not isinstance(resp, list) or not resp:
+            break
+        for p in resp:
+            if p.get("name", "").startswith("[TEST]"):
+                tests.append({
+                    "id": p["id"],
+                    "name": p["name"],
+                    "date_created": p.get("date_created", "")[:10],
+                    "price": p.get("regular_price", "0"),
+                    "status": p.get("status", ""),
+                })
+        page += 1
+        if len(resp) < 100:
+            break
+    return tests
+
+
+# ── Banner de tests pendientes ───────────────────────────────────────────────
+
+n_tests = _contar_tests()
+if n_tests > 0:
+    st.warning(f"Hay **{n_tests}** evento(s) de prueba pendientes de eliminar. Ver abajo.")
 
 # ── FECHA (fuera del form para reacción en tiempo real) ──────────────────────
 
@@ -159,6 +217,11 @@ with st.form("form_evento"):
         placeholder="Incluye degustación de 6 vinos y maridaje",
     )
 
+    # ── Modo Test ────────────────────────────────────────────────────────────
+    st.markdown("---")
+    modo_test = st.checkbox("Modo test")
+    st.caption("Crea el evento como privado (no visible para clientes). Precio forzado a 0,01 €.")
+
     submitted = st.form_submit_button("Publicar evento", type="primary")
 
 # ── Procesamiento ────────────────────────────────────────────────────────────
@@ -179,9 +242,11 @@ if submitted:
     if es_cerrado and plazas_pagadas > plazas_totales:
         errores.append(f"Las plazas pagadas ({plazas_pagadas}) no pueden superar las totales ({plazas_totales}).")
 
-    # Precio
+    # Precio (no validar si es modo test)
     precio = None
-    if not precio_str or not precio_str.strip():
+    if modo_test:
+        precio = 0.01
+    elif not precio_str or not precio_str.strip():
         errores.append("El precio es obligatorio.")
     else:
         try:
@@ -196,8 +261,8 @@ if submitted:
             st.error(e)
         st.stop()
 
-    # Aviso plazas inusuales (solo eventos normales)
-    if not es_cerrado and (plazas_normales < 7 or plazas_normales > 11):
+    # Aviso plazas inusuales (solo eventos normales, no test)
+    if not es_cerrado and not modo_test and (plazas_normales < 7 or plazas_normales > 11):
         if plazas_normales < 7:
             st.warning(f"Has puesto **{plazas_normales} plazas**. Es menos de lo habitual (7-11).")
         else:
@@ -217,7 +282,9 @@ if submitted:
 
     fecha_yy = fecha.strftime("%d/%m/%y")
 
-    if es_cerrado:
+    if modo_test:
+        nombre_producto = f"[TEST] {nombre_base} {fecha_yy}"
+    elif es_cerrado:
         nombre_producto = f"CERRADO {nombre_base} {fecha_yy}"
     else:
         nombre_producto = f"{nombre_base} {fecha_yy}"
@@ -238,6 +305,8 @@ if submitted:
     # ── Resumen ──────────────────────────────────────────────────────────────
     st.markdown("---")
     st.subheader("Resumen")
+    if modo_test:
+        st.caption("MODO TEST — el evento se creará como privado")
     col_r1, col_r2 = st.columns(2)
     with col_r1:
         st.markdown(f"**Nombre:** {nombre_producto}")
@@ -260,7 +329,20 @@ if submitted:
     # ── Payload WooCommerce ──────────────────────────────────────────────────
     cat_id = TIPO_CATEGORIA.get(tipo_principal)
 
-    if es_cerrado:
+    if modo_test:
+        payload = {
+            "name": nombre_producto,
+            "type": "simple",
+            "status": "private",
+            "catalog_visibility": "hidden",
+            "regular_price": "0.01",
+            "description": descripcion,
+            "manage_stock": True,
+            "stock_quantity": plazas_normales if not es_cerrado else (plazas_totales - plazas_pagadas),
+            "stock_status": "instock",
+            "categories": [{"id": cat_id}] if cat_id else [],
+        }
+    elif es_cerrado:
         stock_qty = plazas_totales - plazas_pagadas
         payload = {
             "name": nombre_producto,
@@ -291,26 +373,104 @@ if submitted:
         resultado = crear_producto(wc, payload)
 
     if "id" in resultado:
-        st.success(f"Evento publicado correctamente (ID: {resultado['id']})")
+        prod_id = resultado["id"]
         url = resultado.get("permalink", "")
 
-        if es_cerrado and url:
-            # Enlace privado para compartir con el grupo
+        if modo_test:
+            st.info(f"Evento TEST creado (privado, no visible en la tienda). ID: {prod_id}")
+            wc_url = st.secrets.get("WC_URL", "")
+            if wc_url:
+                admin_url = f"{wc_url}/wp-admin/post.php?post={prod_id}&action=edit"
+                st.markdown(f"[Ver en el admin de WordPress]({admin_url})")
+            _contar_tests.clear()
+        elif es_cerrado and url:
+            st.success(f"Evento CERRADO publicado (ID: {prod_id})")
             st.markdown("---")
             st.subheader("Enlace privado para el grupo")
             st.caption("Comparte este enlace con los asistentes para que paguen sus plazas.")
             st.code(url, language=None)
-
-            # Botón WhatsApp
             texto_wa = f"Reserva tu plaza para {nombre_base} ({fecha.strftime('%d/%m/%Y')}): {url}"
             wa_url = f"https://wa.me/?text={urllib.parse.quote(texto_wa)}"
             st.link_button("Enviar por WhatsApp", wa_url, type="primary")
+        else:
+            st.success(f"Evento publicado correctamente (ID: {prod_id})")
+            if url:
+                st.markdown(f"[Ver en la tienda]({url})")
 
-        elif url:
-            st.markdown(f"[Ver en la tienda]({url})")
-
-        st.info("Aparecerá en el email semanal del próximo lunes.")
+        if not modo_test:
+            st.info("Aparecerá en el email semanal del próximo lunes.")
         _cargar_eventos_existentes.clear()
     else:
         msg = resultado.get("message", str(resultado))
         st.error(f"Error de WooCommerce: {msg}")
+
+# ── Limpieza de tests ────────────────────────────────────────────────────────
+
+st.markdown("---")
+with st.expander("Limpiar eventos de prueba"):
+    tests = _listar_tests()
+    if not tests:
+        st.info("No hay eventos de prueba.")
+    else:
+        st.markdown(f"**{len(tests)}** evento(s) de prueba encontrados:")
+
+        # Formulario de borrado selectivo
+        with st.form("form_borrar_tests"):
+            seleccionados = []
+            for t in tests:
+                checked = st.checkbox(
+                    f"{t['name']} — creado {t['date_created']} — {t['price']} €",
+                    key=f"del_{t['id']}",
+                )
+                if checked:
+                    seleccionados.append(t["id"])
+
+            col_del1, col_del2 = st.columns(2)
+            with col_del1:
+                borrar_sel = st.form_submit_button("Eliminar seleccionados")
+            with col_del2:
+                borrar_todos = st.form_submit_button("Eliminar TODOS")
+
+        if borrar_sel and seleccionados:
+            errores_borrado = []
+            for pid in seleccionados:
+                try:
+                    wc.delete(f"products/{pid}", params={"force": True})
+                except Exception as e:
+                    errores_borrado.append(f"ID {pid}: {e}")
+            if errores_borrado:
+                for eb in errores_borrado:
+                    st.error(eb)
+            else:
+                st.success(f"{len(seleccionados)} test(s) eliminados.")
+            _contar_tests.clear()
+            _listar_tests.clear()
+            _cargar_eventos_existentes.clear()
+            st.rerun()
+
+        if borrar_sel and not seleccionados:
+            st.warning("Selecciona al menos un test para eliminar.")
+
+        if borrar_todos:
+            # Doble confirmación via session_state
+            if st.session_state.get("confirmar_borrar_todos"):
+                errores_borrado = []
+                for t in tests:
+                    try:
+                        wc.delete(f"products/{t['id']}", params={"force": True})
+                    except Exception as e:
+                        errores_borrado.append(f"ID {t['id']}: {e}")
+                if errores_borrado:
+                    for eb in errores_borrado:
+                        st.error(eb)
+                else:
+                    st.success(f"{len(tests)} test(s) eliminados.")
+                st.session_state["confirmar_borrar_todos"] = False
+                _contar_tests.clear()
+                _listar_tests.clear()
+                _cargar_eventos_existentes.clear()
+                st.rerun()
+            else:
+                st.session_state["confirmar_borrar_todos"] = True
+                st.warning("Pulsa de nuevo 'Eliminar TODOS' para confirmar.")
+                st.rerun()
