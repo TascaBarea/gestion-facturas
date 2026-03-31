@@ -1,11 +1,13 @@
 """
 Calendario de eventos: lista de eventos con asistentes y plazas libres.
-Exportable a Excel.
+Indicador visual CERRADO + enlace privado. Exportable a Excel.
 """
 
 import io
+import urllib.parse
 import streamlit as st
 import pandas as pd
+from datetime import datetime, date
 from utils.auth import require_role
 
 require_role(["admin", "eventos"])
@@ -47,8 +49,6 @@ if not eventos:
 
 st.subheader("Eventos programados")
 
-from datetime import datetime, date
-
 hoy = datetime.combine(date.today(), datetime.min.time())
 
 resumen = []
@@ -57,6 +57,9 @@ for ev in eventos:
     vendidas = ev["total_sales"] or 0
     plazas_libres = (plazas_total - vendidas) if plazas_total is not None else None
     fecha_str = ev.get("fecha", "")
+    nombre_raw = ev.get("nombre_raw", ev.get("nombre", ""))
+    es_cerrado = nombre_raw.upper().startswith("CERRADO")
+
     # Parsear fecha para ordenar y filtrar
     fecha_dt = None
     if fecha_str:
@@ -67,17 +70,20 @@ for ev in eventos:
                 fecha_dt = datetime.strptime(fecha_str, "%d/%m/%Y")
         except ValueError:
             pass
-    # Solo eventos futuros (fecha >= hoy). Sin fecha = excluir.
+
     if fecha_dt is None or fecha_dt < hoy:
         continue
+
     resumen.append({
+        "Tipo": "CERRADO" if es_cerrado else "Abierto",
         "Evento": ev["nombre"],
         "Fecha": fecha_str or "Sin fecha",
         "_fecha_dt": fecha_dt,
         "Vendidas": vendidas,
-        "Plazas totales": plazas_total if plazas_total is not None else "Sin límite",
-        "Plazas libres": plazas_libres if plazas_libres is not None else "Sin límite",
+        "Plazas totales": plazas_total if plazas_total is not None else "Sin limite",
+        "Plazas libres": plazas_libres if plazas_libres is not None else "Sin limite",
         "id": ev["id"],
+        "_es_cerrado": es_cerrado,
     })
 
 # Ordenar por fecha (más próximos primero)
@@ -89,7 +95,7 @@ if not resumen:
 
 df_resumen = pd.DataFrame(resumen)
 st.dataframe(
-    df_resumen[["Evento", "Fecha", "Vendidas", "Plazas totales", "Plazas libres"]],
+    df_resumen[["Tipo", "Evento", "Fecha", "Vendidas", "Plazas totales", "Plazas libres"]],
     use_container_width=True,
     hide_index=True,
 )
@@ -99,17 +105,17 @@ st.dataframe(
 st.markdown("---")
 st.subheader("Asistentes por evento")
 
-# Selector con nombre + fecha para distinguir eventos con mismo nombre
 opciones_map = {}
 for ev in eventos:
     fecha_str = ev.get("fecha", "")
-    label = f"{ev['nombre']} — {fecha_str}" if fecha_str else ev["nombre"]
-    # Si hay duplicados, añadir ID
+    nombre_raw = ev.get("nombre_raw", ev.get("nombre", ""))
+    es_cerrado = nombre_raw.upper().startswith("CERRADO")
+    prefijo = "CERRADO " if es_cerrado else ""
+    label = f"{prefijo}{ev['nombre']} — {fecha_str}" if fecha_str else f"{prefijo}{ev['nombre']}"
     if label in opciones_map:
         label += f" (#{ev['id']})"
     opciones_map[label] = ev["id"]
 
-# Ordenar por fecha
 opciones_ordenadas = sorted(opciones_map.keys(), key=lambda x: next(
     (r["_fecha_dt"] for r in resumen if r["id"] == opciones_map[x]),
     datetime.max,
@@ -124,6 +130,31 @@ if not eventos_match:
     st.warning("Evento no encontrado.")
     st.stop()
 
+# ── Enlace privado para eventos CERRADOS ─────────────────────────────────────
+
+ev_seleccionado = eventos_match[0]
+nombre_raw_sel = ev_seleccionado.get("nombre_raw", ev_seleccionado.get("nombre", ""))
+es_cerrado_sel = nombre_raw_sel.upper().startswith("CERRADO")
+
+if es_cerrado_sel:
+    st.info("Este es un evento **CERRADO** (reservado por un grupo).")
+    # Construir permalink (WC lo guarda como slug)
+    # Usamos la API para obtener el permalink real
+    try:
+        prod_data = wc.get(f"products/{evento_sel_id}").json()
+        permalink = prod_data.get("permalink", "")
+        if permalink:
+            st.caption("Enlace privado para que los asistentes paguen sus plazas:")
+            st.code(permalink, language=None)
+            nombre_corto = ev_seleccionado.get("nombre", "")
+            fecha_ev = ev_seleccionado.get("fecha", "")
+            texto_wa = f"Reserva tu plaza para {nombre_corto} ({fecha_ev}): {permalink}"
+            wa_url = f"https://wa.me/?text={urllib.parse.quote(texto_wa)}"
+            st.link_button("Enviar por WhatsApp", wa_url)
+    except Exception:
+        pass
+
+# ── Asistentes ───────────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=120)
 def _pedidos_evento(product_ids):
@@ -142,7 +173,6 @@ with st.spinner("Cargando asistentes..."):
 if not pedidos:
     st.info("No hay asistentes registrados para este evento.")
 else:
-    # Construir tabla de asistentes
     asistentes = []
     for pedido in pedidos:
         billing = pedido.get("billing", {})
@@ -151,7 +181,6 @@ else:
         telefono = billing.get("phone", "")
         fecha_compra = pedido.get("date_created", "")[:10]
 
-        # Buscar quantity del line_item correspondiente
         tickets = 0
         for li in pedido.get("line_items", []):
             if li.get("product_id") in product_ids:
@@ -167,7 +196,7 @@ else:
 
     df_asistentes = pd.DataFrame(asistentes)
 
-    # Métricas rápidas
+    # Métricas
     total_tickets = df_asistentes["Tickets"].sum()
     total_personas = len(df_asistentes)
     col1, col2 = st.columns(2)
@@ -176,7 +205,6 @@ else:
     with col2:
         st.metric("Tickets vendidos", total_tickets)
 
-    # Tabla de asistentes
     st.dataframe(df_asistentes, use_container_width=True, hide_index=True)
 
     # ── Exportar a Excel ─────────────────────────────────────────────────────
@@ -184,7 +212,6 @@ else:
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
         df_asistentes.to_excel(writer, sheet_name="Asistentes", index=False)
-        # Ajustar ancho de columnas
         ws = writer.sheets["Asistentes"]
         for col_idx, col_name in enumerate(df_asistentes.columns, 1):
             max_len = max(

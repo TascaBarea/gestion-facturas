@@ -24,7 +24,7 @@ _script_dir = os.path.dirname(os.path.abspath(__file__))
 
 # --- Logging (centralizado via nucleo) ------------------------------------
 from nucleo.logging_config import setup_logging
-from nucleo.utils import fmt_eur as _fmt_eur, fmt_num as _fmt_num
+from nucleo.utils import fmt_eur as _fmt_eur, fmt_num as _fmt_num, to_float as _to_float
 log = setup_logging("barea", log_subdir="logs_ventas", consola_simple=True)
 # ------------------------------------------------------------------------
 
@@ -81,6 +81,40 @@ def get_wc_api():
         version="wc/v3",
         timeout=30
     )
+
+
+def _wc_get_con_retry(wc, endpoint, params, max_intentos=3, base_delay=2):
+    """GET a WooCommerce API con retry y backoff exponencial.
+
+    Args:
+        wc: instancia de WooCommerce API
+        endpoint: ruta API (e.g. "products", "orders")
+        params: dict de parámetros
+        max_intentos: número máximo de intentos (default 3)
+        base_delay: delay base en segundos (se duplica cada intento)
+
+    Returns:
+        lista de resultados JSON, o lista vacía si falla
+    """
+    for intento in range(1, max_intentos + 1):
+        try:
+            resp = wc.get(endpoint, params=params)
+            datos = resp.json()
+            if isinstance(datos, list):
+                return datos
+            log.warning("WC %s: respuesta no es lista (intento %d/%d)", endpoint, intento, max_intentos)
+        except ValueError as e:
+            log.warning("WC %s: JSON no válido (intento %d/%d): %s", endpoint, intento, max_intentos, e)
+        except Exception as e:
+            log.warning("WC %s: error (intento %d/%d): %s", endpoint, intento, max_intentos, e)
+
+        if intento < max_intentos:
+            delay = base_delay * (2 ** (intento - 1))
+            log.info("WC %s: reintentando en %ds...", endpoint, delay)
+            time.sleep(delay)
+
+    log.error("WC %s: fallaron los %d intentos", endpoint, max_intentos)
+    return []
 
 
 def fetch_loyverse(token, endpoint, created_at_min=None, created_at_max=None):
@@ -1258,32 +1292,19 @@ def _seccion_talleres():
 def _conectar_gmail_envio():
     """Conecta con Gmail API para envío. Devuelve service o None."""
     try:
-        from google.oauth2.credentials import Credentials
-        from google.auth.transport.requests import Request
-        from googleapiclient.discovery import build
+        import importlib.util
+        _auth_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                  "..", "gmail", "auth_manager.py")
+        spec = importlib.util.spec_from_file_location("gmail_auth_manager", _auth_path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.get_gmail_service()
     except ImportError:
         log.warning("google-auth/google-api-python-client no instalados")
         return None
-
-    if not os.path.exists(_GMAIL_TOKEN):
-        log.warning("No existe %s", _GMAIL_TOKEN)
+    except (FileNotFoundError, RuntimeError) as e:
+        log.warning("Gmail auth: %s", e)
         return None
-
-    scopes = [
-        "https://www.googleapis.com/auth/gmail.readonly",
-        "https://www.googleapis.com/auth/gmail.modify",
-    ]
-    creds = Credentials.from_authorized_user_file(_GMAIL_TOKEN, scopes)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-            with open(_GMAIL_TOKEN, "w") as f:
-                f.write(creds.to_json())
-        else:
-            log.warning("Credenciales Gmail expiradas")
-            return None
-
-    return build("gmail", "v1", credentials=creds)
 
 
 def enviar_email_semanal(lunes, domingo):
@@ -1548,13 +1569,8 @@ def generar_inventario_talleres():
     page = 1
 
     while True:
-        resp = wc.get("products", params={"per_page": 100, "page": page, "status": "publish"})
-        try:
-            productos = resp.json()
-        except ValueError as e:
-            log.error("WooCommerce products: respuesta no es JSON válido: %s", e)
-            break
-        if not isinstance(productos, list) or not productos:
+        productos = _wc_get_con_retry(wc, "products", params={"per_page": 100, "page": page, "status": "publish"})
+        if not productos:
             break
 
         for p in productos:
@@ -1680,18 +1696,13 @@ def main():
         all_orders = []
         page = 1
         while True:
-            resp_orders = wc.get("orders", params={
+            orders = _wc_get_con_retry(wc, "orders", params={
                 "per_page": 100,
                 "page": page,
                 "after": desde_iso,
                 "before": hasta_iso,
             })
-            try:
-                orders = resp_orders.json()
-            except ValueError as e:
-                log.error("WooCommerce orders: respuesta no es JSON válido: %s", e)
-                break
-            if not isinstance(orders, list) or len(orders) == 0:
+            if not orders:
                 break
             all_orders.extend(orders)
             page += 1
@@ -1789,6 +1800,20 @@ def main():
         enviar_email_semanal(lunes, domingo)
     except Exception as e:
         log.error("Error enviando email semanal: %s", e)
+
+    # 8. SYNC GOOGLE DRIVE (Estrategia B: copiar resultados)
+    try:
+        from nucleo.sync_drive import sync_archivos
+        _dashboards_dir = os.path.join(_script_dir, "dashboards")
+        archivos_drive = [
+            PATH_VENTAS,
+            os.path.join(_dashboards_dir, "dashboard_comes.html"),
+            os.path.join(_dashboards_dir, "dashboard_tasca.html"),
+        ]
+        sync_archivos(archivos_drive, carpeta="Ventas")
+        log.info("Sync Drive completado")
+    except Exception as e:
+        log.error("Error en sync Drive: %s", e)
 
     log.info("--- Proceso Finalizado ---")
 

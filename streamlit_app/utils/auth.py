@@ -10,9 +10,9 @@ import streamlit as st
 
 # Definición de roles y páginas permitidas
 ROLE_PAGES = {
-    "admin":   ["ventas", "cuadre", "log_gmail", "monitor", "ejecutar", "alta_evento", "calendario_eventos", "maestro"],
-    "socio":   ["ventas"],
-    "comes":   ["ventas"],
+    "admin":   ["ventas", "cuadre", "log_gmail", "monitor", "ejecutar", "alta_evento", "calendario_eventos", "maestro", "documentos"],
+    "socio":   ["ventas", "documentos"],
+    "comes":   ["ventas", "documentos"],
     "eventos": ["alta_evento", "calendario_eventos"],
 }
 

@@ -57,6 +57,9 @@ if %ERRORLEVEL% NEQ 0 (
     goto :restaurar
 )
 
+REM PYTHONPATH para que Python encuentre nucleo/, config/, etc.
+set "PYTHONPATH=%PROJECT_ROOT%"
+
 REM Verificar que el script existe
 if not exist "%SCRIPT_PATH%" (
     echo [%date% %time%] ERROR: No se encuentra %SCRIPT_PATH% >> "%LOG_FILE%"

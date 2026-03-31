@@ -45,7 +45,7 @@ gestion-facturas/
 | Gmail   | v1.14   | gmail/gmail.py                     |
 | Ventas  | v4.7    | ventas_semana/script_barea.py      |
 | Cuadre  | v1.7    | cuadre/banco/cuadre.py             |
-| ESQUEMA | v5.3    | docs/ESQUEMA_PROYECTO_DEFINITIVO   |
+| ESQUEMA | v5.4    | docs/ESQUEMA_PROYECTO_DEFINITIVO   |
 
 ---
 

@@ -15,12 +15,6 @@ from email import encoders
 
 from nucleo.utils import fmt_eur
 
-# ── Rutas Gmail ──────────────────────────────────────────────────────────────
-_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_ROOT = os.path.dirname(_SCRIPT_DIR)
-_GMAIL_DIR = os.path.join(_ROOT, "gmail")
-_GMAIL_TOKEN = os.path.join(_GMAIL_DIR, "token.json")
-
 # ── Config email (import seguro) ─────────────────────────────────────────────
 try:
     from config.datos_sensibles import (EMAILS_FULL, EMAILS_COMES_ONLY)
@@ -34,32 +28,19 @@ GITHUB_PAGES_URL = "https://tascabarea.github.io/gestion-facturas"
 def _conectar_gmail():
     """Conecta con Gmail API y devuelve service, o None si falla."""
     try:
-        from google.oauth2.credentials import Credentials
-        from google.auth.transport.requests import Request
-        from googleapiclient.discovery import build
+        import importlib.util
+        _auth_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                  "..", "gmail", "auth_manager.py")
+        spec = importlib.util.spec_from_file_location("gmail_auth_manager", _auth_path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.get_gmail_service()
     except ImportError:
         print("  Aviso: google-auth/google-api-python-client no instalados")
         return None
-
-    if not os.path.exists(_GMAIL_TOKEN):
-        print("  Aviso: no existe token.json de Gmail")
+    except (FileNotFoundError, RuntimeError) as e:
+        print(f"  Aviso: {e}")
         return None
-
-    scopes = [
-        "https://www.googleapis.com/auth/gmail.readonly",
-        "https://www.googleapis.com/auth/gmail.modify",
-    ]
-    creds = Credentials.from_authorized_user_file(_GMAIL_TOKEN, scopes)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-            with open(_GMAIL_TOKEN, "w") as f:
-                f.write(creds.to_json())
-        else:
-            print("  Aviso: credenciales Gmail expiradas")
-            return None
-
-    return build("gmail", "v1", credentials=creds)
 
 
 def _adjuntar_archivo(message, path, filename,

@@ -1574,6 +1574,21 @@ class GmailProcessor:
             self._enviar_notificacion()
             self._log_resumen()
 
+            # Sync Google Drive (Estrategia B)
+            if not self.modo_test:
+                try:
+                    from nucleo.sync_drive import sync_archivos
+                    trimestre = obtener_trimestre(datetime.now())
+                    archivos_drive = [
+                        os.path.join(CONFIG.OUTPUT_PATH, f"PAGOS_Gmail_{trimestre}.xlsx"),
+                        os.path.join(CONFIG.OUTPUT_PATH, f"Facturas {trimestre} Provisional.xlsx"),
+                        CONFIG.MAESTRO_PATH,
+                    ]
+                    sync_archivos(archivos_drive, carpeta="Facturas")
+                    self.logger.info("Sync Drive completado")
+                except Exception as e:
+                    self.logger.error("Error en sync Drive: %s", e)
+
             return True
             
         except Exception as e:
@@ -1932,8 +1947,21 @@ class GmailProcessor:
         Los extractores de PARSEO son CLASES que heredan de ExtractorBase.
         """
         try:
-            ruta_extractor = os.path.join(CONFIG.EXTRACTORES_PATH, proveedor.archivo_extractor)
-            
+            # Sanitizar nombre: solo basename, sin path traversal
+            nombre_archivo = os.path.basename(proveedor.archivo_extractor)
+            if not nombre_archivo.endswith('.py') or nombre_archivo != proveedor.archivo_extractor:
+                self.logger.warning(f"  ↳ Nombre de extractor no válido: {proveedor.archivo_extractor}")
+                return None
+
+            ruta_extractor = os.path.join(CONFIG.EXTRACTORES_PATH, nombre_archivo)
+
+            # Verificar containment: que la ruta resuelta esté dentro de EXTRACTORES_PATH
+            ruta_real = os.path.realpath(ruta_extractor)
+            carpeta_real = os.path.realpath(CONFIG.EXTRACTORES_PATH)
+            if not ruta_real.startswith(carpeta_real + os.sep) and ruta_real != carpeta_real:
+                self.logger.warning(f"  ↳ Extractor fuera de carpeta permitida: {ruta_real}")
+                return None
+
             if not os.path.exists(ruta_extractor):
                 self.logger.debug(f"  ↳ Extractor no encontrado: {ruta_extractor}")
                 return None
@@ -1949,7 +1977,7 @@ class GmailProcessor:
                 sys.path.insert(0, CONFIG.EXTRACTORES_PATH)
             
             # Cargar módulo
-            nombre_modulo = f"extractor_{proveedor.archivo_extractor.replace('.py', '')}"
+            nombre_modulo = f"extractor_{nombre_archivo.replace('.py', '')}"
             spec = importlib.util.spec_from_file_location(nombre_modulo, ruta_extractor)
             modulo = importlib.util.module_from_spec(spec)
             sys.modules[nombre_modulo] = modulo

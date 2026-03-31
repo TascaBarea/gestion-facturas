@@ -1,8 +1,8 @@
 1
 # 📐 ESQUEMA PROYECTO GESTIÓN-FACTURAS
 
-**Versión:** 5.3
-**Fecha:** 26/03/2026
+**Versión:** 5.4
+**Fecha:** 28/03/2026
 **Estado:** DEFINITIVO - Base para desarrollo
 
 ---
@@ -1034,6 +1034,29 @@ Todas las llamadas a APIs externas (Loyverse, WooCommerce) tienen `timeout=30` p
   - API watchdog: `barea_api.bat` con loop auto-restart (10s backoff, exit 0 = no restart)
   - Nuevos endpoints: `/api/cuadre/detail`, `/api/gmail/stats`
   - `fmt_num()` añadido a `nucleo/utils.py`
+
+### v5.4 (28/03/2026) — GOOGLE DRIVE SYNC + SEGURIDAD + AUTH CENTRALIZADO
+- ✅ **Página Documentos en Streamlit** — `streamlit_app/pages/documentos.py`
+  - Lista archivos de Drive organizados por subcarpeta (Ventas, Facturas)
+  - Muestra nombre, tamaño, fecha y enlace directo a Drive
+  - Accesible para roles: admin, socio, comes
+- ✅ **Google Drive sync verificado** — `nucleo/sync_drive.py` operativo
+  - Carpeta "Barea - Datos Compartidos" con subcarpetas Ventas y Facturas
+  - Integrado en script_barea.py (post-ventas) y gmail.py (post-facturas)
+- ✅ **Seguridad importlib** — Sanitización path traversal en `gmail.py`
+  - `os.path.basename()` + containment check en carga de extractores
+- ✅ **Auth OAuth2 centralizado** — `gmail/auth_manager.py`
+  - Módulo único para cargar/refrescar token OAuth2
+  - Adoptado por: sync_drive.py, email_sender.py, script_barea.py, asistentes_taller.py, alerta_fallo.py
+
+### v5.3 (27/03/2026) — MIGRACIÓN GITHUB PAGES + DIA TICKETS + BACKUP CIFRADO
+- ✅ **Migración Netlify a GitHub Pages** — https://tascabarea.github.io/gestion-facturas
+- ✅ **Dia Tickets** — Script funcional con anti-duplicación (200 tickets descargados)
+- ✅ **Backup cifrado** — `scripts/backup_cifrado.py` (AES-256, 14 archivos)
+- ✅ **Fix gmail_auto.bat** — PYTHONPATH necesario tras reorganización imports
+- ✅ **Auditoría seguridad** — SSL verification, .gitignore, rate limiting, DEV_MODE
+- ✅ **`.claude/rules/`** — Reglas contextuales para api, extractores, excel
+- ✅ **CLAUDE.md v4.2** — Punteros a rules/ y docs/api.md
 
 ### v5.2 (26/03/2026) — DISEÑO CORPORATIVO + EDITOR PROVEEDORES + SKILL FRONTEND
 

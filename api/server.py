@@ -8,15 +8,17 @@ Ejecutar: python -m api.server
 import json
 import logging
 import os
-import platform
 import tempfile
+import time
 import uuid
+from collections import defaultdict
 from datetime import datetime
 
 logger = logging.getLogger("api.server")
 
-from fastapi import Depends, FastAPI, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from api.auth import require_api_key, require_admin_key
 from api.config import PROJECT_ROOT, API_HOST, API_PORT, CORS_ORIGINS
@@ -44,6 +46,33 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
+# ── Rate Limiting ─────────────────────────────────────────────────────────────
+# 60 requests/minuto por IP. /health exento.
+_RATE_LIMIT = 60
+_RATE_WINDOW = 60  # segundos
+_rate_log: dict[str, list[float]] = defaultdict(list)
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    if request.url.path == "/health":
+        return await call_next(request)
+
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    # Limpiar entradas antiguas
+    _rate_log[client_ip] = [t for t in _rate_log[client_ip] if now - t < _RATE_WINDOW]
+
+    if len(_rate_log[client_ip]) >= _RATE_LIMIT:
+        logger.warning("Rate limit excedido para %s", client_ip)
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "Demasiadas peticiones. Espera un momento."},
+        )
+
+    _rate_log[client_ip].append(now)
+    return await call_next(request)
+
 
 # ── Endpoints públicos ───────────────────────────────────────────────────────
 
@@ -53,7 +82,6 @@ def health():
     return {
         "status": "ok",
         "timestamp": datetime.now().isoformat(timespec="seconds"),
-        "pc_name": platform.node(),
     }
 
 
@@ -194,14 +222,18 @@ def run_script(script_name: str, archivo: str | None = None):
     """Lanza un script en background. Devuelve job_id para seguimiento.
 
     Query params:
-        archivo: path del archivo (para cuadre)
+        archivo: upload_id devuelto por /api/upload/n43, o path en datos/
     """
     extra_args = []
     if archivo:
-        # Seguridad: validar que el path no contiene traversal y está en directorio permitido
-        if ".." in archivo:
-            raise HTTPException(status_code=400, detail="Path no permitido: contiene '..'")
-        real_path = os.path.realpath(archivo)
+        # Resolver upload_id opaco → path real
+        if archivo in _upload_registry:
+            real_path = _upload_registry.pop(archivo)
+        else:
+            # Compatibilidad: path directo (solo desde datos/)
+            if ".." in archivo:
+                raise HTTPException(status_code=400, detail="Path no permitido: contiene '..'")
+            real_path = os.path.realpath(archivo)
         dirs_permitidos = [
             os.path.realpath(tempfile.gettempdir()),
             os.path.realpath(os.path.join(PROJECT_ROOT, "datos")),
@@ -209,9 +241,9 @@ def run_script(script_name: str, archivo: str | None = None):
         if not any(real_path.startswith(d + os.sep) or real_path == d for d in dirs_permitidos):
             raise HTTPException(
                 status_code=400,
-                detail=f"Path fuera de directorios permitidos (temp, datos/)",
+                detail="Path fuera de directorios permitidos (temp, datos/)",
             )
-        extra_args = ["--archivo", archivo]
+        extra_args = ["--archivo", real_path]
 
     try:
         job = launch_script(script_name, extra_args)
@@ -241,6 +273,8 @@ _UPLOAD_EXTENSIONS = {".n43", ".xlsx", ".xls"}
 # Magic bytes: XLSX=PK (ZIP), XLS=D0CF (OLE), N43=texto (empieza con dígitos)
 _MAGIC_XLSX = b"PK"
 _MAGIC_XLS = b"\xd0\xcf\x11\xe0"
+# Registro de uploads: upload_id → path real (no exponer paths al cliente)
+_upload_registry: dict[str, str] = {}
 
 
 @app.post("/api/upload/n43", dependencies=[Depends(require_admin_key)])
@@ -273,12 +307,14 @@ async def upload_n43(file: UploadFile):
     if ext == ".n43" and not content[:1].isdigit():
         raise HTTPException(status_code=400, detail="El archivo no parece ser un N43 válido")
 
+    upload_id = uuid.uuid4().hex[:12]
     tmp_path = os.path.join(
-        tempfile.gettempdir(), f"cuadre_upload_{uuid.uuid4().hex[:8]}{ext}"
+        tempfile.gettempdir(), f"cuadre_upload_{upload_id}{ext}"
     )
     with open(tmp_path, "wb") as f:
         f.write(content)
-    return {"path": tmp_path, "size": len(content), "filename": file.filename}
+    _upload_registry[upload_id] = tmp_path
+    return {"upload_id": upload_id, "size": len(content), "filename": file.filename}
 
 
 # ── Endpoints MAESTRO_PROVEEDORES ─────────────────────────────────────────────

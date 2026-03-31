@@ -25,7 +25,11 @@ def main():
     print("Introduce los passwords de cada usuario.")
     print("El hash generado va en el campo 'password_hash' de secrets.toml.\n")
 
-    usuarios = ["jaime", "roberto", "elena", "benjamin"]
+    raw = input("Usuarios (separados por coma): ").strip()
+    if not raw:
+        print("No se introdujeron usuarios.")
+        return
+    usuarios = [u.strip() for u in raw.split(",") if u.strip()]
 
     for user in usuarios:
         pw = getpass.getpass(f"Password para {user}: ")

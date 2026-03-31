@@ -212,8 +212,8 @@ for i, (script_id, ui) in enumerate(SCRIPTS_UI.items()):
                         content_type=f"multipart/form-data; boundary={boundary}",
                         timeout=30,
                     )
-                    if upload_result and "path" in upload_result:
-                        extra_path = f"?archivo={upload_result['path']}"
+                    if upload_result and "upload_id" in upload_result:
+                        extra_path = f"?archivo={upload_result['upload_id']}"
                     else:
                         st.error("Error subiendo archivo")
                         st.stop()

@@ -1,9 +1,11 @@
 """
 alta_evento.py — Alta interactiva de eventos en WooCommerce
 Convención de nombres: "{nombre} {DD/MM/YY}" | Descripción: "HORARIO: de HH:MM a HH:MM"
+Detecta automáticamente eventos ya programados en la misma fecha y avisa antes de continuar.
 """
 
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -117,6 +119,39 @@ def _cargar_categorias(wc):
     return [(c["id"], c["name"]) for c in cats if c.get("name") != "Sin categoría"]
 
 
+def _cargar_eventos_existentes(wc):
+    """Descarga productos publicados de WooCommerce y extrae fechas de sus nombres.
+    Convención: "{nombre} DD/MM/YY" → se parsea la fecha del final.
+    Devuelve dict {date: [nombre_producto, ...]} solo con fechas ≥ hoy."""
+    _FECHA_RE = re.compile(r"\b(\d{1,2}/\d{2}/\d{2})\s*$")
+    eventos = {}   # date → [nombre, ...]
+    hoy = datetime.now().date()
+    page = 1
+
+    while True:
+        resp = wc.get("products", params={
+            "per_page": 100, "page": page,
+            "status": "publish",
+        }).json()
+        if not isinstance(resp, list) or not resp:
+            break
+        for prod in resp:
+            nombre = prod.get("name", "")
+            m = _FECHA_RE.search(nombre)
+            if m:
+                try:
+                    dt = datetime.strptime(m.group(1), "%d/%m/%y").date()
+                    if dt >= hoy:
+                        eventos.setdefault(dt, []).append(nombre)
+                except ValueError:
+                    pass
+        page += 1
+        if len(resp) < 100:
+            break
+
+    return eventos
+
+
 # ── Helpers de entrada ─────────────────────────────────────────────────────────
 
 def _pedir(prompt, *, opcional=False, default=None, ejemplo=None):
@@ -136,7 +171,8 @@ def _pedir(prompt, *, opcional=False, default=None, ejemplo=None):
     return valor if valor else default
 
 
-def _pedir_fecha():
+def _pedir_fecha(eventos_existentes=None):
+    """Pide fecha y comprueba si ya hay eventos programados ese día."""
     while True:
         raw = _pedir("Fecha del evento", ejemplo="28/03/26")
         if not raw:
@@ -146,6 +182,35 @@ def _pedir_fecha():
             dt = datetime.strptime(raw, "%d/%m/%y")
             if dt.date() < datetime.now().date():
                 _aviso("La fecha ya ha pasado. Continúa si es correcto.")
+
+            # ── Comprobar coincidencia con eventos existentes ──────────
+            if eventos_existentes and dt.date() in eventos_existentes:
+                nombres = eventos_existentes[dt.date()]
+                print()
+                print(C.ROJO + C.BOLD + "  ╔" + "═" * (W - 4) + "╗" + C.RESET)
+                print(C.ROJO + C.BOLD + "  ║  ⚠ FECHA CON EVENTO YA PROGRAMADO" +
+                      " " * (W - 40) + "║" + C.RESET)
+                print(C.ROJO + C.BOLD + "  ╟" + "─" * (W - 4) + "╢" + C.RESET)
+                for nombre in nombres:
+                    linea_txt = f"  ║  → {nombre}"
+                    pad = W - 2 - len(f"  ║  → {nombre}")
+                    if pad < 0:
+                        # Truncar si es muy largo
+                        nombre_corto = nombre[:W - 12] + "…"
+                        linea_txt = f"  ║  → {nombre_corto}"
+                        pad = W - 2 - len(linea_txt)
+                    print(C.ROJO + linea_txt + " " * max(pad, 0) + "║" + C.RESET)
+                print(C.ROJO + C.BOLD + "  ╚" + "═" * (W - 4) + "╝" + C.RESET)
+                print()
+
+                resp = input(C.AMARILLO + C.BOLD +
+                             "  ¿Continuar con esta fecha de todos modos? (s/n): " +
+                             C.RESET).strip().lower()
+                print()
+                if resp not in ("s", "si", "sí", "y", "yes"):
+                    _info("Elige otra fecha.")
+                    continue
+
             return raw, dt
         except ValueError:
             _error(f"Formato incorrecto: '{raw}'. Usa DD/MM/YY  (ej: 28/03/26)")
@@ -266,6 +331,9 @@ def main():
     _info("Cargando categorías...")
     cats = _cargar_categorias(wc)
     _ok(f"{len(cats)} categorías disponibles")
+    _info("Cargando eventos programados...")
+    eventos_existentes = _cargar_eventos_existentes(wc)
+    _ok(f"{sum(len(v) for v in eventos_existentes.values())} eventos futuros detectados")
 
     _seccion("DATOS DEL EVENTO")
     _info("Pulsa Ctrl+C en cualquier momento para cancelar.\n")
@@ -275,7 +343,7 @@ def main():
         _error("El nombre es obligatorio.")
         nombre_base = _pedir("Nombre del evento (sin fecha)", ejemplo="Cata de vinos naturales")
 
-    fecha_raw, fecha_dt = _pedir_fecha()
+    fecha_raw, fecha_dt = _pedir_fecha(eventos_existentes)
     fecha_yy      = fecha_dt.strftime("%d/%m/%y")
     nombre_producto = f"{nombre_base} {fecha_yy}"
     _info(f"Nombre en WooCommerce: {C.BOLD}{nombre_producto}{C.RESET}{C.GRIS}")

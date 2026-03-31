@@ -20,11 +20,12 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.modify",
     "https://www.googleapis.com/auth/business.manage",
+    "https://www.googleapis.com/auth/drive.file",
 ]
 
 def main():
     print("=" * 50)
-    print("RENOVAR TOKEN CON SCOPE BUSINESS PROFILE")
+    print("RENOVAR TOKEN CON SCOPES BUSINESS + DRIVE")
     print("=" * 50)
 
     # Backup del token actual

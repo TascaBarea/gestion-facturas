@@ -173,6 +173,7 @@ ALL_PAGES = {
     "monitor": st.Page("pages/monitor.py", title="Monitor Sistema", icon="🖥️"),
     "ejecutar": st.Page("pages/ejecutar.py", title="Ejecutar Scripts", icon="▶️"),
     "maestro": st.Page("pages/maestro.py", title="Proveedores", icon="📋"),
+    "documentos": st.Page("pages/documentos.py", title="Documentos", icon="📁"),
 }
 
 

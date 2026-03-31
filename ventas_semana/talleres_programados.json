@@ -1,6 +1,16 @@
 {
-  "generado": "2026-03-26T21:06:28",
+  "generado": "2026-03-30T13:08:12",
   "talleres": [
+    {
+      "id": 3347,
+      "nombre": "¿QUÉ ES ESO? Cata Taller Vino y quesos y..",
+      "fecha": "18/04/26",
+      "hora_inicio": "15:00",
+      "hora_fin": "16:45",
+      "stock_quantity": 10,
+      "stock_status": "instock",
+      "precio": 35.0
+    },
     {
       "id": 3331,
       "nombre": "CERRADO-CATA-TALLERElena",
