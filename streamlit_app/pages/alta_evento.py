@@ -131,9 +131,22 @@ n_tests = _contar_tests()
 if n_tests > 0:
     st.warning(f"Hay **{n_tests}** evento(s) de prueba pendientes de eliminar. Ver abajo.")
 
-# ── FECHA (fuera del form para reacción en tiempo real) ──────────────────────
+# ── Fechas ocupadas (ayuda visual) ───────────────────────────────────────────
 
 st.subheader("Datos del evento")
+
+_eventos_existentes = _cargar_eventos_existentes()
+if _eventos_existentes:
+    with st.expander("Fechas con eventos programados", expanded=False):
+        for fecha_iso in sorted(_eventos_existentes.keys()):
+            dt = date.fromisoformat(fecha_iso)
+            nombres = _eventos_existentes[fecha_iso]
+            for nombre in nombres:
+                es_cerrado = nombre.upper().startswith("CERRADO")
+                tipo_tag = "CERRADO" if es_cerrado else ""
+                st.markdown(f"- **{dt.strftime('%d/%m/%Y')}** — {tipo_tag} {nombre}")
+
+# ── FECHA (fuera del form para reacción en tiempo real) ──────────────────────
 
 fecha = st.date_input(
     "Fecha del evento",
