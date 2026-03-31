@@ -361,7 +361,6 @@ if submitted:
             "name": nombre_producto,
             "type": "simple",
             "status": "publish",
-            "catalog_visibility": "hidden",
             "regular_price": str(precio),
             "description": descripcion,
             "manage_stock": True,
