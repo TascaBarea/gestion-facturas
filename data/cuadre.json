@@ -1,0 +1,381 @@
+{
+  "fecha_ejecucion": "2026-04-02T17:03:32",
+  "hojas": {
+    "Tasca": {
+      "total": 2697,
+      "ok": 2575,
+      "revisar": 122,
+      "pct_ok": 95.5
+    },
+    "Comestibles": {
+      "total": 1248,
+      "ok": 1200,
+      "revisar": 48,
+      "pct_ok": 96.2
+    }
+  },
+  "clasificacion": {
+    "capa1_reglas": 2459,
+    "capa2a_memoria": 514,
+    "capa2b_facturas": 907,
+    "capa3_revisar": 65
+  },
+  "total": {
+    "total": 3945,
+    "ok": 3880,
+    "revisar": 65,
+    "pct_ok": 98.4
+  },
+  "revisar_detalle": [
+    {
+      "hoja": "Tasca",
+      "fecha": "13-01-25",
+      "concepto": "TRANSFERENCIA A GARUA SOC COOPERATIVA",
+      "importe": -94.85,
+      "detalle": "Concepto contiene: GARUA SOC COOPERATIVA"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "13-01-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1019 EXPEMBAJADORES2-MADRID",
+      "importe": -11.84,
+      "detalle": "Concepto contiene: . 5540XXXXXXXX1019 EXPEMBAJADORES2-MADRI"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "17-01-25",
+      "concepto": "ADEUDO RECIBO PayPal Europe S.a.r.l. et Cie S.C.A",
+      "importe": -29.94,
+      "detalle": "¿#1023 REGISTRO MERCANTIL DE MADRID ? (fuzzy 34%)"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "20-01-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1015 EXPEMBAJADORES2-MADRID",
+      "importe": -9.79,
+      "detalle": "¿#466 BM- DISTRIBUCION SUPERMERCADOS SL? (fuzzy 32%)"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "21-01-25",
+      "concepto": "ADEUDO RECIBO PayPal Europe S.a.r.l. et Cie S.C.A",
+      "importe": -90.82,
+      "detalle": "Concepto contiene: PAYPAL EUROPE S.A.R.L. ET CIE S.C.A"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "23-01-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1019 EXPEMBAJADORES2-MADRID",
+      "importe": -8.95,
+      "detalle": "Concepto contiene: . 5540XXXXXXXX1019 EXPEMBAJADORES2-MADRI"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "24-01-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1015 EXPEMBAJADORES2-MADRID",
+      "importe": -22.06,
+      "detalle": "Concepto contiene: . 5540XXXXXXXX1015 EXPEMBAJADORES2-MADRI"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "27-01-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1015 EXPEMBAJADORES2-MADRID",
+      "importe": -11.5,
+      "detalle": "Concepto contiene: . 5540XXXXXXXX1015 EXPEMBAJADORES2-MADRI"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "27-01-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1015 FUTERIA SHAMIA HEL-MADRID",
+      "importe": -6.0,
+      "detalle": ""
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "03-02-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1019 EXPEMBAJADORES2-MADRID",
+      "importe": -6.47,
+      "detalle": "¿#469 ECOMS SUPERMARKET SL? (fuzzy 45%)"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "03-02-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1019 EXPEMBAJADORES2-MADRID",
+      "importe": -8.2,
+      "detalle": "¿#2244 BM- DISTRIBUCION SUPERMERCADOS SL? (fuzzy 32%)"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "03-02-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1019 MM MADRID PLAZA DEL CARME-PRAT DE LLOBR",
+      "importe": -22.99,
+      "detalle": "¿#1059 MEDIA MARKT MADRID ? (fuzzy 47%)"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "10-02-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1015 EXPEMBAJADORES2-MADRID",
+      "importe": -4.48,
+      "detalle": "¿#2047 ALCAMPO SAU? (fuzzy 35%)"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "10-02-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1015 FUTERIA SHAMIA HEL-MADRID",
+      "importe": -6.0,
+      "detalle": ""
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "10-02-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1019 SOLOEMPRENDO.COM-+34663822790",
+      "importe": -19.0,
+      "detalle": ""
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "10-02-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1019 MM MADRID PLAZA DEL CARME-PRAT DE LLOBR",
+      "importe": -41.97,
+      "detalle": "¿#1069 MEDIA MARKT MADRID ? (fuzzy 47%)"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "11-02-25",
+      "concepto": "ADEUDO RECIBO PayPal Europe S.a.r.l. et Cie S.C.A",
+      "importe": -60.0,
+      "detalle": "¿#1061 EL CORTE INGLES SA? (fuzzy 35%)"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "14-02-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1015 FUTERIA SHAMIA HEL-MADRID",
+      "importe": -8.41,
+      "detalle": ""
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "14-02-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1015 EXPEMBAJADORES2-MADRID",
+      "importe": -3.4,
+      "detalle": "Concepto contiene: . 5540XXXXXXXX1015 EXPEMBAJADORES2-MADRI"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "17-02-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1015 EXPEMBAJADORES2-MADRID",
+      "importe": -2.04,
+      "detalle": "Concepto contiene: . 5540XXXXXXXX1015 EXPEMBAJADORES2-MADRI"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "17-02-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1015 ALIMENTACION Y FRUTERIA-MADRID",
+      "importe": -6.0,
+      "detalle": ""
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "21-02-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1015 EXPEMBAJADORES2-MADRID",
+      "importe": -2.95,
+      "detalle": "Concepto contiene: . 5540XXXXXXXX1015 EXPEMBAJADORES2-MADRI"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "10-03-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1015 EXPEMBAJADORES2-MADRID",
+      "importe": -17.15,
+      "detalle": "¿#427 OPENAI LLC? (fuzzy 26%)"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "10-03-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1019 EXPEMBAJADORES2-MADRID",
+      "importe": -1.75,
+      "detalle": "Concepto contiene: . 5540XXXXXXXX1019 EXPEMBAJADORES2-MADRI"
+    },
+    {
+      "hoja": "Tasca",
+      "fecha": "10-03-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX1019 IBRAHIM MINI MARKET C/EMB-MADRID",
+      "importe": -3.5,
+      "detalle": ""
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "17-01-25",
+      "concepto": "TRANSFERENCIA A CVNE",
+      "importe": -62.74,
+      "detalle": "Concepto contiene: CVNE"
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "17-01-25",
+      "concepto": "TRANSFERENCIA A CVNE",
+      "importe": -54.61,
+      "detalle": "¿#927 ISTA METERING SERVICES ESPAÑA SA? (fuzzy 42%)"
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "17-01-25",
+      "concepto": "TRANSFERENCIA A CVNE",
+      "importe": -26.96,
+      "detalle": "Concepto contiene: CVNE"
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "17-01-25",
+      "concepto": "TRANSFERENCIA A CVNE",
+      "importe": -6.74,
+      "detalle": "Concepto contiene: CVNE"
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "24-01-25",
+      "concepto": "TRANSFERENCIA A EMBUTIDOS ALPENDEREZ",
+      "importe": -72.47,
+      "detalle": "Concepto contiene: EMBUTIDOS ALPENDEREZ"
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "31-01-25",
+      "concepto": "TRANSFERENCIA A QUESOS ROYCA",
+      "importe": -189.86,
+      "detalle": "Concepto contiene: QUESOS ROYCA"
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "22-04-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 TRUCCO COPIAS-MADRID",
+      "importe": -5.0,
+      "detalle": "¿#2272 BM- DISTRIBUCION SUPERMERCADOS SL? (fuzzy 37%)"
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "19-05-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 LEVADURA MADRE EMBAJADORE-MADRID",
+      "importe": -3.65,
+      "detalle": ""
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "26-05-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 VICTORINO MARTIN S.A-MADRID",
+      "importe": -6.5,
+      "detalle": ""
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "12-06-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 TRUCCO COPIAS-MADRID",
+      "importe": -4.0,
+      "detalle": "Concepto contiene: . 5540XXXXXXXX8017 TRUCCO COPIAS-MADRID"
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "12-06-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 FERRETERIA HOYOS SL-MADRID",
+      "importe": -2.2,
+      "detalle": "¿#1170 RODRIGUEZ PACHA ISAAC? (fuzzy 29%)"
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "12-06-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 CASA SORIA ELECTRICIDA-MADRID",
+      "importe": -3.9,
+      "detalle": ""
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "13-06-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 LA CUCHARA DE LAVAPIES-MADRID",
+      "importe": -6.0,
+      "detalle": ""
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "18-06-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 EXPEMBAJADORES2-MADRID",
+      "importe": -5.11,
+      "detalle": ""
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "07-07-25",
+      "concepto": "TRANSFERENCIA A CVNE",
+      "importe": -94.14,
+      "detalle": "Posible duplicado con #1163"
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "29-07-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 MADRID SUC 05-MADRID",
+      "importe": -10.86,
+      "detalle": ""
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "29-07-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 TRUCCO COPIAS-MADRID",
+      "importe": -17.4,
+      "detalle": "Concepto contiene: . 5540XXXXXXXX8017 TRUCCO COPIAS-MADRID"
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "31-07-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 TRUCCO COPIAS-MADRID",
+      "importe": -21.2,
+      "detalle": "Concepto contiene: . 5540XXXXXXXX8017 TRUCCO COPIAS-MADRID"
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "31-07-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 TRUCCO COPIAS-MADRID",
+      "importe": -24.0,
+      "detalle": "Concepto contiene: . 5540XXXXXXXX8017 TRUCCO COPIAS-MADRID"
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "01-08-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 PHOTOINSTANT-MADRID",
+      "importe": -12.7,
+      "detalle": ""
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "01-08-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 EXPEMBAJADORES2-MADRID",
+      "importe": -11.64,
+      "detalle": ""
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "04-08-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 PINTURAS EL BOTIJO-MADRID",
+      "importe": -10.39,
+      "detalle": ""
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "04-08-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 FERRETERIA HOYOS SL-MADRID",
+      "importe": -5.25,
+      "detalle": "Concepto contiene: . 5540XXXXXXXX8017 FERRETERIA HOYOS SL-M"
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "04-08-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 IDEAL HOME-MADRID",
+      "importe": -5.0,
+      "detalle": ""
+    },
+    {
+      "hoja": "Comestibles",
+      "fecha": "05-08-25",
+      "concepto": "COMPRA TARJ. 5540XXXXXXXX8017 MANSILLA LIBROS Y CAFE-MADRID",
+      "importe": -4.0,
+      "detalle": ""
+    }
+  ]
+}

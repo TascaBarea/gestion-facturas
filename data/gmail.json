@@ -1,22 +1,35 @@
 {
-  "fecha_ejecucion": "2026-03-27T10:23:23",
-  "total_procesados": 11,
-  "exitosos": 7,
-  "requieren_revision": 3,
+  "fecha_ejecucion": "2026-04-03T03:55:20",
+  "total_procesados": 27,
+  "exitosos": 21,
+  "requieren_revision": 5,
   "errores": 0,
   "proveedores_ok": [
+    "BERZAL HERMANOS SA",
+    "BOCADO GOURMET PREMIUM SL",
     "CERES CERVEZA SL",
-    "EMJAMESA SL",
-    "KINEMA S.COOP.MAD.",
-    "MARTIN ABENZA",
-    "MOLLETES ARTESANOS DE ANTEQUERA SL",
-    "QUESOS DE ACEHUCHE TRADICIONAL SL.",
-    "WEBEMPRESA EUROPA SL"
+    "COMPAÑÍA VINÍCOLA DEL NORTE DE ESPAÑA S.A.",
+    "DE LUIS SABORES UNICOS SL",
+    "FABEIRO SL",
+    "JULIO GARCIA VIVAS",
+    "LA BARRA DULCE SL",
+    "LICORES MADRUEÑO SL",
+    "LIDL SUPERMERCADOS SAU",
+    "MARITA COSTA VILELA",
+    "MIGUEZ CAL SL",
+    "PANIFIESTO LAVAPIES SL",
+    "PILAR RODRIGUEZ",
+    "SABORES DE PATERNA SCA",
+    "SANCHEZ MARTIN JOSE LUIS",
+    "SERRIN NO CHAN SL",
+    "SOM ENERGIA SCCL",
+    "XFERA MOVILES SAU"
   ],
   "revision": [
-    "\"noreply@coalla.es\" <noreply@coalla.es>",
-    "<contabilidad@quesosberzal.es>",
-    "ANGEL BORJA"
+    "BERZAL HERMANOS SA",
+    "GUERRA OLLER FRANCISCO",
+    "LA LLILDIRIA SL",
+    "SOM ENERGIA SCCL"
   ],
   "errores_detalle": []
 }
