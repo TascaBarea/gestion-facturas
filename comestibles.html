@@ -148,7 +148,7 @@ td:last-child{color:var(--accent2);}
 
 /* PRODUCT DETAIL */
 .pd-controls{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
-.pd-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.pd-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
 .pd-kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;}
 .pd-kpi-label{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
 .pd-kpi-value{font-family:'DM Serif Display',serif;font-size:22px;color:var(--text);line-height:1;}
@@ -913,19 +913,6 @@ function renderProductDetail() {
       <div class="pd-kpi-label">Total ${m==='euros'?'€':'Uds'}</div>
       <div class="pd-kpi-value">${m==='euros' ? fmtE(curVal) : curVal.toLocaleString('es-ES')+' uds'}</div>
       ${delta(curVal, cmpVal)}
-    </div>
-    <div class="pd-kpi">
-      <div class="pd-kpi-label">Precio medio</div>
-      <div class="pd-kpi-value">${totalC > 0 ? fmtE(totalE / totalC) + '/ud' : '—'}</div>
-      ${(() => {
-        if (!hasCmp || cmpC === 0) return '';
-        const cur = totalC > 0 ? totalE/totalC : 0;
-        const prev = cmpC > 0 ? cmpE/cmpC : 0;
-        if (prev === 0) return '';
-        const pct = (cur-prev)/prev*100;
-        const cls = pct >= 5 ? 'up' : pct <= -5 ? 'down' : 'neu';
-        return `<span class="pd-kpi-delta ${cls}">${pct>=0?'+':''}${Math.round(pct)}%</span>`;
-      })()}
     </div>
     <div class="pd-kpi">
       <div class="pd-kpi-label">% de ${cat}</div>
