@@ -714,7 +714,8 @@ def _filtrar_meses_cerrados(items, recibos, df_woo):
 
     if df_woo is not None and not df_woo.empty:
         df_woo = df_woo.copy()
-        df_woo["_fecha"] = pd.to_datetime(df_woo["date_created"], errors="coerce")
+        col_fecha = "date_created" if "date_created" in df_woo.columns else "fecha"
+        df_woo["_fecha"] = pd.to_datetime(df_woo[col_fecha], errors="coerce")
         mask = ~((df_woo["_fecha"].dt.year == int(year_actual)) &
                  (df_woo["_fecha"].dt.month >= mes_actual))
         df_woo = df_woo[mask].drop(columns=["_fecha"])
@@ -760,6 +761,27 @@ def cargar_datos_tasca():
     return items, recibos
 
 
+def _calcular_dias_mes(df_items, df_recibos):
+    """Calcula euros por día-de-semana por mes: {month: {dia_idx: euros}}.
+
+    dia_idx: 0=Lunes..6=Domingo.  Se usa en el KPI 'Mejor día' de Tasca.
+    """
+    dias_mes = {str(m): {str(d): 0 for d in range(7)} for m in range(1, 13)}
+    if df_items is None or df_items.empty:
+        return dias_mes
+    df = _preparar_df(df_items)
+    df["dia"] = df["Fecha"].dt.dayofweek
+    for m in range(1, 13):
+        dm = df[df["mes"] == m]
+        if dm.empty:
+            continue
+        for d in range(7):
+            dd = dm[dm["dia"] == d]
+            if not dd.empty:
+                dias_mes[str(m)][str(d)] = _round(dd["Ventas netas"].sum())
+    return dias_mes
+
+
 def calcular_RAW(items_por_año, recibos_por_año):
     """
     Genera la estructura RAW para Tasca:
@@ -784,6 +806,7 @@ def calcular_RAW(items_por_año, recibos_por_año):
             "cats_total": cats_total,
             "cats_euros": cats_euros_dict,
             "cats": sorted(cats_total.keys()),
+            "dias_mes": _calcular_dias_mes(df_items, df_recibos),
         }
 
     return RAW
@@ -855,7 +878,7 @@ def _filtrar_meses_cerrados_tasca(items, recibos):
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
 
-def main(abrir_navegador=True, solo_meses_cerrados=False, enviar_email=False):
+def main(abrir_navegador=True, solo_meses_cerrados=True, enviar_email=False):
     """Orquesta la generacion de ambos dashboards + PDF + email."""
     print("=" * 50)
     print("  GENERADOR DE DASHBOARDS BAREA")
@@ -945,6 +968,8 @@ def main(abrir_navegador=True, solo_meses_cerrados=False, enviar_email=False):
 if __name__ == "__main__":
     import sys
     abrir = "--no-open" not in sys.argv
-    cerrados = "--solo-cerrados" in sys.argv
+    parcial = "--incluir-parcial" in sys.argv
+    # --solo-cerrados se mantiene como alias compatible (ahora es el default)
+    cerrados = not parcial
     email = "--email" in sys.argv
     main(abrir_navegador=abrir, solo_meses_cerrados=cerrados, enviar_email=email)

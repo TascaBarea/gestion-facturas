@@ -1,12 +1,12 @@
 # CLAUDE.md — gestion-facturas
-<!-- Versión: 4.2 — 26/03/2026 -->
+<!-- Versión: 4.3 — 01/04/2026 -->
 <!-- IMPORTANTE: Leer tasks/lessons.md al iniciar cada sesión -->
 
 ## Proyecto
 Tasca Barea SLL (bar + tienda gourmet + experiencias, Madrid). Ver `docs/TASCA_BAREA_CONTEXT.md` para contexto completo de empresa.
 4 módulos: Gmail (pagos email), Ventas (Loyverse+WooCommerce), Cuadre (banco NORMA43), Artículos (catálogo Loyverse).
 Parseo (extractores PDF): repo separado → `Parseo/` · ver `Parseo/CLAUDE.md`.
-Documentación técnica completa: `docs/ESQUEMA_PROYECTO_DEFINITIVO_v2_6.md` (v5.3).
+Documentación técnica completa: `docs/SPEC_GESTION_FACTURAS_v4.md` (documento maestro único).
 
 ## Estructura
 ```
@@ -29,23 +29,24 @@ gestion-facturas/
 ├── nucleo/                 # Módulo core compartido con Parseo/ (symlink)
 ├── cuadre/                 # Ⓓ CUADRE v1.7
 ├── outputs/                # Logs gitignored
-└── docs/ESQUEMA_PROYECTO_DEFINITIVO_v2_6.md
+└── docs/SPEC_GESTION_FACTURAS_v4.md  ← Documento maestro único
 ```
 
 ## Documentación y reglas
 - **Reglas automáticas**: `.claude/rules/` — se cargan según directorio (api, extractores, Excel)
+- **Doc maestro**: `docs/SPEC_GESTION_FACTURAS_v4.md` — arquitectura, módulos, scripts, infraestructura
 - **API reference**: `docs/api.md` — endpoints, auth, runner, MAESTRO CRUD
 - **Errores conocidos**: `tasks/lessons.md` — leer al iniciar sesión
 - **Tests**: `pytest tests/unit/` — 4 suites (security, maestro, nucleo, runner)
 
 ## Versiones actuales
-<!-- Al modificar un módulo: actualizar aquí Y en ESQUEMA -->
+<!-- Al modificar un módulo: actualizar aquí Y en SPEC -->
 | Módulo  | Versión | Archivo fuente                     |
-|---------|---------|------------------------------------|
+|---------|---------|------------------------------------|:
 | Gmail   | v1.14   | gmail/gmail.py                     |
 | Ventas  | v4.7    | ventas_semana/script_barea.py      |
 | Cuadre  | v1.7    | cuadre/banco/cuadre.py             |
-| ESQUEMA | v5.4    | docs/ESQUEMA_PROYECTO_DEFINITIVO   |
+| SPEC    | v4.1    | docs/SPEC_GESTION_FACTURAS_v4.md   |
 
 ---
 
@@ -64,6 +65,28 @@ gestion-facturas/
 ### Al cerrar sesión
 - Actualizar ESQUEMA si hubo cambios significativos
 - Actualizar versión en 2 sitios: header del código + tabla arriba
+
+---
+
+## scripts/tickets/ — Módulo de adquisición de tickets de proveedores
+
+Módulo unificado para descargar/procesar tickets de compra de proveedores.
+Todos usan lógica compartida de `comun.py` (trimestre, nomenclatura, anti-duplicación).
+
+| Proveedor | Script | Método | Estado |
+|-----------|--------|--------|--------|
+| BM Supermercados | `scripts/tickets/bm.py` | Semi-manual (app BM+ → PDF → PC) | Operativo |
+| DIA | `scripts/tickets/dia.py` | Automático (API + Playwright login) | Operativo |
+| Makro | `scripts/tickets/makro.py` | Pendiente | Placeholder |
+
+Uso:
+  python -m scripts.tickets.bm --dry-run        # BM: ver qué haría
+  python -m scripts.tickets.bm                   # BM: procesar tickets nuevos
+  python -m scripts.tickets.bm --parsear         # BM: procesar + parsear con main.py
+  python -m scripts.tickets.dia                   # DIA: descargar tickets nuevos
+  python -m scripts.tickets.dia --login           # DIA: renovar sesión
+
+Registros anti-duplicación en: datos/tickets_registros/
 
 ---
 

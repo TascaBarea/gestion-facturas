@@ -165,15 +165,31 @@ if "autenticado" not in st.session_state:
 # ── Definición de páginas ─────────────────────────────────────────────────────
 
 ALL_PAGES = {
-    "alta_evento": st.Page("pages/alta_evento.py", title="Alta de Evento", icon="🎪"),
-    "calendario_eventos": st.Page("pages/calendario_eventos.py", title="Calendario de Eventos", icon="📅"),
-    "ventas": st.Page("pages/ventas.py", title="Dashboard Ventas", icon="📊"),
-    "cuadre": st.Page("pages/cuadre.py", title="Cuadre Bancario", icon="🏦"),
-    "log_gmail": st.Page("pages/log_gmail.py", title="Log Gmail", icon="📧"),
-    "monitor": st.Page("pages/monitor.py", title="Monitor Sistema", icon="🖥️"),
-    "ejecutar": st.Page("pages/ejecutar.py", title="Ejecutar Scripts", icon="▶️"),
-    "maestro": st.Page("pages/maestro.py", title="Proveedores", icon="📋"),
-    "documentos": st.Page("pages/documentos.py", title="Documentos", icon="📁"),
+    "": {
+        "inicio": st.Page("pages/inicio.py", title="Inicio", icon="🏠", default=True),
+    },
+    "Compras": {
+        "parseo": st.Page("pages/parseo.py", title="Parseo", icon="🔍"),
+        "facturas": st.Page("pages/facturas.py", title="Facturas", icon="📋"),
+        "maestro": st.Page("pages/maestro.py", title="Proveedores", icon="📋"),
+        "diccionario": st.Page("pages/diccionario.py", title="Diccionario", icon="📖"),
+        "log_gmail": st.Page("pages/log_gmail.py", title="Log Gmail", icon="📧"),
+    },
+    "Ventas": {
+        "ventas": st.Page("pages/ventas.py", title="Dashboard Ventas", icon="📊"),
+        "articulos": st.Page("pages/articulos.py", title="Artículos", icon="📦"),
+    },
+    "Eventos": {
+        "calendario_eventos": st.Page("pages/calendario_eventos.py", title="Calendario de Eventos", icon="📅"),
+        "alta_evento": st.Page("pages/alta_evento.py", title="Alta de Evento", icon="🎪"),
+    },
+    "Operaciones": {
+        "cuadre": st.Page("pages/cuadre.py", title="Cuadre Bancario", icon="🏦"),
+        "mov_banco": st.Page("pages/mov_banco.py", title="Mov. Banco", icon="🏦"),
+        "ejecutar": st.Page("pages/ejecutar.py", title="Ejecutar Scripts", icon="▶️"),
+        "monitor": st.Page("pages/monitor.py", title="Monitor Sistema", icon="🖥️"),
+        "documentos": st.Page("pages/documentos.py", title="Documentos", icon="📁"),
+    },
 }
 
 
@@ -235,9 +251,14 @@ if not st.session_state.autenticado:
 
 # Construir navegación filtrada por rol
 allowed = page_ids_for_role(get_role())
-pages = [ALL_PAGES[pid] for pid in allowed if pid in ALL_PAGES]
+filtered_pages = {}
+for section, section_pages in ALL_PAGES.items():
+    visible = [page for pid, page in section_pages.items()
+               if pid in allowed or section == ""]
+    if visible:
+        filtered_pages[section] = visible
 
-if not pages:
+if not any(filtered_pages.values()):
     st.error("Tu rol no tiene páginas asignadas.")
     st.stop()
 
@@ -278,5 +299,5 @@ if _backend_ok and get_role() == "admin":
                 st.sidebar.warning(_msg, icon="\u26a0\ufe0f")
 
 # Navegación
-nav = st.navigation(pages)
+nav = st.navigation(filtered_pages)
 nav.run()

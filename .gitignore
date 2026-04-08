@@ -10,7 +10,7 @@ credentials.json
 token.json
 token.json.backup
 datos_sensibles.py
-secrets.toml
+streamlit_app/.streamlit/secrets.toml
 
 # Datos financieros (Excel, banco, JSON procesados)
 datos/Movimientos*.xlsx
@@ -18,12 +18,6 @@ datos/MAESTRO_PROVEEDORES.xlsx
 datos/emails_procesados.json
 datos/Ventas*.xlsx
 datos/Articulos*.xlsx
-datos/Diccionario*.xlsx
-datos/EXTRACTORES_COMPLETO.xlsx
-datos/backups/
-datos/dia_tickets/
-datos/dia_session.json
-datos/*.json
 
 # Extractos bancarios (Norma 43)
 *.n43
@@ -45,9 +39,6 @@ ventas_semana/dashboards/dashboard_comes.html
 ventas_semana/dashboards/dashboard_tasca.html
 ventas_semana/dashboards/informe_barea_*.pdf
 ventas_semana/dashboards/*.pdf
-
-# Documentos con datos personales (DNIs, IBANs, salarios)
-TASCA_BAREA_CONTEXT*
 
 # Notas y archivos temporales de investigación
 docs/investigacion-fuentes-temp.txt

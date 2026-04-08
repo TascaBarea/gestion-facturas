@@ -10,7 +10,7 @@ import streamlit as st
 from datetime import datetime, date
 from utils.auth import require_role
 
-require_role(["admin", "eventos"])
+require_role(["admin", "socio", "eventos"])
 
 from utils.wc_client import get_wc_api, crear_producto
 

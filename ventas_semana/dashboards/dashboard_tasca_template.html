@@ -8,9 +8,9 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:#0f0e0c; --bg2:#1a1916; --bg3:#242220; --border:#2e2c28;
-  --accent:#c9a84c; --accent2:#e8c97a; --text:#f0ece4; --text2:#9a9488; --text3:#5a5650;
-  --c23:#7eb5e8; --c24:#e87e7e; --c25:#7ed9a0; --c26:#e8c97a;
+  --bg:#FAFAF6; --bg2:#F2F0EA; --bg3:#E8E5DC; --border:#D5D0C6;
+  --accent:#CA3026; --accent2:#A82820; --text:#1A1A18; --text2:#5A5650; --text3:#8A8478;
+  --c23:#7eb5e8; --c24:#e87e7e; --c25:#4A8C3F; --c26:#CA3026;
   --bebida:#4a90d9; --comida:#e8734a; --vinos:#9b4f8a; --molletes:#5aaa7a; --otros:#7a7a7a; --promociones:#d4a04a;
   --r:8px;
 }
@@ -23,7 +23,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .header-left p{color:var(--text2);font-size:11px;font-family:'DM Mono',monospace;}
 .year-tabs{display:flex;gap:4px;background:var(--bg);padding:4px;border-radius:10px;}
 .year-tab{padding:5px 14px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;transition:all .2s;background:transparent;color:var(--text3);}
-.year-tab.active{font-weight:700;color:#0f0e0c;}
+.year-tab.active{font-weight:700;color:#FAFAF6;}
 .year-tab[data-yr="2023"].active{background:var(--c23);}
 .year-tab[data-yr="2024"].active{background:var(--c24);}
 .year-tab[data-yr="2025"].active{background:var(--c25);}
@@ -37,7 +37,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .pill-group{display:flex;gap:3px;background:var(--bg);padding:3px;border-radius:8px;}
 .pill{padding:4px 11px;border-radius:6px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;transition:all .15s;background:transparent;color:var(--text3);}
 .pill:hover:not(.active):not(:disabled){background:var(--bg3);color:var(--text2);}
-.pill.active{background:var(--accent);color:#0f0e0c;font-weight:700;}
+.pill.active{background:var(--accent);color:#FAFAF6;font-weight:700;}
 .pill:disabled{opacity:.25;cursor:default;}
 .period-sep{width:1px;height:28px;background:var(--border);}
 
@@ -45,14 +45,14 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .month-grid{display:flex;gap:3px;flex-wrap:wrap;}
 .month-pill{padding:3px 9px;border-radius:5px;border:1px solid var(--border);cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;transition:all .15s;background:transparent;color:var(--text3);}
 .month-pill:hover:not(.active):not(:disabled){background:var(--bg3);color:var(--text2);}
-.month-pill.active{background:var(--accent);color:#0f0e0c;border-color:var(--accent);font-weight:700;}
+.month-pill.active{background:var(--accent);color:#FAFAF6;border-color:var(--accent);font-weight:700;}
 .month-pill:disabled{opacity:.2;cursor:default;}
 
 /* COMPARE BAR */
 .compare-bar{background:var(--bg3);border-bottom:1px solid var(--border);padding:9px 28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
 .compare-yr-btn{padding:3px 11px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;transition:all .15s;background:transparent;color:var(--text3);}
 .compare-yr-btn:hover:not(.active){background:var(--bg2);}
-.compare-yr-btn.active{font-weight:700;color:#0f0e0c;}
+.compare-yr-btn.active{font-weight:700;color:#FAFAF6;}
 .compare-yr-btn[data-yr="2023"].active{background:var(--c23);border-color:var(--c23);}
 .compare-yr-btn[data-yr="2024"].active{background:var(--c24);border-color:var(--c24);}
 .compare-yr-btn[data-yr="2025"].active{background:var(--c25);border-color:var(--c25);}
@@ -73,8 +73,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .kpi-value{font-family:'DM Serif Display',serif;font-size:26px;color:var(--text);line-height:1;}
 .kpi-compare{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;}
 .kpi-delta{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-family:'DM Mono',monospace;padding:2px 7px;border-radius:4px;margin-top:4px;}
-.kpi-delta.up{background:rgba(90,170,122,.15);color:#5aaa7a;}
-.kpi-delta.down{background:rgba(220,80,80,.15);color:#dc5050;}
+.kpi-delta.up{background:rgba(74,140,63,.12);color:#4A8C3F;}
+.kpi-delta.down{background:rgba(202,48,38,.12);color:#CA3026;}
 .kpi-delta.neu{background:rgba(150,150,150,.1);color:var(--text2);}
 
 /* CHARTS */
@@ -83,6 +83,11 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:18px;}
 .chart-card h3{font-size:11px;color:var(--text2);font-family:'DM Mono',monospace;margin-bottom:14px;text-transform:uppercase;letter-spacing:.08em;}
 .chart-wrap{position:relative;}
+
+/* YEARLY TOGGLE */
+.yearly-btn{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:3px 10px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);cursor:pointer;transition:all .15s;}
+.yearly-btn:hover{border-color:var(--accent);color:var(--accent);}
+.yearly-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 
 /* DONUT */
 .donut-wrap{display:flex;align-items:center;gap:16px;}
@@ -107,25 +112,35 @@ th{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);text-transf
 th:last-child{text-align:right;}
 td{padding:8px 12px;border-bottom:1px solid rgba(46,44,40,.4);font-size:13px;}
 tr:last-child td{border-bottom:none;}
-tr:hover td{background:rgba(255,255,255,.02);}
+tr:hover td{background:rgba(0,0,0,.03);}
 td:last-child{text-align:right;font-family:'DM Mono',monospace;color:var(--accent2);font-size:12px;}
 td:first-child{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);width:24px;}
 .rank-1{color:var(--accent)!important;}
 .bar-bg{background:var(--bg);border-radius:2px;height:3px;margin-top:3px;overflow:hidden;}
 .bar-fill{height:100%;border-radius:2px;background:var(--accent);transition:width .4s ease;}
 .growth{font-size:10px;font-family:'DM Mono',monospace;margin-left:5px;}
-.growth.up{color:#5aaa7a;} .growth.down{color:#dc7070;} .growth.neu{color:var(--text3);} .growth.new{color:var(--text3);}
+.growth.up{color:#4A8C3F;} .growth.down{color:#CA3026;} .growth.neu{color:var(--text3);} .growth.new{color:var(--text3);}
+
+/* PRODUCT DETAIL */
+.pd-controls{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+.pd-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+.pd-kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;}
+.pd-kpi-label{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.pd-kpi-value{font-family:'DM Serif Display',serif;font-size:22px;color:var(--text);line-height:1;}
+.pd-kpi-delta{font-size:10px;font-family:'DM Mono',monospace;margin-top:5px;}
+.pd-kpi-delta.up{color:#4A8C3F;} .pd-kpi-delta.down{color:#CA3026;} .pd-kpi-delta.neu{color:var(--text3);}
+.pd-empty{text-align:center;padding:40px;color:var(--text3);font-family:'DM Mono',monospace;font-size:12px;}
 
 .kpi-all-wrap{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;}
 .kpi-all-row{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:0;overflow-x:auto;}
 .kpi-all-label{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.1em;width:140px;flex-shrink:0;}
 .kpi-yr-cell{flex:1;min-width:110px;padding:8px 14px;border-left:1px solid var(--border);position:relative;}
 .kpi-yr-cell::before{content:'';position:absolute;top:0;left:0;bottom:0;width:2px;background:var(--yc);}
-.kpi-yr-active{background:rgba(255,255,255,.03);border-radius:0 6px 6px 0;}
+.kpi-yr-active{background:rgba(0,0,0,.04);border-radius:0 6px 6px 0;}
 .kpi-yr-label{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:4px;}
 .kpi-yr-value{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text);line-height:1;}
 .kpi-yr-delta{font-size:10px;font-family:'DM Mono',monospace;margin-top:4px;}
-.kpi-yr-delta.up{color:#5aaa7a;} .kpi-yr-delta.down{color:#dc7070;} .kpi-yr-delta.neu{color:var(--text3);}
+.kpi-yr-delta.up{color:#4A8C3F;} .kpi-yr-delta.down{color:#CA3026;} .kpi-yr-delta.neu{color:var(--text3);}
 
 @media(max-width:900px){
   .kpi-row{grid-template-columns:repeat(2,1fr);}
@@ -203,6 +218,22 @@ td:first-child{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3)
   <div class="section-title">Métricas principales</div>
   <div id="kpi-container"></div>
 
+  <!-- YEARLY OVERVIEW -->
+  <div class="section-title">Evolución histórica</div>
+  <div class="charts-grid">
+    <div class="chart-card chart-full">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <h3 id="yearlyTitle" style="margin:0">Ventas netas (€) — Mensual</h3>
+        <div style="display:flex;gap:4px">
+          <button class="yearly-btn active" data-grain="monthly" onclick="setYearlyGrain('monthly')">Mensual</button>
+          <button class="yearly-btn" data-grain="quarterly" onclick="setYearlyGrain('quarterly')">Trimestral</button>
+          <button class="yearly-btn" data-grain="yearly" onclick="setYearlyGrain('yearly')">Anual</button>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:220px"><canvas id="chartYearly"></canvas></div>
+    </div>
+  </div>
+
   <!-- EVOLUTION -->
   <div class="section-title">Evolución mensual</div>
   <div class="charts-grid">
@@ -237,7 +268,7 @@ td:first-child{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3)
   </div>
 
   <!-- PRODUCTS -->
-  <div class="section-title">Análisis de productos</div>
+  <div class="section-title">Análisis de Categorías</div>
   <div class="prod-controls">
     <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">Categoría:</span>
     <select class="select-styled" id="cat-select" onchange="renderProducts()"></select>
@@ -261,6 +292,25 @@ td:first-child{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3)
       <table><thead><tr><th>#</th><th>Producto</th><th id="th-bot">Ventas €</th></tr></thead><tbody id="bot-table"></tbody></table>
     </div>
   </div>
+
+  <!-- PRODUCT DETAIL -->
+  <div class="section-title">Análisis de Producto</div>
+  <div class="pd-controls">
+    <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">Categoría:</span>
+    <select class="select-styled" id="pd-cat" onchange="onPdCatChange()"></select>
+    <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">Producto:</span>
+    <select class="select-styled" id="pd-prod" onchange="renderProductDetail()" style="min-width:180px"></select>
+    <span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">Medir por:</span>
+    <div class="pill-group">
+      <button class="pill active" id="pd-m-euros" onclick="setPdMetric('euros')">€ Euros</button>
+      <button class="pill" id="pd-m-cant" onclick="setPdMetric('cant')">Uds</button>
+    </div>
+  </div>
+  <div class="pd-kpis" id="pd-kpis"></div>
+  <div class="chart-card">
+    <h3 id="pd-chart-title">Evolución mensual del producto</h3>
+    <div class="chart-wrap" style="height:200px"><canvas id="chartProdDetail"></canvas></div>
+  </div>
 </div>
 
 <script>
@@ -270,9 +320,11 @@ const PBM = {{PBM_DATA}};
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const CAT_COLORS = {BEBIDA:'#4a90d9',COMIDA:'#e8734a',VINOS:'#9b4f8a',MOLLETES:'#5aaa7a',OTROS:'#7a7a7a',PROMOCIONES:'#d4a04a'};
-const YEAR_COLORS = {'2023':'#7eb5e8','2024':'#e87e7e','2025':'#7ed9a0','2026':'#e8c97a'};
+const YEAR_COLORS = {'2023':'#7eb5e8','2024':'#e87e7e','2025':'#4A8C3F','2026':'#CA3026'};
 const YEARS = {{YEARS_DATA}};
 const Q_MONTHS = {1:[1,2,3],2:[4,5,6],3:[7,8,9],4:[10,11,12]};
+
+const DIAS_NOMBRES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 
 let activeYear = '2026';
 let periodMode = 'all';   // all | month | quarter | range
@@ -321,10 +373,10 @@ function destroyChart(id) { if(charts[id]){charts[id].destroy();delete charts[id
 function chartBase() {
   return {
     responsive:true, maintainAspectRatio:false,
-    plugins:{legend:{display:false}, tooltip:{backgroundColor:'#1a1916',borderColor:'#2e2c28',borderWidth:1,titleColor:'#9a9488',bodyColor:'#f0ece4',titleFont:{family:'DM Mono',size:11},bodyFont:{family:'DM Mono',size:12},padding:10}},
+    plugins:{legend:{display:false}, tooltip:{backgroundColor:'#ffffff',borderColor:'#D5D0C6',borderWidth:1,titleColor:'#5A5650',bodyColor:'#1A1A18',titleFont:{family:'DM Mono',size:11},bodyFont:{family:'DM Mono',size:12},padding:10}},
     scales:{
-      x:{grid:{color:'rgba(46,44,40,.6)'},ticks:{color:'#5a5650',font:{family:'DM Mono',size:10}},border:{color:'#2e2c28'}},
-      y:{grid:{color:'rgba(46,44,40,.6)'},ticks:{color:'#5a5650',font:{family:'DM Mono',size:10}},border:{color:'#2e2c28'}}
+      x:{grid:{color:'rgba(0,0,0,.07)'},ticks:{color:'#8A8478',font:{family:'DM Mono',size:10}},border:{color:'#D5D0C6'}},
+      y:{grid:{color:'rgba(0,0,0,.07)'},ticks:{color:'#8A8478',font:{family:'DM Mono',size:10}},border:{color:'#D5D0C6'}}
     }
   };
 }
@@ -402,16 +454,38 @@ function rebuildPeriodUI() {
 }
 
 // ── RENDER KPIs ──────────────────────────────────────────────────────────────
+function getBestDay(yr, months) {
+  const totals = [0,0,0,0,0,0,0];
+  months.forEach(m => {
+    const dm = RAW[yr].dias_mes?.[String(m)] || {};
+    for (let d = 0; d < 7; d++) totals[d] += (dm[String(d)] || 0);
+  });
+  let best = 0;
+  for (let d = 1; d < 7; d++) if (totals[d] > totals[best]) best = d;
+  return {day: best, name: DIAS_NOMBRES[best], euros: totals[best]};
+}
+
 function renderKPIs() {
   const container = document.getElementById('kpi-container');
-  const fields = ['euros','tickets','unidades','prom_ticket'];
-  const labels = ['Ventas netas','Nº Tickets','Unidades vendidas','Ticket medio'];
-  const fmt = [fmtEuros, n=>Math.round(n).toLocaleString('es-ES'), n=>Math.round(n).toLocaleString('es-ES'), n=>n.toFixed(2)+'€'];
+  const fields = ['euros','tickets','best_day','prom_ticket'];
+  const labels = ['Ventas netas','Nº Tickets','Mejor día','Ticket medio'];
+
+  function getVal(yr, f, months) {
+    if (f === 'best_day') return getBestDay(yr, months);
+    return getTotal(yr, f, months);
+  }
+  function fmtVal(f, v) {
+    if (f === 'euros') return fmtEuros(v);
+    if (f === 'tickets') return Math.round(v).toLocaleString('es-ES');
+    if (f === 'prom_ticket') return v.toFixed(2)+'€';
+    if (f === 'best_day') return v.name;
+    return v;
+  }
 
   if (compareMode === 'all') {
     // MULTI-YEAR MODE: one row per metric, one column per year
     const years = YEARS.filter(yr => availMonths(yr).some(m => activePeriod.includes(m)));
-    const currVals = fields.map(f => getTotal(activeYear, f, activePeriod));
+    const currVals = fields.map(f => getVal(activeYear, f, activePeriod));
 
     let html = '<div class="kpi-all-wrap">';
     fields.forEach((f, fi) => {
@@ -419,23 +493,22 @@ function renderKPIs() {
       html += '<div class="kpi-all-label">'+labels[fi]+'</div>';
       years.forEach(yr => {
         const cp = activePeriod.filter(m => availMonths(yr).includes(m));
-        const val = getTotal(yr, f, cp);
+        const val = getVal(yr, f, cp);
         const isActive = yr === activeYear;
-        const prev = fi > 0 || true ? null : null; // delta vs active year
         let deltaHtml = '';
-        if (!isActive) {
-          const d = delta(currVals[fi], val);
-          // delta from this year TO active year
-          const d2 = delta(getTotal(activeYear,f,activePeriod), val);
-          const cls = d2.cls; 
-          const pct = val===0 ? '—' : ((getTotal(activeYear,f,activePeriod)-val)/val*100);
+        if (!isActive && f !== 'best_day') {
+          const numVal = typeof val === 'object' ? val.euros : val;
+          const currNum = typeof currVals[fi] === 'object' ? currVals[fi].euros : currVals[fi];
+          const pct = numVal===0 ? '—' : ((currNum-numVal)/numVal*100);
           const sign = typeof pct === 'number' ? (pct>=0?'+':'') : '';
           const pctStr = typeof pct === 'number' ? sign+Math.round(pct)+'%' : pct;
+          const cls = typeof pct === 'number' ? (pct>=0?'up':'down') : 'neu';
           deltaHtml = '<div class="kpi-yr-delta '+cls+'">'+pctStr+' vs '+yr+'</div>';
         }
         html += '<div class="kpi-yr-cell'+(isActive?' kpi-yr-active':'')+'" style="--yc:'+YEAR_COLORS[yr]+'">'
           + '<div class="kpi-yr-label">'+yr+(cp.length<activePeriod.length?' *':'')+'</div>'
-          + '<div class="kpi-yr-value">'+fmt[fi](val)+'</div>'
+          + '<div class="kpi-yr-value">'+fmtVal(f, val)+'</div>'
+          + (f==='best_day' && val.euros ? '<div class="kpi-compare">'+fmtEuros(val.euros)+'</div>' : '')
           + deltaHtml
           + '</div>';
       });
@@ -450,17 +523,23 @@ function renderKPIs() {
     const cp = getComparePeriod();
     let html = '<div class="kpi-row">';
     fields.forEach((f,i) => {
-      const curr = getTotal(activeYear, f, activePeriod);
+      const curr = getVal(activeYear, f, activePeriod);
       let deltaHtml = '', cmpHtml = '';
       if (cyr && cp.length) {
-        const prev = getTotal(cyr, f, cp);
-        const d = delta(curr, prev);
-        deltaHtml = '<div class="kpi-delta '+d.cls+'">'+d.txt+' vs '+cyr+'</div>';
-        cmpHtml = '<div class="kpi-compare">'+fmt[i](prev)+' en '+cyr+(cp.length<activePeriod.length?' (parcial)':'')+'</div>';
+        const prev = getVal(cyr, f, cp);
+        if (f === 'best_day') {
+          cmpHtml = '<div class="kpi-compare">'+prev.name+' ('+fmtEuros(prev.euros)+') en '+cyr+'</div>';
+        } else {
+          const d = delta(curr, prev);
+          deltaHtml = '<div class="kpi-delta '+d.cls+'">'+d.txt+' vs '+cyr+'</div>';
+          cmpHtml = '<div class="kpi-compare">'+fmtVal(f, prev)+' en '+cyr+(cp.length<activePeriod.length?' (parcial)':'')+'</div>';
+        }
       }
+      const mainValue = f === 'best_day' ? curr.name : fmtVal(f, curr);
+      const subValue = f === 'best_day' ? '<div class="kpi-compare">'+fmtEuros(curr.euros)+' acumulado</div>' : '';
       html += '<div class="kpi"><div class="kpi-label">'+labels[i]+'</div>'
-        + '<div class="kpi-value">'+fmt[i](curr)+'</div>'
-        + cmpHtml + deltaHtml + '</div>';
+        + '<div class="kpi-value">'+mainValue+'</div>'
+        + subValue + cmpHtml + deltaHtml + '</div>';
     });
     html += '</div>';
     container.innerHTML = html;
@@ -500,7 +579,7 @@ function renderEvolution() {
   charts['euros'] = new Chart(document.getElementById('chartEuros'), {
     type:'line', data:{labels, datasets:allDS_euros},
     options:{...chartBase(), plugins:{...chartBase().plugins,
-      legend:{display:true,position:'top',labels:{color:'#c0bab2',font:{family:'DM Mono',size:11},boxWidth:20,boxHeight:3,padding:14}},
+      legend:{display:true,position:'top',labels:{color:'#5A5650',font:{family:'DM Mono',size:11},boxWidth:20,boxHeight:3,padding:14}},
       tooltip:{...chartBase().plugins.tooltip,callbacks:{label:ctx=>` ${ctx.dataset.label}: ${fmtEuros(ctx.raw||0)}`}}
     }}
   });
@@ -544,9 +623,9 @@ function renderDonut() {
   destroyChart('donut');
   charts['donut'] = new Chart(document.getElementById('chartDonut'), {
     type:'doughnut',
-    data:{labels:cats,datasets:[{data:vals,backgroundColor:colors,borderColor:'#0f0e0c',borderWidth:3,hoverOffset:5}]},
+    data:{labels:cats,datasets:[{data:vals,backgroundColor:colors,borderColor:'#FAFAF6',borderWidth:3,hoverOffset:5}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
-      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a1916',borderColor:'#2e2c28',borderWidth:1,bodyColor:'#f0ece4',callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw}%`}}}}
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#ffffff',borderColor:'#D5D0C6',borderWidth:1,bodyColor:'#1A1A18',callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw}%`}}}}
   });
   document.getElementById('donut-legend').innerHTML = cats.map((c,i) =>
     `<div class="legend-item"><div class="legend-dot" style="background:${colors[i]}"></div><span style="color:var(--text2);font-size:12px">${c}</span><span class="legend-pct">${vals[i]}%</span></div>`
@@ -571,7 +650,7 @@ function renderCatEvol() {
       borderWidth:2, pointRadius:3, tension:0.3, spanGaps:false,
     }))},
     options:{...chartBase(),plugins:{...chartBase().plugins,
-      legend:{display:true,labels:{color:'#9a9488',font:{family:'DM Mono',size:10},boxWidth:12,boxHeight:2,padding:10}},
+      legend:{display:true,labels:{color:'#5A5650',font:{family:'DM Mono',size:10},boxWidth:12,boxHeight:2,padding:10}},
       tooltip:{...chartBase().plugins.tooltip,callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.raw}%`}}
     },scales:{...chartBase().scales,
       y:{...chartBase().scales.y,ticks:{...chartBase().scales.y.ticks,callback:v=>v+'%'}}
@@ -652,12 +731,301 @@ function setProdMetric(m) {
   renderProducts();
 }
 
+// ── PRODUCT DETAIL ───────────────────────────────────────────────────────────
+let pdMetric = 'euros';
+
+function setPdMetric(m) {
+  pdMetric = m;
+  document.getElementById('pd-m-euros').classList.toggle('active', m==='euros');
+  document.getElementById('pd-m-cant').classList.toggle('active', m==='cant');
+  renderProductDetail();
+}
+
+function populatePdCatSelect() {
+  const sel = document.getElementById('pd-cat');
+  sel.innerHTML = ['BEBIDA','COMIDA','VINOS','MOLLETES','OTROS'].map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
+function onPdCatChange() {
+  const cat = document.getElementById('pd-cat').value;
+  const m = pdMetric;
+  // Aggregate products in this category for active period
+  const artMap = {};
+  activePeriod.forEach(mes => {
+    const prods = PBM[activeYear][String(mes)]?.[cat] || [];
+    prods.forEach(p => {
+      if (!artMap[p.art]) artMap[p.art] = {euros:0, cant:0};
+      artMap[p.art].euros += p.euros;
+      artMap[p.art].cant += p.cant;
+    });
+  });
+  const sorted = Object.entries(artMap).filter(([,v])=>v[m]>0)
+    .sort((a,b)=>b[1][m]-a[1][m]);
+  const sel = document.getElementById('pd-prod');
+  if (sorted.length === 0) {
+    sel.innerHTML = '<option value="">Sin datos</option>';
+    renderProductDetail();
+    return;
+  }
+  sel.innerHTML = sorted.map(([art])=>`<option value="${art}">${art}</option>`).join('');
+  renderProductDetail();
+}
+
+function renderProductDetail() {
+  const cat = document.getElementById('pd-cat').value;
+  const prod = document.getElementById('pd-prod').value;
+  const m = pdMetric;
+  const kpiEl = document.getElementById('pd-kpis');
+
+  if (!prod) {
+    kpiEl.innerHTML = '<div class="pd-empty">Selecciona una categoría y un producto</div>';
+    destroyChart('prodDetail');
+    return;
+  }
+
+  // ── Aggregate current period ──
+  let totalE = 0, totalC = 0, catTotalE = 0, catTotalC = 0;
+  activePeriod.forEach(mes => {
+    const prods = PBM[activeYear][String(mes)]?.[cat] || [];
+    prods.forEach(p => {
+      catTotalE += p.euros; catTotalC += p.cant;
+      if (p.art === prod) { totalE += p.euros; totalC += p.cant; }
+    });
+  });
+
+  // Rank
+  const artMap = {};
+  activePeriod.forEach(mes => {
+    (PBM[activeYear][String(mes)]?.[cat] || []).forEach(p => {
+      if (!artMap[p.art]) artMap[p.art] = {euros:0, cant:0};
+      artMap[p.art].euros += p.euros; artMap[p.art].cant += p.cant;
+    });
+  });
+  const ranked = Object.entries(artMap).filter(([,v])=>v[m]>0).sort((a,b)=>b[1][m]-a[1][m]);
+  const rank = ranked.findIndex(([a])=>a===prod) + 1;
+  const totalProds = ranked.length;
+
+  // ── Compare period ──
+  const cyr = getCompareYear();
+  const cp = getComparePeriod();
+  let cmpE = 0, cmpC = 0, cmpCatE = 0, cmpCatC = 0, hasCmp = false;
+  if (cyr && cp.length) {
+    hasCmp = true;
+    cp.forEach(mes => {
+      const prods = PBM[cyr]?.[String(mes)]?.[cat] || [];
+      prods.forEach(p => {
+        cmpCatE += p.euros; cmpCatC += p.cant;
+        if (p.art === prod) { cmpE += p.euros; cmpC += p.cant; }
+      });
+    });
+  }
+
+  function delta(cur, prev) {
+    if (!hasCmp) return '';
+    if (prev === 0) return cur > 0 ? '<span class="pd-kpi-delta up">nuevo</span>' : '';
+    const pct = (cur - prev) / prev * 100;
+    const cls = pct >= 5 ? 'up' : pct <= -5 ? 'down' : 'neu';
+    const sign = pct >= 0 ? '+' : '';
+    return `<span class="pd-kpi-delta ${cls}">${sign}${Math.round(pct)}%</span>`;
+  }
+
+  const curVal = m === 'euros' ? totalE : totalC;
+  const cmpVal = m === 'euros' ? cmpE : cmpC;
+  const catVal = m === 'euros' ? catTotalE : catTotalC;
+  const cmpCatVal = m === 'euros' ? cmpCatE : cmpCatC;
+  const pctCat = catVal > 0 ? (curVal / catVal * 100) : 0;
+  const cmpPctCat = cmpCatVal > 0 ? (cmpVal / cmpCatVal * 100) : 0;
+
+  kpiEl.innerHTML = `
+    <div class="pd-kpi">
+      <div class="pd-kpi-label">Total ${m==='euros'?'€':'Uds'}</div>
+      <div class="pd-kpi-value">${m==='euros' ? fmtEuros(curVal) : curVal.toLocaleString('es-ES')+' uds'}</div>
+      ${delta(curVal, cmpVal)}
+    </div>
+    <div class="pd-kpi">
+      <div class="pd-kpi-label">% de ${cat}</div>
+      <div class="pd-kpi-value">${pctCat.toFixed(1)}%</div>
+      ${hasCmp && cmpPctCat > 0 ? `<span class="pd-kpi-delta ${pctCat - cmpPctCat >= 1 ? 'up' : pctCat - cmpPctCat <= -1 ? 'down' : 'neu'}">${(pctCat-cmpPctCat)>=0?'+':''}${(pctCat-cmpPctCat).toFixed(1)}pp</span>` : ''}
+    </div>
+    <div class="pd-kpi">
+      <div class="pd-kpi-label">Ranking</div>
+      <div class="pd-kpi-value">#${rank} <span style="font-size:13px;color:var(--text3);font-family:'DM Mono',monospace">de ${totalProds}</span></div>
+    </div>
+  `;
+
+  // ── Monthly chart ──
+  const allMonths = [1,2,3,4,5,6,7,8,9,10,11,12];
+  const field = m === 'euros' ? 'euros' : 'cant';
+
+  function prodMonthlyData(yr) {
+    return allMonths.map(mo => {
+      if (!availMonths(yr).includes(mo)) return null;
+      const prods = PBM[yr]?.[String(mo)]?.[cat] || [];
+      const found = prods.find(p => p.art === prod);
+      return found ? found[field] : 0;
+    });
+  }
+
+  const cyrVal = getCompareYear();
+  const shownYears = cyrVal ? [cyrVal, activeYear] : [activeYear];
+
+  const datasets = shownYears.map(yr => {
+    const isActive = yr === activeYear;
+    const color = YEAR_COLORS[yr];
+    return {
+      label: yr,
+      data: prodMonthlyData(yr),
+      borderColor: color,
+      backgroundColor: isActive ? color + '18' : 'transparent',
+      borderWidth: isActive ? 3 : 2,
+      pointRadius: allMonths.map(mo => activePeriod.includes(mo) && isActive ? 5 : 2),
+      pointBackgroundColor: allMonths.map(mo => activePeriod.includes(mo) && isActive ? color : color + '66'),
+      tension: 0.3,
+      fill: isActive,
+      spanGaps: false,
+    };
+  });
+
+  document.getElementById('pd-chart-title').textContent =
+    `${prod} — ${m==='euros'?'Ventas €':'Unidades'} por mes`;
+
+  destroyChart('prodDetail');
+  charts['prodDetail'] = new Chart(document.getElementById('chartProdDetail'), {
+    type: 'line',
+    data: { labels: MESES, datasets },
+    options: {
+      ...chartBase(),
+      plugins: {
+        ...chartBase().plugins,
+        legend: { display: shownYears.length > 1, position: 'top',
+          labels: { color: '#5A5650', font: { family: 'DM Mono', size: 11 }, boxWidth: 20, boxHeight: 3, padding: 14 }},
+        tooltip: { ...chartBase().plugins.tooltip,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${m==='euros' ? fmtEuros(ctx.raw||0) : (ctx.raw||0).toLocaleString('es-ES')+' uds'}` }}
+      }
+    }
+  });
+}
+
 // ── PERIOD INFO ──────────────────────────────────────────────────────────────
 function updatePeriodInfo() {
   const cyr = getCompareYear();
   const label = periodLabel();
   const cmp = cyr ? ` · comparando con ${cyr} (mismo período)` : '';
   document.getElementById('period-info').textContent = activeYear+' · '+label+cmp;
+}
+
+// ── RENDER YEARLY OVERVIEW ────────────────────────────────────────────────────
+let yearlyGrain = 'monthly';
+const QUARTER_NAMES = ['T1','T2','T3','T4'];
+const GRAIN_LABELS = {monthly:'Mensual', quarterly:'Trimestral', yearly:'Anual'};
+
+function setYearlyGrain(g) {
+  yearlyGrain = g;
+  document.querySelectorAll('.yearly-btn').forEach(b => b.classList.toggle('active', b.dataset.grain===g));
+  document.getElementById('yearlyTitle').textContent = 'Ventas netas (€) — '+GRAIN_LABELS[g];
+  renderYearly();
+}
+
+function buildYearlySeries() {
+  const labels = [], values = [], colors = [];
+  if (yearlyGrain === 'monthly') {
+    YEARS.forEach(yr => {
+      availMonths(yr).forEach(m => {
+        labels.push(MESES[m-1].slice(0,3)+' '+yr.slice(2));
+        values.push(RAW[yr].mensual[String(m)]?.euros||0);
+        colors.push(YEAR_COLORS[yr]);
+      });
+    });
+  } else if (yearlyGrain === 'quarterly') {
+    YEARS.forEach(yr => {
+      const avail = availMonths(yr);
+      for (let q=0; q<4; q++) {
+        const qMonths = [q*3+1, q*3+2, q*3+3].filter(m => avail.includes(m));
+        if (qMonths.length === 0) continue;
+        const total = qMonths.reduce((s,m) => s+(RAW[yr].mensual[String(m)]?.euros||0), 0);
+        const partial = qMonths.length < 3;
+        labels.push(QUARTER_NAMES[q]+' '+yr.slice(2) + (partial?' *':''));
+        values.push(total);
+        colors.push(YEAR_COLORS[yr]);
+      }
+    });
+  } else {
+    YEARS.forEach(yr => {
+      const avail = availMonths(yr);
+      const total = avail.reduce((s,m) => s+(RAW[yr].mensual[String(m)]?.euros||0), 0);
+      labels.push(yr);
+      values.push(total);
+      colors.push(YEAR_COLORS[yr]);
+    });
+  }
+  return {labels, values, colors};
+}
+
+function renderYearly() {
+  const {labels, values, colors} = buildYearlySeries();
+
+  destroyChart('yearly');
+  charts['yearly'] = new Chart(document.getElementById('chartYearly'), {
+    type:'line',
+    data:{
+      labels,
+      datasets:[{
+        label: 'Ventas netas',
+        data: values,
+        borderColor: '#CA3026',
+        backgroundColor: 'rgba(202,48,38,.08)',
+        borderWidth: 2.5,
+        pointRadius: yearlyGrain==='monthly' ? 3 : 5,
+        pointBackgroundColor: colors,
+        pointBorderColor: '#FAFAF6',
+        pointBorderWidth: 1.5,
+        pointHoverRadius: 7,
+        tension: 0.3,
+        fill: true,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#ffffff',borderColor:'#D5D0C6',borderWidth:1,
+          titleColor:'#5A5650',bodyColor:'#1A1A18',
+          titleFont:{family:'DM Mono',size:11},bodyFont:{family:'DM Mono',size:12},padding:10,
+          callbacks:{
+            label:ctx=>' '+fmtEuros(ctx.raw),
+            afterLabel:ctx=>{
+              if(ctx.dataIndex>0){
+                const prev = values[ctx.dataIndex-1];
+                const pct = prev ? ((ctx.raw-prev)/prev*100).toFixed(1) : null;
+                return pct!==null ? (pct>=0?'+':'')+pct+'% vs anterior' : '';
+              }
+              return '';
+            }
+          }
+        },
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#5A5650',font:{family:'DM Mono',size:yearlyGrain==='monthly'?9:11,weight:600},maxRotation:45,minRotation:0},border:{color:'#D5D0C6'}},
+        y:{beginAtZero:true,grid:{color:'rgba(0,0,0,.07)'},ticks:{color:'#8A8478',font:{family:'DM Mono',size:10},callback:v=>fmtEuros(v)},border:{color:'#D5D0C6'}},
+      },
+    },
+    plugins: yearlyGrain !== 'monthly' ? [{
+      id:'pointLabels',
+      afterDatasetsDraw(chart) {
+        const ctx2 = chart.ctx;
+        const meta = chart.getDatasetMeta(0);
+        values.forEach((val,i) => {
+          const pt = meta.data[i];
+          ctx2.save();
+          ctx2.fillStyle = '#1A1A18';
+          ctx2.font = '600 11px "DM Mono"';
+          ctx2.textAlign = 'center';
+          ctx2.fillText(fmtEuros(val), pt.x, pt.y - 12);
+          ctx2.restore();
+        });
+      }
+    }] : []
+  });
 }
 
 // ── POPULATE SELECTS ─────────────────────────────────────────────────────────
@@ -671,14 +1039,16 @@ function renderAll() {
   updatePeriodInfo();
   rebuildPeriodUI();
   renderKPIs();
+  renderYearly();
   renderEvolution();
   renderDonut();
   renderCatEvol();
   renderProducts();
+  onPdCatChange();
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
-Chart.defaults.color = '#5a5650';
+Chart.defaults.color = '#8A8478';
 Chart.defaults.plugins.tooltip.callbacks.label = function(ctx) {
   const v = ctx.raw;
   if (typeof v === 'number') {
@@ -687,6 +1057,7 @@ Chart.defaults.plugins.tooltip.callbacks.label = function(ctx) {
   return ' ' + ctx.dataset.label + ': ' + v;
 };
 populateCatSelect();
+populatePdCatSelect();
 activePeriod = availMonths(activeYear);
 renderAll();
 </script>
