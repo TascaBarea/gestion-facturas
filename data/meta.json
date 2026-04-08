@@ -1,9 +1,10 @@
 {
-  "exportado": "2026-04-08T23:25:20",
+  "exportado": "2026-04-09T00:15:45",
   "version": "1.0",
   "archivos": [
     "cuadre.json",
     "gmail.json",
+    "maestro.json",
     "monitor.json",
     "ventas_comes.json",
     "ventas_tasca.json"
