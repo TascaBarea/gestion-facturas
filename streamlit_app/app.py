@@ -288,7 +288,7 @@ _backend_ok = backend_disponible()
 if _backend_ok:
     st.sidebar.success("Backend conectado", icon="\U0001f7e2")
 else:
-    st.sidebar.info("Solo lectura (PC apagado)", icon="\U0001f534")
+    st.sidebar.caption("Datos actualizados desde la nube")
 
 # Alertas de procesos atrasados (solo admin, solo si backend disponible)
 if _backend_ok and get_role() == "admin":

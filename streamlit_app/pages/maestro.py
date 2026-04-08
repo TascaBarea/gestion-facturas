@@ -1,6 +1,7 @@
 """
 pages/maestro.py — Editor MAESTRO_PROVEEDORES (solo admin).
 Buscar, filtrar y editar proveedores desde la app web.
+Modo dual: edición completa con backend, solo lectura desde CDN.
 """
 
 import urllib.parse
@@ -10,25 +11,27 @@ from utils.auth import require_role
 from utils.data_client import (
     backend_disponible, fetch_backend_json,
     put_backend_json, post_backend_json,
+    get_maestro,
 )
 
 require_role(["admin"])
 
 st.title("Proveedores")
 
-# ── Comprobar backend ─────────────────────────────────────────────────────────
+# ── Modo de operación ────────────────────────────────────────────────────────
 
-if not backend_disponible():
-    st.warning("Backend no disponible. El PC puede estar apagado.")
-    st.stop()
+_backend_ok = backend_disponible()
 
-# ── Cargar datos ──────────────────────────────────────────────────────────────
+if _backend_ok:
+    @st.cache_data(ttl=30)
+    def _cargar_maestro():
+        return fetch_backend_json("/api/maestro")
 
-@st.cache_data(ttl=30)
-def _cargar_maestro():
-    return fetch_backend_json("/api/maestro")
+    data = _cargar_maestro()
+else:
+    st.info("Solo lectura — el backend no está disponible", icon="🔒")
+    data = get_maestro()
 
-data = _cargar_maestro()
 if not data or "proveedores" not in data:
     st.error("No se pudo cargar el MAESTRO_PROVEEDORES.")
     st.stop()
@@ -52,7 +55,7 @@ with col_activo:
     filtro_activo = st.selectbox("Activo", ["Todos", "SI", "NO"], label_visibility="collapsed")
 
 
-# ── Filtrado ──────────────────────────────────────────────────────────────────
+# ── Filtrado ─────────────────────────────────────────────────────────────────
 
 def _match(prov: dict, texto: str) -> bool:
     """Busca texto en nombre, aliases, CIF y email."""
@@ -77,7 +80,7 @@ if filtro_pago != "Todos":
 if filtro_activo != "Todos":
     filtrados = [p for p in filtrados if p.get("ACTIVO", "").upper() == filtro_activo]
 
-# ── Métricas ──────────────────────────────────────────────────────────────────
+# ── Métricas ─────────────────────────────────────────────────────────────────
 
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("Total", len(proveedores))
@@ -87,7 +90,7 @@ m3.metric("Con extractor", con_ext)
 activos = sum(1 for p in proveedores if p.get("ACTIVO", "").upper() == "SI")
 m4.metric("Activos", activos)
 
-# ── Tabla ─────────────────────────────────────────────────────────────────────
+# ── Tabla ────────────────────────────────────────────────────────────────────
 
 if not filtrados:
     st.info("Sin resultados para esa búsqueda.")
@@ -95,13 +98,15 @@ if not filtrados:
 
 tabla = []
 for p in filtrados:
+    # ALIASES puede ser lista (backend) o int (CDN)
+    n_aliases = p.get("ALIASES", 0) if isinstance(p.get("ALIASES"), int) else len(p.get("ALIAS", []))
     tabla.append({
         "Proveedor": p["PROVEEDOR"],
         "Cuenta": p.get("CUENTA", ""),
         "Pago": p.get("FORMA_PAGO", ""),
         "Extractor": p.get("TIENE_EXTRACTOR", ""),
         "Categoría": p.get("CATEGORIA_FIJA", ""),
-        "Aliases": len(p.get("ALIAS", [])),
+        "Aliases": n_aliases,
     })
 
 st.dataframe(
@@ -114,7 +119,13 @@ st.dataframe(
     },
 )
 
-# ── Selector de proveedor ────────────────────────────────────────────────────
+# ── Edición (solo con backend) ───────────────────────────────────────────────
+
+if not _backend_ok:
+    st.caption("Conecta el backend para editar proveedores.")
+    st.stop()
+
+# A partir de aquí: solo si hay backend
 
 st.markdown("---")
 

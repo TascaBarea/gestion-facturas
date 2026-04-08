@@ -4,7 +4,7 @@ Página de inicio — Hub con 4 secciones principales.
 
 import streamlit as st
 from utils.auth import require_role
-from utils.data_client import backend_disponible, get_gmail, get_ventas_comes, fetch_backend_json
+from utils.data_client import backend_disponible, get_gmail, get_ventas_comes
 
 require_role(["admin", "socio", "comes", "eventos"])
 
@@ -57,8 +57,6 @@ st.markdown(
 _backend_ok = backend_disponible()
 
 def _dato_compras() -> str:
-    if not _backend_ok:
-        return "—"
     try:
         data = get_gmail()
         if data and "total_facturas" in data:
@@ -86,12 +84,16 @@ def _dato_ventas() -> str:
 
 
 def _dato_eventos() -> str:
-    if not _backend_ok:
-        return "—"
     try:
-        data = fetch_backend_json("/api/data/eventos.json")
-        if data and "proximo" in data:
-            return data["proximo"]
+        from utils.wc_client import get_wc_api
+        wc = get_wc_api()
+        resp = wc.get("products", params={
+            "status": "publish", "per_page": 1,
+            "orderby": "date", "order": "desc",
+            "type": "simple",
+        }).json()
+        if isinstance(resp, list) and resp:
+            return resp[0].get("name", "")[:60]
     except Exception:
         pass
     return "—"

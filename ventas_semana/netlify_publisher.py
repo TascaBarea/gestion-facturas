@@ -195,6 +195,41 @@ def exportar_json_streamlit(D, MD, DIAS, RAW, PBM):
         json.dump({"procesos": procesos}, f, ensure_ascii=False, indent=2)
     print(f"  monitor.json generado")
 
+    # ── maestro.json (campos públicos, sin CIF/IBAN/EMAIL) ──
+    try:
+        import pandas as pd
+        maestro_path = os.path.join(base_dir, "datos", "MAESTRO_PROVEEDORES.xlsx")
+        if os.path.exists(maestro_path):
+            df_m = pd.read_excel(maestro_path, dtype=str).fillna("")
+            # Solo campos seguros (sin CIF, IBAN, EMAIL)
+            campos_safe = ["PROVEEDOR", "CUENTA", "FORMA_PAGO", "TIENE_EXTRACTOR",
+                           "ARCHIVO_EXTRACTOR", "CATEGORIA_FIJA", "ACTIVO", "NOTAS", "ALIAS"]
+            proveedores_safe = []
+            for _, row in df_m.iterrows():
+                nombre = str(row.get("PROVEEDOR", "")).strip()
+                if not nombre:
+                    continue
+                alias_raw = str(row.get("ALIAS", ""))
+                sep = "," if "," in alias_raw else "|"
+                n_aliases = len([a for a in alias_raw.split(sep) if a.strip()]) if alias_raw else 0
+                proveedores_safe.append({
+                    "PROVEEDOR": nombre,
+                    "CUENTA": str(row.get("CUENTA", "")).strip(),
+                    "FORMA_PAGO": str(row.get("FORMA_PAGO", "")).strip().upper(),
+                    "TIENE_EXTRACTOR": str(row.get("TIENE_EXTRACTOR", "")).strip().upper(),
+                    "ARCHIVO_EXTRACTOR": str(row.get("ARCHIVO_EXTRACTOR", "")).strip(),
+                    "CATEGORIA_FIJA": str(row.get("CATEGORIA_FIJA", "")).strip(),
+                    "ACTIVO": str(row.get("ACTIVO", "")).strip().upper(),
+                    "NOTAS": str(row.get("NOTAS", "")).strip(),
+                    "ALIASES": n_aliases,
+                })
+            with open(os.path.join(data_dir, "maestro.json"), "w", encoding="utf-8") as f:
+                json.dump({"proveedores": proveedores_safe, "total": len(proveedores_safe)},
+                          f, ensure_ascii=False, separators=(",", ":"))
+            print(f"  maestro.json generado ({len(proveedores_safe)} proveedores)")
+    except Exception as e:
+        print(f"  Aviso: no se pudo generar maestro.json: {e}")
+
     # ── meta.json ──
     archivos_presentes = [f for f in os.listdir(data_dir)
                           if f.endswith(".json") and f != "meta.json"]

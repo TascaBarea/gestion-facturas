@@ -195,6 +195,9 @@ def get_gmail() -> dict | None:
 def get_monitor() -> dict | None:
     return _fetch_json("monitor.json")
 
+def get_maestro() -> dict | None:
+    return _fetch_json("maestro.json")
+
 def ultima_actualizacion() -> str:
     meta = get_meta()
     if meta and "exportado" in meta:

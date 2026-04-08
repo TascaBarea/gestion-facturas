@@ -22,7 +22,7 @@ BACKEND = _get_backend_url()
 API_KEY = _get_api_key()
 
 if not BACKEND:
-    st.error("BACKEND_URL no configurado en secrets. No se pueden ejecutar scripts.")
+    st.info("Esta función requiere el backend local (PC de Jaime encendido).")
     st.stop()
 
 
@@ -51,7 +51,7 @@ def _check_backend() -> bool:
 
 
 if not _check_backend():
-    st.warning("El backend no responde. El PC puede estar apagado.")
+    st.info("El backend no está disponible. Los scripts se ejecutan desde el PC de Jaime.")
     st.stop()
 
 st.success("Backend conectado", icon="\U0001f7e2")
