@@ -8,9 +8,9 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:#0f0e0c; --bg2:#1a1916; --bg3:#242220; --border:#2e2c28;
-  --accent:#c9a84c; --accent2:#e8c97a; --text:#f0ece4; --text2:#9a9488; --text3:#5a5650;
-  --c23:#7eb5e8; --c24:#e87e7e; --c25:#7ed9a0; --c26:#e8c97a;
+  --bg:#FAFAF6; --bg2:#F2F0EA; --bg3:#E8E5DC; --border:#D5D0C6;
+  --accent:#CA3026; --accent2:#A82820; --text:#1A1A18; --text2:#5A5650; --text3:#8A8478;
+  --c23:#7eb5e8; --c24:#e87e7e; --c25:#4A8C3F; --c26:#CA3026;
   --bebida:#4a90d9; --comida:#e8734a; --vinos:#9b4f8a; --molletes:#5aaa7a; --otros:#7a7a7a; --promociones:#d4a04a;
   --r:8px;
 }
@@ -23,7 +23,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .header-left p{color:var(--text2);font-size:11px;font-family:'DM Mono',monospace;}
 .year-tabs{display:flex;gap:4px;background:var(--bg);padding:4px;border-radius:10px;}
 .year-tab{padding:5px 14px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:12px;font-weight:500;transition:all .2s;background:transparent;color:var(--text3);}
-.year-tab.active{font-weight:700;color:#0f0e0c;}
+.year-tab.active{font-weight:700;color:#FAFAF6;}
 .year-tab[data-yr="2023"].active{background:var(--c23);}
 .year-tab[data-yr="2024"].active{background:var(--c24);}
 .year-tab[data-yr="2025"].active{background:var(--c25);}
@@ -37,7 +37,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .pill-group{display:flex;gap:3px;background:var(--bg);padding:3px;border-radius:8px;}
 .pill{padding:4px 11px;border-radius:6px;border:none;cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;transition:all .15s;background:transparent;color:var(--text3);}
 .pill:hover:not(.active):not(:disabled){background:var(--bg3);color:var(--text2);}
-.pill.active{background:var(--accent);color:#0f0e0c;font-weight:700;}
+.pill.active{background:var(--accent);color:#FAFAF6;font-weight:700;}
 .pill:disabled{opacity:.25;cursor:default;}
 .period-sep{width:1px;height:28px;background:var(--border);}
 
@@ -45,14 +45,14 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .month-grid{display:flex;gap:3px;flex-wrap:wrap;}
 .month-pill{padding:3px 9px;border-radius:5px;border:1px solid var(--border);cursor:pointer;font-family:'DM Mono',monospace;font-size:10px;transition:all .15s;background:transparent;color:var(--text3);}
 .month-pill:hover:not(.active):not(:disabled){background:var(--bg3);color:var(--text2);}
-.month-pill.active{background:var(--accent);color:#0f0e0c;border-color:var(--accent);font-weight:700;}
+.month-pill.active{background:var(--accent);color:#FAFAF6;border-color:var(--accent);font-weight:700;}
 .month-pill:disabled{opacity:.2;cursor:default;}
 
 /* COMPARE BAR */
 .compare-bar{background:var(--bg3);border-bottom:1px solid var(--border);padding:9px 28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
 .compare-yr-btn{padding:3px 11px;border-radius:6px;border:1px solid var(--border);cursor:pointer;font-family:'DM Mono',monospace;font-size:11px;transition:all .15s;background:transparent;color:var(--text3);}
 .compare-yr-btn:hover:not(.active){background:var(--bg2);}
-.compare-yr-btn.active{font-weight:700;color:#0f0e0c;}
+.compare-yr-btn.active{font-weight:700;color:#FAFAF6;}
 .compare-yr-btn[data-yr="2023"].active{background:var(--c23);border-color:var(--c23);}
 .compare-yr-btn[data-yr="2024"].active{background:var(--c24);border-color:var(--c24);}
 .compare-yr-btn[data-yr="2025"].active{background:var(--c25);border-color:var(--c25);}
@@ -73,8 +73,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .kpi-value{font-family:'DM Serif Display',serif;font-size:26px;color:var(--text);line-height:1;}
 .kpi-compare{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;}
 .kpi-delta{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-family:'DM Mono',monospace;padding:2px 7px;border-radius:4px;margin-top:4px;}
-.kpi-delta.up{background:rgba(90,170,122,.15);color:#5aaa7a;}
-.kpi-delta.down{background:rgba(220,80,80,.15);color:#dc5050;}
+.kpi-delta.up{background:rgba(74,140,63,.12);color:#4A8C3F;}
+.kpi-delta.down{background:rgba(202,48,38,.12);color:#CA3026;}
 .kpi-delta.neu{background:rgba(150,150,150,.1);color:var(--text2);}
 
 /* CHARTS */
@@ -107,25 +107,25 @@ th{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);text-transf
 th:last-child{text-align:right;}
 td{padding:8px 12px;border-bottom:1px solid rgba(46,44,40,.4);font-size:13px;}
 tr:last-child td{border-bottom:none;}
-tr:hover td{background:rgba(255,255,255,.02);}
+tr:hover td{background:rgba(0,0,0,.03);}
 td:last-child{text-align:right;font-family:'DM Mono',monospace;color:var(--accent2);font-size:12px;}
 td:first-child{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);width:24px;}
 .rank-1{color:var(--accent)!important;}
 .bar-bg{background:var(--bg);border-radius:2px;height:3px;margin-top:3px;overflow:hidden;}
 .bar-fill{height:100%;border-radius:2px;background:var(--accent);transition:width .4s ease;}
 .growth{font-size:10px;font-family:'DM Mono',monospace;margin-left:5px;}
-.growth.up{color:#5aaa7a;} .growth.down{color:#dc7070;} .growth.neu{color:var(--text3);} .growth.new{color:var(--text3);}
+.growth.up{color:#4A8C3F;} .growth.down{color:#CA3026;} .growth.neu{color:var(--text3);} .growth.new{color:var(--text3);}
 
 .kpi-all-wrap{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;}
 .kpi-all-row{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:0;overflow-x:auto;}
 .kpi-all-label{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.1em;width:140px;flex-shrink:0;}
 .kpi-yr-cell{flex:1;min-width:110px;padding:8px 14px;border-left:1px solid var(--border);position:relative;}
 .kpi-yr-cell::before{content:'';position:absolute;top:0;left:0;bottom:0;width:2px;background:var(--yc);}
-.kpi-yr-active{background:rgba(255,255,255,.03);border-radius:0 6px 6px 0;}
+.kpi-yr-active{background:rgba(0,0,0,.04);border-radius:0 6px 6px 0;}
 .kpi-yr-label{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:4px;}
 .kpi-yr-value{font-family:'DM Serif Display',serif;font-size:20px;color:var(--text);line-height:1;}
 .kpi-yr-delta{font-size:10px;font-family:'DM Mono',monospace;margin-top:4px;}
-.kpi-yr-delta.up{color:#5aaa7a;} .kpi-yr-delta.down{color:#dc7070;} .kpi-yr-delta.neu{color:var(--text3);}
+.kpi-yr-delta.up{color:#4A8C3F;} .kpi-yr-delta.down{color:#CA3026;} .kpi-yr-delta.neu{color:var(--text3);}
 
 @media(max-width:900px){
   .kpi-row{grid-template-columns:repeat(2,1fr);}
@@ -140,7 +140,7 @@ td:first-child{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3)
 <div class="header">
   <div class="header-left">
     <h1>Tasca Barea</h1>
-    <p>Dashboard de Ventas · 2023–2026 · act. 07/04/2026</p>
+    <p>Dashboard de Ventas · 2023–2026 · act. 08/04/2026</p>
   </div>
   <div class="year-tabs" id="year-tabs">
     <button class="year-tab" data-yr="2023" onclick="setYear('2023')">2023</button>
@@ -270,7 +270,7 @@ const PBM = {"2023":{"1":{"BEBIDA":[{"art":"DOBLE CERVEZA","euros":2915.0,"cant"
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const CAT_COLORS = {BEBIDA:'#4a90d9',COMIDA:'#e8734a',VINOS:'#9b4f8a',MOLLETES:'#5aaa7a',OTROS:'#7a7a7a',PROMOCIONES:'#d4a04a'};
-const YEAR_COLORS = {'2023':'#7eb5e8','2024':'#e87e7e','2025':'#7ed9a0','2026':'#e8c97a'};
+const YEAR_COLORS = {'2023':'#7eb5e8','2024':'#e87e7e','2025':'#4A8C3F','2026':'#CA3026'};
 const YEARS = ["2023","2024","2025","2026"];
 const Q_MONTHS = {1:[1,2,3],2:[4,5,6],3:[7,8,9],4:[10,11,12]};
 
@@ -321,10 +321,10 @@ function destroyChart(id) { if(charts[id]){charts[id].destroy();delete charts[id
 function chartBase() {
   return {
     responsive:true, maintainAspectRatio:false,
-    plugins:{legend:{display:false}, tooltip:{backgroundColor:'#1a1916',borderColor:'#2e2c28',borderWidth:1,titleColor:'#9a9488',bodyColor:'#f0ece4',titleFont:{family:'DM Mono',size:11},bodyFont:{family:'DM Mono',size:12},padding:10}},
+    plugins:{legend:{display:false}, tooltip:{backgroundColor:'#ffffff',borderColor:'#D5D0C6',borderWidth:1,titleColor:'#5A5650',bodyColor:'#1A1A18',titleFont:{family:'DM Mono',size:11},bodyFont:{family:'DM Mono',size:12},padding:10}},
     scales:{
-      x:{grid:{color:'rgba(46,44,40,.6)'},ticks:{color:'#5a5650',font:{family:'DM Mono',size:10}},border:{color:'#2e2c28'}},
-      y:{grid:{color:'rgba(46,44,40,.6)'},ticks:{color:'#5a5650',font:{family:'DM Mono',size:10}},border:{color:'#2e2c28'}}
+      x:{grid:{color:'rgba(0,0,0,.07)'},ticks:{color:'#8A8478',font:{family:'DM Mono',size:10}},border:{color:'#D5D0C6'}},
+      y:{grid:{color:'rgba(0,0,0,.07)'},ticks:{color:'#8A8478',font:{family:'DM Mono',size:10}},border:{color:'#D5D0C6'}}
     }
   };
 }
@@ -500,7 +500,7 @@ function renderEvolution() {
   charts['euros'] = new Chart(document.getElementById('chartEuros'), {
     type:'line', data:{labels, datasets:allDS_euros},
     options:{...chartBase(), plugins:{...chartBase().plugins,
-      legend:{display:true,position:'top',labels:{color:'#c0bab2',font:{family:'DM Mono',size:11},boxWidth:20,boxHeight:3,padding:14}},
+      legend:{display:true,position:'top',labels:{color:'#5A5650',font:{family:'DM Mono',size:11},boxWidth:20,boxHeight:3,padding:14}},
       tooltip:{...chartBase().plugins.tooltip,callbacks:{label:ctx=>` ${ctx.dataset.label}: ${fmtEuros(ctx.raw||0)}`}}
     }}
   });
@@ -544,9 +544,9 @@ function renderDonut() {
   destroyChart('donut');
   charts['donut'] = new Chart(document.getElementById('chartDonut'), {
     type:'doughnut',
-    data:{labels:cats,datasets:[{data:vals,backgroundColor:colors,borderColor:'#0f0e0c',borderWidth:3,hoverOffset:5}]},
+    data:{labels:cats,datasets:[{data:vals,backgroundColor:colors,borderColor:'#FAFAF6',borderWidth:3,hoverOffset:5}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
-      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a1916',borderColor:'#2e2c28',borderWidth:1,bodyColor:'#f0ece4',callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw}%`}}}}
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#ffffff',borderColor:'#D5D0C6',borderWidth:1,bodyColor:'#1A1A18',callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw}%`}}}}
   });
   document.getElementById('donut-legend').innerHTML = cats.map((c,i) =>
     `<div class="legend-item"><div class="legend-dot" style="background:${colors[i]}"></div><span style="color:var(--text2);font-size:12px">${c}</span><span class="legend-pct">${vals[i]}%</span></div>`
@@ -571,7 +571,7 @@ function renderCatEvol() {
       borderWidth:2, pointRadius:3, tension:0.3, spanGaps:false,
     }))},
     options:{...chartBase(),plugins:{...chartBase().plugins,
-      legend:{display:true,labels:{color:'#9a9488',font:{family:'DM Mono',size:10},boxWidth:12,boxHeight:2,padding:10}},
+      legend:{display:true,labels:{color:'#5A5650',font:{family:'DM Mono',size:10},boxWidth:12,boxHeight:2,padding:10}},
       tooltip:{...chartBase().plugins.tooltip,callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.raw}%`}}
     },scales:{...chartBase().scales,
       y:{...chartBase().scales.y,ticks:{...chartBase().scales.y.ticks,callback:v=>v+'%'}}
@@ -678,7 +678,7 @@ function renderAll() {
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
-Chart.defaults.color = '#5a5650';
+Chart.defaults.color = '#8A8478';
 Chart.defaults.plugins.tooltip.callbacks.label = function(ctx) {
   const v = ctx.raw;
   if (typeof v === 'number') {
