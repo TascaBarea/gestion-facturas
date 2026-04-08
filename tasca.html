@@ -203,6 +203,15 @@ td:first-child{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3)
   <div class="section-title">Métricas principales</div>
   <div id="kpi-container"></div>
 
+  <!-- YEARLY OVERVIEW -->
+  <div class="section-title">Evolución anual</div>
+  <div class="charts-grid">
+    <div class="chart-card chart-full">
+      <h3>Total ventas netas (€) por año</h3>
+      <div class="chart-wrap" style="height:200px"><canvas id="chartYearly"></canvas></div>
+    </div>
+  </div>
+
   <!-- EVOLUTION -->
   <div class="section-title">Evolución mensual</div>
   <div class="charts-grid">
@@ -689,6 +698,67 @@ function updatePeriodInfo() {
   document.getElementById('period-info').textContent = activeYear+' · '+label+cmp;
 }
 
+// ── RENDER YEARLY OVERVIEW ────────────────────────────────────────────────────
+function renderYearly() {
+  const yearTotals = YEARS.map(yr => {
+    const avail = availMonths(yr);
+    return avail.reduce((s,m) => s+(RAW[yr].mensual[String(m)]?.euros||0), 0);
+  });
+  const maxVal = Math.max(...yearTotals);
+
+  destroyChart('yearly');
+  charts['yearly'] = new Chart(document.getElementById('chartYearly'), {
+    type:'bar',
+    data:{
+      labels: YEARS,
+      datasets:[{
+        data: yearTotals,
+        backgroundColor: YEARS.map(yr => yr===activeYear ? YEAR_COLORS[yr] : YEAR_COLORS[yr]+'88'),
+        borderColor: YEARS.map(yr => YEAR_COLORS[yr]),
+        borderWidth: 2,
+        borderRadius: 6,
+        barPercentage: 0.55,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{backgroundColor:'#ffffff',borderColor:'#D5D0C6',borderWidth:1,
+          titleColor:'#5A5650',bodyColor:'#1A1A18',
+          titleFont:{family:'DM Mono',size:11},bodyFont:{family:'DM Mono',size:12},padding:10,
+          callbacks:{label:ctx=>' '+fmtEuros(ctx.raw)}},
+      },
+      scales:{
+        x:{grid:{display:false},ticks:{color:'#5A5650',font:{family:'DM Mono',size:12,weight:600}},border:{color:'#D5D0C6'}},
+        y:{grid:{color:'rgba(0,0,0,.07)'},ticks:{color:'#8A8478',font:{family:'DM Mono',size:10},callback:v=>fmtEuros(v)},border:{color:'#D5D0C6'}},
+      },
+    },
+    plugins:[{
+      id:'barLabels',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        chart.data.datasets[0].data.forEach((val,i) => {
+          const meta = chart.getDatasetMeta(0).data[i];
+          const avail = availMonths(YEARS[i]);
+          const partial = avail.length < 12;
+          ctx.save();
+          ctx.fillStyle = '#1A1A18';
+          ctx.font = '600 13px "DM Mono"';
+          ctx.textAlign = 'center';
+          ctx.fillText(fmtEuros(val), meta.x, meta.y - 8);
+          if (partial) {
+            ctx.fillStyle = '#8A8478';
+            ctx.font = '400 10px "DM Mono"';
+            ctx.fillText('('+avail.length+' meses)', meta.x, meta.y - 22);
+          }
+          ctx.restore();
+        });
+      }
+    }]
+  });
+}
+
 // ── POPULATE SELECTS ─────────────────────────────────────────────────────────
 function populateCatSelect() {
   const sel = document.getElementById('cat-select');
@@ -700,6 +770,7 @@ function renderAll() {
   updatePeriodInfo();
   rebuildPeriodUI();
   renderKPIs();
+  renderYearly();
   renderEvolution();
   renderDonut();
   renderCatEvol();
