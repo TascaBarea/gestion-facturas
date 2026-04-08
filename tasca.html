@@ -704,20 +704,30 @@ function renderYearly() {
     const avail = availMonths(yr);
     return avail.reduce((s,m) => s+(RAW[yr].mensual[String(m)]?.euros||0), 0);
   });
-  const maxVal = Math.max(...yearTotals);
+
+  // Last year might be partial
+  const lastYr = YEARS[YEARS.length-1];
+  const lastAvail = availMonths(lastYr);
+  const isPartial = lastAvail.length < 12;
 
   destroyChart('yearly');
   charts['yearly'] = new Chart(document.getElementById('chartYearly'), {
-    type:'bar',
+    type:'line',
     data:{
       labels: YEARS,
       datasets:[{
+        label: 'Ventas netas',
         data: yearTotals,
-        backgroundColor: YEARS.map(yr => yr===activeYear ? YEAR_COLORS[yr] : YEAR_COLORS[yr]+'88'),
-        borderColor: YEARS.map(yr => YEAR_COLORS[yr]),
-        borderWidth: 2,
-        borderRadius: 6,
-        barPercentage: 0.55,
+        borderColor: '#CA3026',
+        backgroundColor: 'rgba(202,48,38,.10)',
+        borderWidth: 3,
+        pointRadius: 6,
+        pointBackgroundColor: YEARS.map(yr => YEAR_COLORS[yr]),
+        pointBorderColor: '#FAFAF6',
+        pointBorderWidth: 2,
+        pointHoverRadius: 9,
+        tension: 0.25,
+        fill: true,
       }]
     },
     options:{
@@ -727,30 +737,64 @@ function renderYearly() {
         tooltip:{backgroundColor:'#ffffff',borderColor:'#D5D0C6',borderWidth:1,
           titleColor:'#5A5650',bodyColor:'#1A1A18',
           titleFont:{family:'DM Mono',size:11},bodyFont:{family:'DM Mono',size:12},padding:10,
-          callbacks:{label:ctx=>' '+fmtEuros(ctx.raw)}},
+          callbacks:{
+            label:ctx=>' '+fmtEuros(ctx.raw),
+            afterLabel:ctx=>{
+              const yr = YEARS[ctx.dataIndex];
+              const avail = availMonths(yr);
+              if(avail.length<12) return '('+avail.length+' meses)';
+              if(ctx.dataIndex>0){
+                const prev = yearTotals[ctx.dataIndex-1];
+                const pct = prev ? ((ctx.raw-prev)/prev*100).toFixed(1) : null;
+                return pct!==null ? (pct>=0?'+':'')+pct+'% vs '+YEARS[ctx.dataIndex-1] : '';
+              }
+              return '';
+            }
+          }
+        },
       },
       scales:{
         x:{grid:{display:false},ticks:{color:'#5A5650',font:{family:'DM Mono',size:12,weight:600}},border:{color:'#D5D0C6'}},
-        y:{grid:{color:'rgba(0,0,0,.07)'},ticks:{color:'#8A8478',font:{family:'DM Mono',size:10},callback:v=>fmtEuros(v)},border:{color:'#D5D0C6'}},
+        y:{beginAtZero:true,grid:{color:'rgba(0,0,0,.07)'},ticks:{color:'#8A8478',font:{family:'DM Mono',size:10},callback:v=>fmtEuros(v)},border:{color:'#D5D0C6'}},
       },
     },
     plugins:[{
-      id:'barLabels',
+      id:'pointLabels',
       afterDatasetsDraw(chart) {
         const ctx = chart.ctx;
-        chart.data.datasets[0].data.forEach((val,i) => {
-          const meta = chart.getDatasetMeta(0).data[i];
+        const meta = chart.getDatasetMeta(0);
+        yearTotals.forEach((val,i) => {
+          const pt = meta.data[i];
           const avail = availMonths(YEARS[i]);
           const partial = avail.length < 12;
+
+          // Growth badge (skip first year)
+          if(i>0) {
+            const prev = yearTotals[i-1];
+            if(prev>0) {
+              const pct = ((val-prev)/prev*100).toFixed(1);
+              const up = pct>=0;
+              ctx.save();
+              ctx.fillStyle = up ? '#4A8C3F' : '#CA3026';
+              ctx.font = '600 10px "DM Mono"';
+              ctx.textAlign = 'center';
+              ctx.fillText((up?'+':'')+pct+'%', pt.x, pt.y - (partial?42:30));
+              ctx.restore();
+            }
+          }
+
+          // Value label
           ctx.save();
           ctx.fillStyle = '#1A1A18';
           ctx.font = '600 13px "DM Mono"';
           ctx.textAlign = 'center';
-          ctx.fillText(fmtEuros(val), meta.x, meta.y - 8);
-          if (partial) {
+          ctx.fillText(fmtEuros(val), pt.x, pt.y - (partial?26:14));
+
+          // Partial indicator
+          if(partial) {
             ctx.fillStyle = '#8A8478';
             ctx.font = '400 10px "DM Mono"';
-            ctx.fillText('('+avail.length+' meses)', meta.x, meta.y - 22);
+            ctx.fillText('('+avail.length+' meses)', pt.x, pt.y - 14);
           }
           ctx.restore();
         });
