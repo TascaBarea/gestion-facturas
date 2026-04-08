@@ -4,6 +4,7 @@ Streamlit multi-page app con roles de acceso.
 """
 
 import time
+from pathlib import Path
 
 import streamlit as st
 from utils.auth import check_login, page_ids_for_role, get_role, get_user_name
@@ -13,9 +14,11 @@ from utils.data_client import backend_disponible, fetch_backend_json
 _MAX_LOGIN_ATTEMPTS = 5
 _LOCKOUT_SECONDS = 60
 
+_FAVICON = Path(__file__).parent / "assets" / "favicon.png"
+
 st.set_page_config(
     page_title="Tasca Barea",
-    page_icon="🫒",
+    page_icon=str(_FAVICON) if _FAVICON.exists() else "🫒",
     layout="centered",
 )
 
