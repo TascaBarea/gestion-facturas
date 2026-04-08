@@ -429,13 +429,21 @@ function getComparePeriod() {
   if (!cyr) return [];
   return activePeriod.filter(m => availMonths(cyr).includes(m));
 }
+function getWooDevengoTotal(yr, months) {
+  const wd = D[yr]?.woo_devengo;
+  if (!wd) return 0;
+  return months.reduce((s,m) => s+(wd[String(m)]?.euros||0), 0);
+}
 function getTotal(yr, field, months) {
   if (field==='prom_ticket') {
     let e=0,t=0;
     months.forEach(m => { const d=D[yr].mensual[String(m)]||{}; e+=d.tickets*(d.prom_ticket||0); t+=d.tickets||0; });
     return t>0 ? e/t : 0;
   }
-  return months.reduce((s,m) => s+(D[yr].mensual[String(m)]?.[field]||0), 0);
+  let total = months.reduce((s,m) => s+(D[yr].mensual[String(m)]?.[field]||0), 0);
+  // Sumar WooCommerce devengo a Ventas netas
+  if (field==='euros') total += getWooDevengoTotal(yr, months);
+  return total;
 }
 function fmtE(n) { return n.toLocaleString('es-ES',{minimumFractionDigits:0,maximumFractionDigits:0})+'€'; }
 function delta(curr, prev) {
@@ -622,6 +630,9 @@ function renderDonut() {
     const euros=D[activeYear].mensual[String(m)]?.euros||0;
     Object.entries(cats).forEach(([cat,pct])=>{ catTotals[cat]=(catTotals[cat]||0)+pct/100*euros; });
   });
+  // Sumar WooCommerce devengo como EXPERIENCIAS
+  const wooDevEuros = getWooDevengoTotal(activeYear, activePeriod);
+  if (wooDevEuros > 0) catTotals['EXPERIENCIAS'] = (catTotals['EXPERIENCIAS']||0) + wooDevEuros;
   const total=Object.values(catTotals).reduce((s,v)=>s+v,0)||1;
   const cats=Object.keys(catTotals).filter(c=>catTotals[c]>0).sort((a,b)=>catTotals[b]-catTotals[a]);
   const vals=cats.map(c=>Math.round(catTotals[c]/total*1000)/10);
@@ -676,16 +687,17 @@ function renderCanal() {
     `<tr><td class="${i===0?'rank-1':''}">${i+1}</td><td style="color:var(--text)">${art}</td><td>${fmtE(e)}</td></tr>`
   ).join('');
 
-  // WooCommerce
-  const wooEuros = activePeriod.reduce((s,m)=>s+(D.woo[String(m)]?.euros||0),0);
-  const wooPedidos = activePeriod.reduce((s,m)=>s+(D.woo[String(m)]?.pedidos||0),0);
+  // WooCommerce (devengo — por fecha de celebración)
+  const wd = D[activeYear]?.woo_devengo||{};
+  const wooEuros = activePeriod.reduce((s,m)=>s+(wd[String(m)]?.euros||0),0);
+  const wooPedidos = activePeriod.reduce((s,m)=>s+(wd[String(m)]?.pedidos||0),0);
   const wooProm = wooPedidos>0 ? wooEuros/wooPedidos : 0;
   document.getElementById('woo-euros').textContent = fmtE(wooEuros);
   document.getElementById('woo-pedidos').textContent = wooPedidos.toLocaleString('es-ES');
   document.getElementById('woo-prom').textContent = wooProm.toFixed(2)+'€';
 
   const wooProds={};
-  activePeriod.forEach(m=>{ Object.entries(D.woo[String(m)]?.products||{}).forEach(([k,v])=>{wooProds[k]=(wooProds[k]||0)+v;}); });
+  activePeriod.forEach(m=>{ Object.entries(wd[String(m)]?.products||{}).forEach(([k,v])=>{wooProds[k]=(wooProds[k]||0)+v;}); });
   const wooTop = Object.entries(wooProds).sort((a,b)=>b[1]-a[1]).slice(0,10);
   document.getElementById('woo-table').innerHTML = wooTop.map(([art,e],i)=>{
     const short = art.length>50 ? art.slice(0,50)+'\u2026' : art;
@@ -701,7 +713,7 @@ function renderCanal() {
     data:{labels:MESES,datasets:[
       {label:'Físico (Loyverse)',data:allM.map(m=>avail.includes(m)?(D[activeYear].mensual[String(m)]?.euros||0):null),
         backgroundColor:'rgba(90,155,213,.65)',borderColor:'#3A7AB5',borderWidth:1,borderRadius:3},
-      {label:'Online (WooCommerce)',data:allM.map(m=>(D.woo[String(m)]?.euros||0)||null),
+      {label:'Online (WooCommerce)',data:allM.map(m=>(wd[String(m)]?.euros||0)||null),
         backgroundColor:'rgba(74,122,58,.55)',borderColor:'#4A7A3A',borderWidth:1,borderRadius:3}
     ]},
     options:{...chartBase(),plugins:{...chartBase().plugins,
