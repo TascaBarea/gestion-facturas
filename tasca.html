@@ -84,6 +84,11 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .chart-card h3{font-size:11px;color:var(--text2);font-family:'DM Mono',monospace;margin-bottom:14px;text-transform:uppercase;letter-spacing:.08em;}
 .chart-wrap{position:relative;}
 
+/* YEARLY TOGGLE */
+.yearly-btn{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:3px 10px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);cursor:pointer;transition:all .15s;}
+.yearly-btn:hover{border-color:var(--accent);color:var(--accent);}
+.yearly-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
 /* DONUT */
 .donut-wrap{display:flex;align-items:center;gap:16px;}
 .donut-legend{display:flex;flex-direction:column;gap:7px;flex:1;}
@@ -204,11 +209,18 @@ td:first-child{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3)
   <div id="kpi-container"></div>
 
   <!-- YEARLY OVERVIEW -->
-  <div class="section-title">Evolución anual</div>
+  <div class="section-title">Evolución histórica</div>
   <div class="charts-grid">
     <div class="chart-card chart-full">
-      <h3>Total ventas netas (€) por año</h3>
-      <div class="chart-wrap" style="height:200px"><canvas id="chartYearly"></canvas></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <h3 id="yearlyTitle" style="margin:0">Ventas netas (€) — Mensual</h3>
+        <div style="display:flex;gap:4px">
+          <button class="yearly-btn active" data-grain="monthly" onclick="setYearlyGrain('monthly')">Mensual</button>
+          <button class="yearly-btn" data-grain="quarterly" onclick="setYearlyGrain('quarterly')">Trimestral</button>
+          <button class="yearly-btn" data-grain="yearly" onclick="setYearlyGrain('yearly')">Anual</button>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:220px"><canvas id="chartYearly"></canvas></div>
     </div>
   </div>
 
@@ -699,34 +711,72 @@ function updatePeriodInfo() {
 }
 
 // ── RENDER YEARLY OVERVIEW ────────────────────────────────────────────────────
-function renderYearly() {
-  const yearTotals = YEARS.map(yr => {
-    const avail = availMonths(yr);
-    return avail.reduce((s,m) => s+(RAW[yr].mensual[String(m)]?.euros||0), 0);
-  });
+let yearlyGrain = 'monthly';
+const QUARTER_NAMES = ['T1','T2','T3','T4'];
+const GRAIN_LABELS = {monthly:'Mensual', quarterly:'Trimestral', yearly:'Anual'};
 
-  // Last year might be partial
-  const lastYr = YEARS[YEARS.length-1];
-  const lastAvail = availMonths(lastYr);
-  const isPartial = lastAvail.length < 12;
+function setYearlyGrain(g) {
+  yearlyGrain = g;
+  document.querySelectorAll('.yearly-btn').forEach(b => b.classList.toggle('active', b.dataset.grain===g));
+  document.getElementById('yearlyTitle').textContent = 'Ventas netas (€) — '+GRAIN_LABELS[g];
+  renderYearly();
+}
+
+function buildYearlySeries() {
+  const labels = [], values = [], colors = [];
+  if (yearlyGrain === 'monthly') {
+    YEARS.forEach(yr => {
+      availMonths(yr).forEach(m => {
+        labels.push(MESES[m-1].slice(0,3)+' '+yr.slice(2));
+        values.push(RAW[yr].mensual[String(m)]?.euros||0);
+        colors.push(YEAR_COLORS[yr]);
+      });
+    });
+  } else if (yearlyGrain === 'quarterly') {
+    YEARS.forEach(yr => {
+      const avail = availMonths(yr);
+      for (let q=0; q<4; q++) {
+        const qMonths = [q*3+1, q*3+2, q*3+3].filter(m => avail.includes(m));
+        if (qMonths.length === 0) continue;
+        const total = qMonths.reduce((s,m) => s+(RAW[yr].mensual[String(m)]?.euros||0), 0);
+        const partial = qMonths.length < 3;
+        labels.push(QUARTER_NAMES[q]+' '+yr.slice(2) + (partial?' *':''));
+        values.push(total);
+        colors.push(YEAR_COLORS[yr]);
+      }
+    });
+  } else {
+    YEARS.forEach(yr => {
+      const avail = availMonths(yr);
+      const total = avail.reduce((s,m) => s+(RAW[yr].mensual[String(m)]?.euros||0), 0);
+      labels.push(yr);
+      values.push(total);
+      colors.push(YEAR_COLORS[yr]);
+    });
+  }
+  return {labels, values, colors};
+}
+
+function renderYearly() {
+  const {labels, values, colors} = buildYearlySeries();
 
   destroyChart('yearly');
   charts['yearly'] = new Chart(document.getElementById('chartYearly'), {
     type:'line',
     data:{
-      labels: YEARS,
+      labels,
       datasets:[{
         label: 'Ventas netas',
-        data: yearTotals,
+        data: values,
         borderColor: '#CA3026',
-        backgroundColor: 'rgba(202,48,38,.10)',
-        borderWidth: 3,
-        pointRadius: 6,
-        pointBackgroundColor: YEARS.map(yr => YEAR_COLORS[yr]),
+        backgroundColor: 'rgba(202,48,38,.08)',
+        borderWidth: 2.5,
+        pointRadius: yearlyGrain==='monthly' ? 3 : 5,
+        pointBackgroundColor: colors,
         pointBorderColor: '#FAFAF6',
-        pointBorderWidth: 2,
-        pointHoverRadius: 9,
-        tension: 0.25,
+        pointBorderWidth: 1.5,
+        pointHoverRadius: 7,
+        tension: 0.3,
         fill: true,
       }]
     },
@@ -740,13 +790,10 @@ function renderYearly() {
           callbacks:{
             label:ctx=>' '+fmtEuros(ctx.raw),
             afterLabel:ctx=>{
-              const yr = YEARS[ctx.dataIndex];
-              const avail = availMonths(yr);
-              if(avail.length<12) return '('+avail.length+' meses)';
               if(ctx.dataIndex>0){
-                const prev = yearTotals[ctx.dataIndex-1];
+                const prev = values[ctx.dataIndex-1];
                 const pct = prev ? ((ctx.raw-prev)/prev*100).toFixed(1) : null;
-                return pct!==null ? (pct>=0?'+':'')+pct+'% vs '+YEARS[ctx.dataIndex-1] : '';
+                return pct!==null ? (pct>=0?'+':'')+pct+'% vs anterior' : '';
               }
               return '';
             }
@@ -754,52 +801,26 @@ function renderYearly() {
         },
       },
       scales:{
-        x:{grid:{display:false},ticks:{color:'#5A5650',font:{family:'DM Mono',size:12,weight:600}},border:{color:'#D5D0C6'}},
+        x:{grid:{display:false},ticks:{color:'#5A5650',font:{family:'DM Mono',size:yearlyGrain==='monthly'?9:11,weight:600},maxRotation:45,minRotation:0},border:{color:'#D5D0C6'}},
         y:{beginAtZero:true,grid:{color:'rgba(0,0,0,.07)'},ticks:{color:'#8A8478',font:{family:'DM Mono',size:10},callback:v=>fmtEuros(v)},border:{color:'#D5D0C6'}},
       },
     },
-    plugins:[{
+    plugins: yearlyGrain !== 'monthly' ? [{
       id:'pointLabels',
       afterDatasetsDraw(chart) {
-        const ctx = chart.ctx;
+        const ctx2 = chart.ctx;
         const meta = chart.getDatasetMeta(0);
-        yearTotals.forEach((val,i) => {
+        values.forEach((val,i) => {
           const pt = meta.data[i];
-          const avail = availMonths(YEARS[i]);
-          const partial = avail.length < 12;
-
-          // Growth badge (skip first year)
-          if(i>0) {
-            const prev = yearTotals[i-1];
-            if(prev>0) {
-              const pct = ((val-prev)/prev*100).toFixed(1);
-              const up = pct>=0;
-              ctx.save();
-              ctx.fillStyle = up ? '#4A8C3F' : '#CA3026';
-              ctx.font = '600 10px "DM Mono"';
-              ctx.textAlign = 'center';
-              ctx.fillText((up?'+':'')+pct+'%', pt.x, pt.y - (partial?42:30));
-              ctx.restore();
-            }
-          }
-
-          // Value label
-          ctx.save();
-          ctx.fillStyle = '#1A1A18';
-          ctx.font = '600 13px "DM Mono"';
-          ctx.textAlign = 'center';
-          ctx.fillText(fmtEuros(val), pt.x, pt.y - (partial?26:14));
-
-          // Partial indicator
-          if(partial) {
-            ctx.fillStyle = '#8A8478';
-            ctx.font = '400 10px "DM Mono"';
-            ctx.fillText('('+avail.length+' meses)', pt.x, pt.y - 14);
-          }
-          ctx.restore();
+          ctx2.save();
+          ctx2.fillStyle = '#1A1A18';
+          ctx2.font = '600 11px "DM Mono"';
+          ctx2.textAlign = 'center';
+          ctx2.fillText(fmtEuros(val), pt.x, pt.y - 12);
+          ctx2.restore();
         });
       }
-    }]
+    }] : []
   });
 }
 
