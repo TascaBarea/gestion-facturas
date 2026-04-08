@@ -843,12 +843,17 @@ function renderProductDetail() {
       ${delta(curVal, cmpVal)}
     </div>
     <div class="pd-kpi">
-      <div class="pd-kpi-label">Ticket medio</div>
-      <div class="pd-kpi-value">${(() => {
-        let tickets = 0;
-        activePeriod.forEach(mes => { tickets += (RAW[activeYear].mensual[String(mes)]?.tickets || 0); });
-        return tickets > 0 ? fmtEuros(totalE / tickets) : '—';
-      })()}</div>
+      <div class="pd-kpi-label">Precio medio</div>
+      <div class="pd-kpi-value">${totalC > 0 ? fmtEuros(totalE / totalC) + '/ud' : '—'}</div>
+      ${(() => {
+        if (!hasCmp || cmpC === 0) return '';
+        const cur = totalC > 0 ? totalE/totalC : 0;
+        const prev = cmpC > 0 ? cmpE/cmpC : 0;
+        if (prev === 0) return '';
+        const pct = (cur-prev)/prev*100;
+        const cls = pct >= 5 ? 'up' : pct <= -5 ? 'down' : 'neu';
+        return `<span class="pd-kpi-delta ${cls}">${pct>=0?'+':''}${Math.round(pct)}%</span>`;
+      })()}
     </div>
     <div class="pd-kpi">
       <div class="pd-kpi-label">% de ${cat}</div>
