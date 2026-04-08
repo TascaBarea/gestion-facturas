@@ -146,6 +146,16 @@ td:last-child{color:var(--accent2);}
 .growth{font-size:10px;font-family:'DM Mono',monospace;margin-left:4px;}
 .growth.up{color:#4A7A3A;} .growth.down{color:#B43228;} .growth.neu{color:var(--text3);} .growth.new{color:var(--text3);}
 
+/* PRODUCT DETAIL */
+.pd-controls{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+.pd-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.pd-kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;}
+.pd-kpi-label{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.pd-kpi-value{font-family:'DM Serif Display',serif;font-size:22px;color:var(--text);line-height:1;}
+.pd-kpi-delta{font-size:10px;font-family:'DM Mono',monospace;margin-top:5px;}
+.pd-kpi-delta.up{color:#4A7A3A;} .pd-kpi-delta.down{color:#B43228;} .pd-kpi-delta.neu{color:var(--text3);}
+.pd-empty{text-align:center;padding:40px;color:var(--text3);font-family:'DM Mono',monospace;font-size:12px;}
+
 .tt{position:relative;cursor:default;}
 .tt::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:0;background:#ffffff;color:#1A2517;
   border:1px solid #C8D4BE;border-radius:6px;padding:8px 12px;font-size:11px;font-family:'DM Mono',monospace;
@@ -272,6 +282,7 @@ td:last-child{color:var(--accent2);}
 
 <!-- PAGE: PRODUCTOS -->
 <div class="page" id="page-productos">
+  <div class="stitle">Análisis de Categorías</div>
   <div class="prod-controls" style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
     <span class="pl">Categoría:</span>
     <select class="select-s" id="cat-select" onchange="renderProducts()"></select>
@@ -290,6 +301,25 @@ td:last-child{color:var(--accent2);}
       <table><thead><tr><th>#</th><th>Producto</th><th id="th-top" style="text-align:right">Ventas €</th></tr></thead><tbody id="top-table"></tbody></table></div>
     <div class="prod-card"><div class="prod-card-header"><h3>Menos vendidos</h3><span class="badge-bot" id="badge-bot">Bottom 10</span></div>
       <table><thead><tr><th>#</th><th>Producto</th><th id="th-bot" style="text-align:right">Ventas €</th></tr></thead><tbody id="bot-table"></tbody></table></div>
+  </div>
+
+  <!-- PRODUCT DETAIL -->
+  <div class="stitle" style="margin-top:24px">Análisis de Producto</div>
+  <div class="pd-controls">
+    <span class="pl">Categoría:</span>
+    <select class="select-s" id="pd-cat" onchange="onPdCatChange()"></select>
+    <span class="pl">Producto:</span>
+    <select class="select-s" id="pd-prod" onchange="renderProductDetail()" style="min-width:180px"></select>
+    <span class="pl">Medir por:</span>
+    <div class="pill-group">
+      <button class="pill active" id="pd-m-euros" onclick="setPdMetric('euros')">€ Euros</button>
+      <button class="pill" id="pd-m-cant" onclick="setPdMetric('cant')">Uds</button>
+    </div>
+  </div>
+  <div class="pd-kpis" id="pd-kpis"></div>
+  <div class="chart-card">
+    <h3 id="pd-chart-title">Evolución mensual del producto</h3>
+    <div style="height:200px"><canvas id="chartProdDetail"></canvas></div>
   </div>
 </div>
 
@@ -777,6 +807,184 @@ function renderProducts() {
 }
 function setProdMetric(m){prodMetric=m;document.getElementById('pm-euros').classList.toggle('active',m==='euros');document.getElementById('pm-cant').classList.toggle('active',m==='cant');renderProducts();}
 
+// ── PRODUCT DETAIL ─────────────────────────────────────────────────────────────────
+let pdMetric = 'euros';
+
+function setPdMetric(m) {
+  pdMetric = m;
+  document.getElementById('pd-m-euros').classList.toggle('active', m==='euros');
+  document.getElementById('pd-m-cant').classList.toggle('active', m==='cant');
+  renderProductDetail();
+}
+
+function populatePdCatSelect() {
+  const allCats = [...new Set(YEARS.flatMap(yr=>Object.keys(D[yr].cats_total)))].sort();
+  document.getElementById('pd-cat').innerHTML = allCats.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
+function onPdCatChange() {
+  const cat = document.getElementById('pd-cat').value;
+  const m = pdMetric;
+  const artMap = {};
+  activePeriod.forEach(mes => {
+    const prods = (D[activeYear].pbm[String(mes)]?.[cat] || []);
+    prods.forEach(p => {
+      if (!artMap[p.art]) artMap[p.art] = {euros:0, cant:0};
+      artMap[p.art].euros += p.euros;
+      artMap[p.art].cant += p.cant;
+    });
+  });
+  const sorted = Object.entries(artMap).filter(([,v])=>v[m]>0)
+    .sort((a,b)=>b[1][m]-a[1][m]);
+  const sel = document.getElementById('pd-prod');
+  if (sorted.length === 0) {
+    sel.innerHTML = '<option value="">Sin datos</option>';
+    renderProductDetail();
+    return;
+  }
+  sel.innerHTML = sorted.map(([art])=>`<option value="${art}">${art}</option>`).join('');
+  renderProductDetail();
+}
+
+function renderProductDetail() {
+  const cat = document.getElementById('pd-cat').value;
+  const prod = document.getElementById('pd-prod').value;
+  const m = pdMetric;
+  const kpiEl = document.getElementById('pd-kpis');
+
+  if (!prod) {
+    kpiEl.innerHTML = '<div class="pd-empty">Selecciona una categoría y un producto</div>';
+    destroyChart('prodDetail');
+    return;
+  }
+
+  let totalE = 0, totalC = 0, catTotalE = 0, catTotalC = 0;
+  activePeriod.forEach(mes => {
+    const prods = D[activeYear].pbm[String(mes)]?.[cat] || [];
+    prods.forEach(p => {
+      catTotalE += p.euros; catTotalC += p.cant;
+      if (p.art === prod) { totalE += p.euros; totalC += p.cant; }
+    });
+  });
+
+  const artMap = {};
+  activePeriod.forEach(mes => {
+    (D[activeYear].pbm[String(mes)]?.[cat] || []).forEach(p => {
+      if (!artMap[p.art]) artMap[p.art] = {euros:0, cant:0};
+      artMap[p.art].euros += p.euros; artMap[p.art].cant += p.cant;
+    });
+  });
+  const ranked = Object.entries(artMap).filter(([,v])=>v[m]>0).sort((a,b)=>b[1][m]-a[1][m]);
+  const rank = ranked.findIndex(([a])=>a===prod) + 1;
+  const totalProds = ranked.length;
+
+  const cyr = getCompareYear();
+  const cp = getComparePeriod();
+  let cmpE = 0, cmpC = 0, cmpCatE = 0, cmpCatC = 0, hasCmp = false;
+  if (cyr && cp.length) {
+    hasCmp = true;
+    cp.forEach(mes => {
+      const prods = D[cyr]?.pbm[String(mes)]?.[cat] || [];
+      prods.forEach(p => {
+        cmpCatE += p.euros; cmpCatC += p.cant;
+        if (p.art === prod) { cmpE += p.euros; cmpC += p.cant; }
+      });
+    });
+  }
+
+  function delta(cur, prev) {
+    if (!hasCmp) return '';
+    if (prev === 0) return cur > 0 ? '<span class="pd-kpi-delta up">nuevo</span>' : '';
+    const pct = (cur - prev) / prev * 100;
+    const cls = pct >= 5 ? 'up' : pct <= -5 ? 'down' : 'neu';
+    const sign = pct >= 0 ? '+' : '';
+    return `<span class="pd-kpi-delta ${cls}">${sign}${Math.round(pct)}%</span>`;
+  }
+
+  const curVal = m === 'euros' ? totalE : totalC;
+  const cmpVal = m === 'euros' ? cmpE : cmpC;
+  const catVal = m === 'euros' ? catTotalE : catTotalC;
+  const cmpCatVal = m === 'euros' ? cmpCatE : cmpCatC;
+  const pctCat = catVal > 0 ? (curVal / catVal * 100) : 0;
+  const cmpPctCat = cmpCatVal > 0 ? (cmpVal / cmpCatVal * 100) : 0;
+
+  kpiEl.innerHTML = `
+    <div class="pd-kpi">
+      <div class="pd-kpi-label">Total ${m==='euros'?'€':'Uds'}</div>
+      <div class="pd-kpi-value">${m==='euros' ? fmtE(curVal) : curVal.toLocaleString('es-ES')+' uds'}</div>
+      ${delta(curVal, cmpVal)}
+    </div>
+    <div class="pd-kpi">
+      <div class="pd-kpi-label">Ticket medio</div>
+      <div class="pd-kpi-value">${(() => {
+        let tickets = 0;
+        activePeriod.forEach(mes => { tickets += (D[activeYear].mensual[String(mes)]?.tickets || 0); });
+        return tickets > 0 ? fmtE(totalE / tickets) : '—';
+      })()}</div>
+    </div>
+    <div class="pd-kpi">
+      <div class="pd-kpi-label">% de ${cat}</div>
+      <div class="pd-kpi-value">${pctCat.toFixed(1)}%</div>
+      ${hasCmp && cmpPctCat > 0 ? `<span class="pd-kpi-delta ${pctCat - cmpPctCat >= 1 ? 'up' : pctCat - cmpPctCat <= -1 ? 'down' : 'neu'}">${(pctCat-cmpPctCat)>=0?'+':''}${(pctCat-cmpPctCat).toFixed(1)}pp</span>` : ''}
+    </div>
+    <div class="pd-kpi">
+      <div class="pd-kpi-label">Ranking</div>
+      <div class="pd-kpi-value">#${rank} <span style="font-size:13px;color:var(--text3);font-family:'DM Mono',monospace">de ${totalProds}</span></div>
+    </div>
+  `;
+
+  const allMonths = [1,2,3,4,5,6,7,8,9,10,11,12];
+  const field = m === 'euros' ? 'euros' : 'cant';
+
+  function prodMonthlyData(yr) {
+    return allMonths.map(mo => {
+      if (!availMonths(yr).includes(mo)) return null;
+      const prods = D[yr]?.pbm[String(mo)]?.[cat] || [];
+      const found = prods.find(p => p.art === prod);
+      return found ? found[field] : 0;
+    });
+  }
+
+  const cyrVal = getCompareYear();
+  const shownYears = cyrVal ? [cyrVal, activeYear] : [activeYear];
+
+  const datasets = shownYears.map(yr => {
+    const isActive = yr === activeYear;
+    const color = YEAR_COLORS[yr];
+    return {
+      label: yr,
+      data: prodMonthlyData(yr),
+      borderColor: color,
+      backgroundColor: isActive ? color + '18' : 'transparent',
+      borderWidth: isActive ? 3 : 2,
+      pointRadius: allMonths.map(mo => activePeriod.includes(mo) && isActive ? 5 : 2),
+      pointBackgroundColor: allMonths.map(mo => activePeriod.includes(mo) && isActive ? color : color + '66'),
+      tension: 0.3,
+      fill: isActive,
+      spanGaps: false,
+    };
+  });
+
+  document.getElementById('pd-chart-title').textContent =
+    `${prod} — ${m==='euros'?'Ventas €':'Unidades'} por mes`;
+
+  destroyChart('prodDetail');
+  charts['prodDetail'] = new Chart(document.getElementById('chartProdDetail'), {
+    type: 'line',
+    data: { labels: MESES, datasets },
+    options: {
+      ...chartBase(),
+      plugins: {
+        ...chartBase().plugins,
+        legend: { display: shownYears.length > 1, position: 'top',
+          labels: { color: '#4A5F3E', font: { family: 'DM Mono', size: 11 }, boxWidth: 20, boxHeight: 3, padding: 14 }},
+        tooltip: { ...chartBase().plugins.tooltip,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${m==='euros' ? fmtE(ctx.raw||0) : (ctx.raw||0).toLocaleString('es-ES')+' uds'}` }}
+      }
+    }
+  });
+}
+
 // ── ROTATION ─────────────────────────────────────────────────────────────────
 function setRotView(v) {
   rotView=v;
@@ -825,7 +1033,7 @@ function populateSelects() {
 function renderCurrentPage() {
   if(activePage==='overview'){renderKPIs();renderCharts();renderDonut();renderCatEvol();}
   else if(activePage==='canal') renderCanal();
-  else if(activePage==='productos') renderProducts();
+  else if(activePage==='productos'){renderProducts();onPdCatChange();}
   else if(activePage==='rotacion') renderRotation();
   else if(activePage==='rentabilidad') renderRentabilidad();
   else if(activePage==='dias') renderDias();
@@ -1195,6 +1403,7 @@ Chart.defaults.plugins.tooltip.callbacks.label = function(ctx) {
   return ' ' + ctx.dataset.label + ': ' + v;
 };
 populateSelects();
+populatePdCatSelect();
 activePeriod=availMonths(activeYear);
 renderAll();
 </script>
