@@ -1,6 +1,6 @@
-# SPEC GESTION-FACTURAS v4.0
+# SPEC GESTION-FACTURAS v4.1
 
-> Documento maestro unificado — 29/03/2026
+> Documento maestro unificado — 01/04/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
 
@@ -65,13 +65,16 @@ gestion-facturas/
 │   └── emails_procesados.json          # Control duplicados Gmail
 │
 ├── scripts/                   # Herramientas permanentes e independientes
-│   ├── dia_tickets.py         # Descarga tickets DIA via API
-│   ├── dia_explorar.py        # Exploración endpoints DIA
-│   ├── bm_tickets.py          # BM Supermercados (POR CONSTRUIR)
-│   ├── renombrar_transferencias.py  # Renombra PDFs Sabadell
+│   ├── tickets/               # Módulo unificado tickets de proveedores
+│   │   ├── __init__.py        # Descripción del módulo
+│   │   ├── comun.py           # Lógica compartida (trimestre, registro, logging)
+│   │   ├── dia.py             # DIA: API + Playwright login, anti-duplicación
+│   │   ├── bm.py              # BM Supermercados: semi-manual (PDFs app BM+)
+│   │   └── makro.py           # Makro (placeholder)
+│   ├── dia_explorar.py        # Exploración endpoints DIA (referencia)
+│   ├── mov_banco.py           # Análisis movimientos bancarios
 │   ├── investigacion.py       # Pipeline investigación YouTube/web/Reddit
-│   ├── backup_cifrado.py      # Backup AES-256 archivos críticos
-│   └── generar_hashes.py      # Genera hashes scrypt para secrets.toml
+│   └── backup_cifrado.py      # Backup AES-256 archivos críticos
 │
 ├── nucleo/                    # Módulo core compartido
 │   ├── maestro.py             # MaestroProveedores + cache singleton (obtener_maestro)
@@ -229,8 +232,9 @@ Cuadre_011025-020126.xlsx  → Cuadre del 01/10/25 al 02/01/26
 - `WOOCOMMERCE`
 
 **Dashboards:** Template-based con Chart.js
-- `dashboard_comes_template.html` (6 placeholders) — 2 años (2025-2026), 13 categorías, rotación productos, rentabilidad margen €/kg
+- `dashboard_comes_template.html` (6 placeholders) — 2 años (2025-2026), 13 categorías, rotación productos, rentabilidad margen €/kg. Donut categorías promovido (220×220px), gráfico Nº Tickets eliminado. WooCommerce integrado con criterio de devengo (fecha de celebración)
 - `dashboard_tasca_template.html` (5 placeholders) — 4 años (2023-2026), 6 categorías (BEBIDA, COMIDA, VINOS, MOLLETES, OTROS, PROMOCIONES)
+- **Despliegue:** Streamlit Cloud (producción, auto-deploy on push). Cloudflare Tunnel solo para desarrollo local. Ver `docs/FLUJO_DESPLIEGUE_DASHBOARDS.md`
 
 **PDF resumen mensual:** matplotlib + reportlab
 - Completo (3 págs): KPIs + Comparativa / Evolución / Categorías
@@ -426,12 +430,31 @@ Parseo/extractores/
 
 ## 8. SCRIPTS INDEPENDIENTES
 
+### 8.1 Módulo `scripts/tickets/` — Adquisición de tickets de proveedores
+
+Módulo unificado. Lógica compartida en `comun.py` (trimestre, nomenclatura, registro anti-duplicación).
+Registros en `datos/tickets_registros/`. Tickets DIA en `datos/dia_tickets/`.
+
+| Script | Función | Modo | Estado |
+|--------|---------|------|--------|
+| `tickets/dia.py` | Descarga tickets DIA via API interna + Playwright login | Automático | ✅ |
+| `tickets/bm.py` | BM Supermercados: procesa PDFs descargados manualmente de app BM+ | Semi-manual | ✅ |
+| `tickets/makro.py` | Makro | Pendiente | Placeholder |
+
+Uso:
+```
+python -m scripts.tickets.dia              # tickets DIA nuevos
+python -m scripts.tickets.dia --login      # renovar sesión
+python -m scripts.tickets.bm               # procesar PDFs BM
+python -m scripts.tickets.bm --parsear     # procesar + parsear con main.py
+```
+
+### 8.2 Otros scripts
+
 | Script | Función | Estado |
 |--------|---------|--------|
-| `dia_tickets.py` | Descarga tickets DIA via API + Playwright, anti-duplicación, sube a Dropbox | ✅ |
-| `dia_explorar.py` | Exploración endpoints API dia.es | ✅ (auxiliar) |
-| `bm_tickets.py` | Similar a DIA para BM Supermercados | POR CONSTRUIR |
-| `renombrar_transferencias.py` | Renombra PDFs transferencias Sabadell (BENEFICIARIO_MMDD.pdf) | ✅ |
+| `dia_explorar.py` | Exploración endpoints API dia.es | ✅ (referencia) |
+| `mov_banco.py` | Análisis movimientos bancarios | ✅ |
 | `investigacion.py` | Pipeline: YouTube + web + Reddit → resumen → NotebookLM | ✅ |
 | `backup_cifrado.py` | Backup AES-256 (Fernet + PBKDF2) de 14 archivos críticos | ✅ |
 
@@ -674,6 +697,14 @@ Datos en `config/datos_sensibles.py`. Incluye: IBAN_TASCA, IBAN_COMESTIBLES, BIC
 ---
 
 ## CHANGELOG
+
+### v5.5 (08/04/2026) — WOOCOMMERCE DEVENGO + DESPLIEGUE DOCUMENTADO
+- WooCommerce integrado en Ventas Netas con criterio de devengo (fecha de celebración)
+- Donut categorías incluye EXPERIENCIAS de WooCommerce
+- Canal físico/online usa datos reclasificados por celebración
+- Template Comestibles: eliminado gráfico Nº Tickets, donut promovido 220×220px
+- Documentación flujo despliegue: `docs/FLUJO_DESPLIEGUE_DASHBOARDS.md`
+- Despliegue producción via Streamlit Cloud, Cloudflare Tunnel solo desarrollo
 
 ### v5.4 (28/03/2026) — GOOGLE DRIVE SYNC + AUTH CENTRALIZADO
 - Página Documentos en Streamlit (lista archivos Drive por subcarpeta)

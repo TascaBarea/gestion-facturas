@@ -390,6 +390,14 @@ def calcular_D(items_por_año, recibos_por_año, df_woo):
             _agrupar_otros(D[year])
 
     D["woo"] = _calcular_woo(df_woo)
+
+    # WooCommerce reclasificado por fecha de celebración (devengo)
+    woo_devengo = _calcular_woo_devengo(df_woo)
+    for year in YEAR_LIST:
+        D[year]["woo_devengo"] = woo_devengo.get(year, {
+            str(m): {"euros": 0, "pedidos": 0, "products": {}} for m in range(1, 13)
+        })
+
     return D
 
 
@@ -509,6 +517,148 @@ def _calcular_woo(df_woo):
         }
 
     return woo
+
+
+# ── WooCommerce devengo (por fecha de celebración) ──────────────────────────
+
+_MESES_ES = {
+    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5, "junio": 6,
+    "julio": 7, "agosto": 8, "septiembre": 9, "octubre": 10, "noviembre": 11,
+    "diciembre": 12,
+}
+
+_RE_REGALA = re.compile(r"regala\s+talleres", re.IGNORECASE)
+
+
+def _extraer_fecha_celebracion(nombre_producto, fecha_compra):
+    """Extrae (year_4dig, month) de celebración del nombre del producto WooCommerce.
+
+    Busca patrones DD/MM/YY, DD-MM-YY, DD-mes-YYYY en el texto.
+    Si hay varias fechas (productos concatenados con coma), usa la primera.
+    Valida que el año tenga sentido respecto a la fecha de compra.
+    Devuelve None si no encuentra fecha o si es un vale regalo sin fecha.
+    """
+    if not nombre_producto or pd.isna(nombre_producto):
+        return None
+
+    texto = str(nombre_producto)
+
+    # Patrón 1: DD/MM/YY
+    m = re.search(r"(\d{1,2})/(\d{2})/(\d{2})", texto)
+    if m:
+        day, month, yy = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        year = 2000 + yy
+        if 1 <= month <= 12:
+            # Sanidad: si el año es claramente incorrecto (ej: 25 cuando compra es 2026)
+            if fecha_compra and year < fecha_compra.year:
+                year = fecha_compra.year
+            return (year, month)
+
+    # Patrón 2: DD-MM-YY (numérico con guiones)
+    m = re.search(r"(\d{1,2})-(\d{2})-(\d{2})(?!\d)", texto)
+    if m:
+        day, month, yy = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        year = 2000 + yy
+        if 1 <= month <= 12:
+            if fecha_compra and year < fecha_compra.year:
+                year = fecha_compra.year
+            return (year, month)
+
+    # Patrón 3: DD-mes-YYYY o DD-mes-YY (texto)
+    m = re.search(
+        r"(\d{1,2})[-\s]+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|"
+        r"septiembre|octubre|noviembre|diciembre)[-\s]+(\d{4}|\d{2})",
+        texto, re.IGNORECASE,
+    )
+    if m:
+        month = _MESES_ES.get(m.group(2).lower())
+        yy = int(m.group(3))
+        year = yy if yy >= 2000 else 2000 + yy
+        if month and fecha_compra and year < fecha_compra.year:
+            year = fecha_compra.year
+        return (year, month) if month else None
+
+    return None
+
+
+def _calcular_woo_devengo(df_woo):
+    """Reclasifica pedidos WooCommerce por fecha de CELEBRACIÓN (devengo).
+
+    Devuelve dict: {year_str: {month_str: {euros, pedidos, products}}}.
+    Excluye productos 'Regala talleres y catas' sin fecha de celebración.
+    Si no se encuentra fecha de celebración, usa la fecha de compra como fallback.
+    """
+    result = {}
+    for yr in YEAR_LIST:
+        result[yr] = {}
+        for m in range(1, 13):
+            result[yr][str(m)] = {"euros": 0, "pedidos": 0, "products": {}}
+
+    if df_woo is None or df_woo.empty:
+        return result
+
+    df = df_woo.copy()
+
+    # Filtrar por estado válido
+    col_status = "status" if "status" in df.columns else "estado"
+    if col_status in df.columns:
+        estados_validos = {"completed", "processing", "on-hold", "Completado", "En proceso"}
+        df = df[df[col_status].isin(estados_validos)]
+
+    # Fecha de compra
+    col_fecha = "date_created" if "date_created" in df.columns else "fecha"
+    df["_fecha_compra"] = pd.to_datetime(df[col_fecha], format="mixed", dayfirst=True, errors="coerce")
+
+    # Total numérico
+    if df["total"].dtype == object:
+        df["_total"] = pd.to_numeric(
+            df["total"].astype(str).str.replace("€", "").str.replace(" ", "").str.replace(",", "."),
+            errors="coerce",
+        ).fillna(0)
+    else:
+        df["_total"] = df["total"].fillna(0)
+
+    for _, row in df.iterrows():
+        nombre = str(row.get("items_resumen", "") or "")
+        total = float(row.get("_total", 0))
+        fecha_compra = row.get("_fecha_compra")
+
+        if total <= 0:
+            continue
+
+        # Excluir vales regalo sin fecha de celebración
+        if _RE_REGALA.search(nombre):
+            fecha_cel = _extraer_fecha_celebracion(nombre, fecha_compra)
+            if fecha_cel is None:
+                continue  # vale regalo puro → no contabilizar
+
+        # Determinar mes de devengo
+        fecha_cel = _extraer_fecha_celebracion(nombre, fecha_compra)
+        if fecha_cel:
+            year_dev, month_dev = fecha_cel
+        elif pd.notna(fecha_compra):
+            year_dev, month_dev = fecha_compra.year, fecha_compra.month
+        else:
+            continue
+
+        yr_str = str(year_dev)
+        m_str = str(month_dev)
+
+        # Solo años que estamos procesando
+        if yr_str not in result:
+            continue
+
+        result[yr_str][m_str]["euros"] = _round(result[yr_str][m_str]["euros"] + total)
+        result[yr_str][m_str]["pedidos"] += 1
+
+        # Nombre del producto (truncar para legibilidad)
+        prod_name = nombre[:80].strip() if nombre else "Sin nombre"
+        if prod_name:
+            result[yr_str][m_str]["products"][prod_name] = _round(
+                result[yr_str][m_str]["products"].get(prod_name, 0) + total
+            )
+
+    return result
 
 
 def calcular_MD(items_por_año):
@@ -664,6 +814,10 @@ def generar_html(D, MD, DIAS=None):
     all_cats = set()
     for year in YEAR_LIST:
         all_cats.update(D[year].get("cats", []))
+        # Incluir EXPERIENCIAS si hay datos WooCommerce devengo
+        wd = D[year].get("woo_devengo", {})
+        if any(wd.get(str(m), {}).get("euros", 0) > 0 for m in range(1, 13)):
+            all_cats.add("EXPERIENCIAS")
     cat_colors_filtered = {k: v for k, v in CAT_COLORS.items() if k in all_cats}
     _extra_colors = [
         "#7a9a6a", "#9a6a7a", "#6a7a9a", "#b0906a", "#6ab09a",
