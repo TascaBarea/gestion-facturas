@@ -520,7 +520,7 @@ Carpeta "Barea - Datos Compartidos" con subcarpetas Ventas y Facturas.
 
 ```
 ┌──────────────────────────┐        ┌──────────────────────────┐
-│   PC LOCAL (Jaime)       │        │   VPS HETZNER (Ubuntu)   │
+│   PC LOCAL (Jaime)       │        │   VPS CONTABO (Ubuntu)   │
 │                          │        │                          │
 │  PARSEO (manual)         │        │  Ventas (cron lun)       │
 │  CUADRE (manual)         │ rsync  │  Gmail (cron vie)        │
@@ -546,7 +546,7 @@ Carpeta "Barea - Datos Compartidos" con subcarpetas Ventas y Facturas.
 
 | Componente | Tecnología |
 |-----------|-----------|
-| VPS | Hetzner CX22 (2 vCPU, 4 GB RAM, 40 GB SSD) — 4,35€/mes |
+| VPS | Contabo Cloud VPS 10 (4 vCPU, 8 GB RAM, 75 GB NVMe) — 3,96$/mes |
 | OS | Ubuntu 24.04 LTS |
 | Reverse proxy | Caddy v2 (HTTPS automático Let's Encrypt, auth básica) |
 | Dashboard | Streamlit (embebe dashboards existentes + descarga Excels) |
@@ -578,10 +578,10 @@ Scripts adaptados para leer de `os.environ` en vez de `datos_sensibles.py`.
 
 | Concepto | Coste | Frecuencia |
 |---------|-------|-----------|
-| VPS Hetzner CX22 | 4,35€ | Mensual |
+| VPS Contabo Cloud VPS 10 | 3,96$ (~3,65€) | Mensual |
 | Dominio `.es` (opcional) | ~10€ | Anual |
 | GoCardless (futuro) | 0€ (tier gratuito) | — |
-| **Total** | **~5€/mes** | — |
+| **Total** | **~4,50€/mes** | — |
 
 ---
 
@@ -650,7 +650,7 @@ Path traversal (basename + realpath), CORS explícito, API key obligatoria, RBAC
 
 | Fase | Tareas | Estimación |
 |------|--------|-----------|
-| **0 — Preparación** | Inventariar tokens, probar .env, crear cuenta Hetzner | 1 sesión |
+| **0 — Preparación** | Inventariar tokens, probar .env, crear cuenta Contabo | 1 sesión |
 | **1 — VPS básico** | Configurar VPS, desplegar ventas+gmail, cron, Dropbox API | 1-2 sesiones |
 | **2 — Streamlit** | Dashboard read-only, auth, sync_cloud.py, probar acceso | 2-3 sesiones |
 | **3 — Estabilización** | Monitorizar, ajustar, backup, documentar | 1-2 semanas uso real |
