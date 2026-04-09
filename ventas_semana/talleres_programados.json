@@ -1,6 +1,16 @@
 {
-  "generado": "2026-03-30T13:08:12",
+  "generado": "2026-04-09T10:48:32",
   "talleres": [
+    {
+      "id": 3350,
+      "nombre": "CATA ESPECIAL",
+      "fecha": "14/05/26",
+      "hora_inicio": "19:30",
+      "hora_fin": "21:30",
+      "stock_quantity": 3,
+      "stock_status": "instock",
+      "precio": 30.0
+    },
     {
       "id": 3347,
       "nombre": "¿QUÉ ES ESO? Cata Taller Vino y quesos y..",

@@ -217,19 +217,32 @@ def generar_excel(asistentes: list[dict], taller: dict) -> str:
 def _get_gmail_service():
     """Devuelve un servicio Gmail autenticado, o None si falla."""
     try:
-        import importlib.util
-        _auth_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                  "..", "gmail", "auth_manager.py")
-        spec = importlib.util.spec_from_file_location("gmail_auth_manager", _auth_path)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        return mod.get_gmail_service()
+        from google.oauth2.credentials import Credentials
+        from google.auth.transport.requests import Request
+        from googleapiclient.discovery import build
     except ImportError:
         log.error("Faltan paquetes: pip install google-auth google-api-python-client")
         return None
-    except (FileNotFoundError, RuntimeError) as e:
-        log.error("Gmail auth: %s", e)
+
+    if not os.path.exists(_GMAIL_TOKEN):
+        log.error("No existe token.json en %s", _GMAIL_TOKEN)
         return None
+
+    scopes = [
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/gmail.modify",
+    ]
+    creds = Credentials.from_authorized_user_file(_GMAIL_TOKEN, scopes)
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            with open(_GMAIL_TOKEN, "w") as f:
+                f.write(creds.to_json())
+        else:
+            log.error("Credenciales Gmail expiradas — ejecuta renovar_token_business.py")
+            return None
+
+    return build("gmail", "v1", credentials=creds)
 
 
 def enviar_email(taller: dict, asistentes: list[dict], excel_path: str) -> bool:

@@ -82,6 +82,7 @@ sys.dont_write_bytecode = True  # Evita generar nuevos __pycache__
 import argparse
 from datetime import datetime
 import re
+import unicodedata
 from difflib import SequenceMatcher
 
 # Anadir el directorio del script al path
@@ -103,6 +104,18 @@ from nucleo.validacion import validar_cuadre, validar_factura
 from extractores import obtener_extractor, listar_extractores, EXTRACTORES
 from extractores.generico import ExtractorGenerico
 from salidas import generar_excel, generar_log, imprimir_resumen
+
+
+# ============================================================================
+# NORMALIZACIÓN DE DIACRÍTICOS
+# ============================================================================
+
+def normalizar_texto(texto: str) -> str:
+    """Quita tildes y diacríticos para comparaciones robustas. Ñ→N, É→E, etc."""
+    if not texto:
+        return ""
+    nfkd = unicodedata.normalize('NFKD', str(texto))
+    return ''.join(c for c in nfkd if unicodedata.category(c) != 'Mn').upper().strip()
 
 
 # ============================================================================
@@ -242,6 +255,9 @@ ALIAS_DICCIONARIO = {
     'ROSQUILLAS LA ERMITA': 'PANRUJE',
     # LICORES MADRUEÑO
     'MADRUEÑO': 'LICORES MADRUEÑO',
+    'MADRUENO': 'LICORES MADRUEÑO',
+    'LICORES MADRUENO': 'LICORES MADRUEÑO',
+    'LICORES MADRUENO SL': 'LICORES MADRUEÑO',
     # VINOS DE ARGANZA
     'ARGANZA': 'VINOS DE ARGANZA',
     # CVNE
@@ -363,17 +379,23 @@ def normalizar_proveedor(nombre: str) -> str:
     
     nombre = nombre.strip().upper()
     
-    # Paso 5: Aplicar mapeo de alias
+    # Paso 5: Normalizar diacríticos (Ñ→N, É→E, etc.) para comparación con alias
+    nombre_norm = normalizar_texto(nombre)
+    
+    # Paso 6: Aplicar mapeo de alias (intentar CON y SIN diacríticos)
     if nombre in ALIAS_DICCIONARIO:
         return ALIAS_DICCIONARIO[nombre]
+    if nombre_norm != nombre and nombre_norm in ALIAS_DICCIONARIO:
+        return ALIAS_DICCIONARIO[nombre_norm]
     
-    # Paso 6: Buscar coincidencia parcial en alias (para nombres con errores)
+    # Paso 7: Buscar coincidencia parcial en alias (para nombres con errores)
     for alias, normalizado in ALIAS_DICCIONARIO.items():
+        alias_norm = normalizar_texto(alias)
         # Si el nombre contiene el alias completo
-        if alias in nombre:
+        if alias in nombre or alias_norm in nombre_norm:
             return normalizado
         # Si el alias contiene el nombre (nombre es substring)
-        if len(nombre) >= 5 and nombre in alias:
+        if len(nombre) >= 5 and (nombre in alias or nombre_norm in alias_norm):
             return normalizado
     
     return nombre
@@ -455,32 +477,53 @@ def buscar_en_diccionario(proveedor: str, indice: dict) -> str:
     """
     Busca el nombre del proveedor en el diccionario.
     Prueba múltiples variantes: exacto, alias, parcial.
+    Normaliza diacríticos para tolerar Ñ/N, É/E, etc.
     
     Returns:
         Nombre como está en el diccionario, o el original si no se encuentra
     """
     prov_upper = proveedor.upper().strip()
+    prov_norm = normalizar_texto(proveedor)
+    
+    # Índice normalizado: {nombre_sin_tildes: nombre_original_en_diccionario}
+    indice_norm = {normalizar_texto(k): k for k in indice}
     
     # 1. Búsqueda exacta
     if prov_upper in indice:
         return prov_upper
+    # 1b. Búsqueda exacta normalizada (Ñ→N, etc.)
+    if prov_norm in indice_norm:
+        return indice_norm[prov_norm]
     
     # 2. Buscar via alias
     if prov_upper in ALIAS_DICCIONARIO:
         alias = ALIAS_DICCIONARIO[prov_upper]
         if alias in indice:
             return alias
+    # 2b. Alias normalizado
+    alias_norm_map = {normalizar_texto(k): v for k, v in ALIAS_DICCIONARIO.items()}
+    if prov_norm in alias_norm_map:
+        alias = alias_norm_map[prov_norm]
+        if alias in indice:
+            return alias
+        alias_n = normalizar_texto(alias)
+        if alias_n in indice_norm:
+            return indice_norm[alias_n]
     
-    # 3. Búsqueda parcial (substring)
-    for nombre_dic in indice.keys():
-        if nombre_dic in prov_upper or prov_upper in nombre_dic:
-            return nombre_dic
+    # 3. Búsqueda parcial (substring) — normalizada
+    for nombre_dic_norm, nombre_dic_orig in indice_norm.items():
+        if nombre_dic_norm in prov_norm or prov_norm in nombre_dic_norm:
+            return nombre_dic_orig
     
-    # 4. Búsqueda parcial en alias
+    # 4. Búsqueda parcial en alias — normalizada
     for alias_from, alias_to in ALIAS_DICCIONARIO.items():
-        if alias_from in prov_upper or prov_upper in alias_from:
+        af_norm = normalizar_texto(alias_from)
+        if af_norm in prov_norm or prov_norm in af_norm:
             if alias_to in indice:
                 return alias_to
+            at_norm = normalizar_texto(alias_to)
+            if at_norm in indice_norm:
+                return indice_norm[at_norm]
     
     return prov_upper
 
@@ -645,6 +688,10 @@ def categorizar_linea(linea, proveedor: str, indice: dict, tiene_extractor: bool
     
     articulos_prov = indice[prov_diccionario]
     articulo_upper = linea.articulo.upper().strip()
+    articulo_norm = normalizar_texto(linea.articulo)
+    
+    # Índice de artículos normalizado para este proveedor
+    arts_norm = {normalizar_texto(k): k for k in articulos_prov}
     
     # 1. Match exacto
     if articulo_upper in articulos_prov:
@@ -653,25 +700,34 @@ def categorizar_linea(linea, proveedor: str, indice: dict, tiene_extractor: bool
         linea.id_categoria = data['id_categoria']
         linea.match_info = 'EXACTO'
         return
+    # 1b. Match exacto normalizado (Ñ→N, É→E, etc.)
+    if articulo_norm in arts_norm:
+        art_orig = arts_norm[articulo_norm]
+        data = articulos_prov[art_orig]
+        linea.categoria = data['categoria']
+        linea.id_categoria = data['id_categoria']
+        linea.match_info = 'EXACTO'
+        return
     
-    # 2. Match parcial (substring)
-    for art_dic, data in articulos_prov.items():
-        if art_dic in articulo_upper or articulo_upper in art_dic:
+    # 2. Match parcial (substring) — normalizado
+    for art_dic_norm, art_dic_orig in arts_norm.items():
+        if art_dic_norm in articulo_norm or articulo_norm in art_dic_norm:
+            data = articulos_prov[art_dic_orig]
             linea.categoria = data['categoria']
             linea.id_categoria = data['id_categoria']
             linea.match_info = 'PARCIAL'
             return
     
-    # 3. Fuzzy matching (80% similitud)
+    # 3. Fuzzy matching (80% similitud) — normalizado
     mejor_ratio = 0
     mejor_match = None
     mejor_tipo = 'FUZZY'
     
-    for art_dic, data in articulos_prov.items():
-        ratio = SequenceMatcher(None, articulo_upper, art_dic).ratio()
+    for art_dic_norm, art_dic_orig in arts_norm.items():
+        ratio = SequenceMatcher(None, articulo_norm, art_dic_norm).ratio()
         if ratio > mejor_ratio and ratio >= 0.8:
             mejor_ratio = ratio
-            mejor_match = data
+            mejor_match = articulos_prov[art_dic_orig]
             mejor_tipo = f'FUZZY_{int(ratio*100)}%'
     
     if mejor_match:

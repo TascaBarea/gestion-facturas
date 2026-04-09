@@ -1,104 +1,71 @@
 """
-dia_tickets.py — Descarga tickets de Dia.es y los sube a Dropbox.
+dia.py — Descarga tickets de Dia.es via API interna.
 
-Usa la API interna de Dia con autenticación por cookies.
-Requiere login manual previo para obtener el token JWT (customer_access).
+Usa la API interna de Dia con autenticación por cookies (JWT).
+Requiere login con Playwright (Edge real) para obtener el token customer_access.
 
 Flujo:
-1. Login en dia.es (Playwright con Edge real)
-2. Capturar cookie customer_access (JWT)
-3. Paginar API /tickets/reduced para listar tickets
-4. Descargar detalle de cada ticket nuevo (anti-duplicación por código único)
-5. (Futuro) Subir a Dropbox
+  1. Login en dia.es (Playwright con Edge real)
+  2. Capturar cookie customer_access (JWT)
+  3. Paginar API /tickets/reduced para listar tickets
+  4. Descargar detalle de cada ticket nuevo (anti-duplicación via comun.py)
 
 Anti-duplicación:
-- Cada ticket se identifica por ticket_unique_code (ej: ES13908039000107820260324122158)
-- Registro en datos/dia_tickets/_registro.json con todos los códigos descargados
-- Doble check: registro + existencia del fichero JSON
+  - Cada ticket se identifica por ticket_unique_code
+  - Registro en datos/tickets_registros/registro_dia.json (via comun.py)
+  - Doble check: registro + existencia del fichero JSON
 
 Uso:
-    python scripts/dia_tickets.py              # descarga tickets nuevos
-    python scripts/dia_tickets.py --all        # descarga todos (re-descarga existentes)
-    python scripts/dia_tickets.py --list       # solo lista tickets sin descargar
-    python scripts/dia_tickets.py --login      # forzar login (renovar sesión)
-    python scripts/dia_tickets.py --stats      # estadísticas de tickets descargados
+  python -m scripts.tickets.dia              # descarga tickets nuevos
+  python -m scripts.tickets.dia --all        # re-descarga todos
+  python -m scripts.tickets.dia --list       # solo lista tickets
+  python -m scripts.tickets.dia --login      # forzar login (renovar sesión)
+  python -m scripts.tickets.dia --stats      # estadísticas de tickets
+
+Migrado desde: scripts/dia_tickets.py (legacy)
 """
 
 import argparse
 import json
-import logging
 import os
 import sys
 import time
 from datetime import datetime
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import requests
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+from scripts.tickets.comun import (
+    PROJECT_ROOT,
+    DATOS_DIR,
+    configurar_logging,
+    cargar_registro,
+    guardar_registro,
+    esta_procesado,
+    registrar_ticket,
+    imprimir_resumen,
 )
-logger = logging.getLogger("dia_tickets")
 
-# ── Configuración ─────────────────────────────────────────────────────────────
+# ── Constantes DIA ───────────────────────────────────────────────────────────
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TICKETS_DIR = os.path.join(PROJECT_ROOT, "datos", "dia_tickets")
-REGISTRO_FILE = os.path.join(TICKETS_DIR, "_registro.json")
-TOKEN_FILE = os.path.join(PROJECT_ROOT, "datos", "dia_session.json")
+PROVEEDOR = "DIA"
+TICKETS_DIR = DATOS_DIR / "dia_tickets"
+TOKEN_FILE = DATOS_DIR / "dia_session.json"
 
 API_BASE = "https://www.dia.es/api/v3/eservice-back"
 TICKETS_URL = f"{API_BASE}/customer/current/tickets/reduced"
 TICKET_DETAIL_URL = f"{API_BASE}/customer/current/tickets"
 PAGE_SIZE = 20
 
-
-# ── Registro anti-duplicación ─────────────────────────────────────────────────
-
-def _cargar_registro() -> dict:
-    """Carga el registro de tickets descargados.
-
-    Formato: {ticket_unique_code: {fecha, total, descargado, fichero}}
-    """
-    if not os.path.exists(REGISTRO_FILE):
-        return {}
-    try:
-        with open(REGISTRO_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return {}
+logger = None  # Se inicializa en main()
 
 
-def _guardar_registro(registro: dict):
-    """Guarda el registro de tickets descargados."""
-    os.makedirs(TICKETS_DIR, exist_ok=True)
-    with open(REGISTRO_FILE, "w", encoding="utf-8") as f:
-        json.dump(registro, f, indent=2, ensure_ascii=False)
-
-
-def _ticket_ya_descargado(code: str, registro: dict) -> bool:
-    """Comprueba si un ticket ya fue descargado (registro + fichero)."""
-    if code in registro:
-        # Verificar que el fichero existe
-        fichero = registro[code].get("fichero", "")
-        if fichero and os.path.exists(os.path.join(TICKETS_DIR, fichero)):
-            return True
-        # Fichero en registro pero no existe → marcar para re-descarga
-        return False
-    # Comprobar si existe el fichero aunque no esté en registro
-    if os.path.exists(os.path.join(TICKETS_DIR, f"{code}.json")):
-        return True
-    return False
-
-
-# ── Sesión y autenticación ────────────────────────────────────────────────────
+# ── Sesión y autenticación ───────────────────────────────────────────────────
 
 def _load_session() -> dict | None:
     """Carga token de sesión guardado."""
-    if not os.path.exists(TOKEN_FILE):
+    if not TOKEN_FILE.exists():
         return None
     try:
         with open(TOKEN_FILE, "r", encoding="utf-8") as f:
@@ -109,7 +76,7 @@ def _load_session() -> dict | None:
 
 def _save_session(session_data: dict):
     """Guarda token de sesión."""
-    os.makedirs(os.path.dirname(TOKEN_FILE), exist_ok=True)
+    TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(TOKEN_FILE, "w", encoding="utf-8") as f:
         json.dump(session_data, f, indent=2)
     logger.info("Sesión guardada en %s", TOKEN_FILE)
@@ -281,7 +248,7 @@ def _build_session(session_data: dict) -> requests.Session:
     return s
 
 
-# ── API de tickets ─────────────────────────────────────────────────────────────
+# ── API de tickets ───────────────────────────────────────────────────────────
 
 def listar_tickets(session: requests.Session, max_tickets: int = 500) -> list[dict]:
     """Lista todos los tickets via API paginada."""
@@ -317,11 +284,7 @@ def listar_tickets(session: requests.Session, max_tickets: int = 500) -> list[di
 
 
 def descargar_ticket_detalle(session: requests.Session, ticket: dict) -> dict | None:
-    """Descarga el detalle completo de un ticket (con líneas de productos).
-
-    Endpoint: /tickets/{ticket_id}?begin=...&business=...&country=...&pos=...&store=...
-    Devuelve: amount, corporate (items + taxes), header, invoice, payment, tef
-    """
+    """Descarga el detalle completo de un ticket (con líneas de productos)."""
     params = ticket.get("detail_params", {})
     if not params:
         return None
@@ -345,7 +308,7 @@ def descargar_ticket_detalle(session: requests.Session, ticket: dict) -> dict | 
 
 def guardar_ticket(ticket: dict, detalle: dict | None, registro: dict) -> str:
     """Guarda ticket (resumen + detalle) como JSON y actualiza registro."""
-    os.makedirs(TICKETS_DIR, exist_ok=True)
+    TICKETS_DIR.mkdir(parents=True, exist_ok=True)
     code = ticket["ticket_unique_code"]
     fichero = f"{code}.json"
     data = {
@@ -353,25 +316,38 @@ def guardar_ticket(ticket: dict, detalle: dict | None, registro: dict) -> str:
         "detalle": detalle,
         "descargado": datetime.now().isoformat(),
     }
-    path = os.path.join(TICKETS_DIR, fichero)
+    path = TICKETS_DIR / fichero
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
-    # Actualizar registro
+    # Actualizar registro via comun.py
     n_items = 0
     if detalle and detalle.get("corporate"):
         n_items = len(detalle["corporate"].get("items", []))
 
-    registro[code] = {
+    registrar_ticket(code, {
         "fecha": ticket.get("submitted_date", "")[:10],
         "total": ticket.get("total_amount", 0),
         "tienda": ticket.get("store_info", {}).get("address", ""),
         "items": n_items,
         "fichero": fichero,
-        "descargado": datetime.now().isoformat(),
-    }
+    }, registro)
 
-    return path
+    return str(path)
+
+
+def _ticket_ya_descargado(code: str, registro: dict) -> bool:
+    """Comprueba si un ticket ya fue descargado (registro + fichero)."""
+    if esta_procesado(code, registro):
+        # Verificar que el fichero existe
+        fichero = registro[code].get("fichero", "")
+        if fichero and (TICKETS_DIR / fichero).exists():
+            return True
+        return False
+    # Comprobar si existe el fichero aunque no esté en registro
+    if (TICKETS_DIR / f"{code}.json").exists():
+        return True
+    return False
 
 
 def mostrar_stats(registro: dict):
@@ -380,20 +356,22 @@ def mostrar_stats(registro: dict):
         logger.info("No hay tickets en el registro.")
         return
 
-    totales = [r["total"] for r in registro.values()]
-    fechas = sorted(r["fecha"] for r in registro.values() if r.get("fecha"))
+    totales = [r["total"] for r in registro.values() if isinstance(r, dict)]
+    fechas = sorted(r["fecha"] for r in registro.values() if isinstance(r, dict) and r.get("fecha"))
 
     logger.info("=== Estadísticas de tickets Dia ===")
     logger.info("  Total tickets: %d", len(registro))
     logger.info("  Período: %s a %s", fechas[0] if fechas else "?", fechas[-1] if fechas else "?")
-    logger.info("  Gasto total: %.2f€", sum(totales))
-    logger.info("  Ticket medio: %.2f€", sum(totales) / len(totales) if totales else 0)
-    logger.info("  Ticket máximo: %.2f€", max(totales) if totales else 0)
-    logger.info("  Ticket mínimo: %.2f€", min(totales) if totales else 0)
+    logger.info("  Gasto total: %.2f EUR", sum(totales))
+    logger.info("  Ticket medio: %.2f EUR", sum(totales) / len(totales) if totales else 0)
+    logger.info("  Ticket máximo: %.2f EUR", max(totales) if totales else 0)
+    logger.info("  Ticket mínimo: %.2f EUR", min(totales) if totales else 0)
 
     # Por tienda
     tiendas = {}
     for r in registro.values():
+        if not isinstance(r, dict):
+            continue
         t = r.get("tienda", "Desconocida")
         if t not in tiendas:
             tiendas[t] = {"n": 0, "total": 0}
@@ -402,22 +380,27 @@ def mostrar_stats(registro: dict):
 
     logger.info("  --- Por tienda ---")
     for tienda, info in sorted(tiendas.items(), key=lambda x: -x[1]["total"]):
-        logger.info("    %s: %d tickets, %.2f€", tienda, info["n"], info["total"])
+        logger.info("    %s: %d tickets, %.2f EUR", tienda, info["n"], info["total"])
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
+    global logger
+
     parser = argparse.ArgumentParser(description="Descarga tickets de Dia.es")
     parser.add_argument("--all", action="store_true", help="Re-descargar todos los tickets")
     parser.add_argument("--list", action="store_true", help="Solo listar tickets sin descargar")
     parser.add_argument("--login", action="store_true", help="Forzar login (renovar sesión)")
     parser.add_argument("--stats", action="store_true", help="Mostrar estadísticas")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Mostrar mensajes de debug")
     args = parser.parse_args()
+
+    logger = configurar_logging("dia", getattr(args, "verbose", False))
 
     # Stats: no necesita sesión
     if args.stats:
-        registro = _cargar_registro()
+        registro = cargar_registro(PROVEEDOR)
         mostrar_stats(registro)
         return
 
@@ -446,7 +429,7 @@ def main():
         fecha = t.get("submitted_date", "")[:10]
         total = t.get("total_amount", 0)
         tienda = t.get("store_info", {}).get("address", "?")
-        logger.info("  %s | %7.2f€ | %s", fecha, total, tienda)
+        logger.info("  %s | %7.2f EUR | %s", fecha, total, tienda)
     if len(tickets) > 5:
         logger.info("  ... y %d más", len(tickets) - 5)
 
@@ -454,7 +437,7 @@ def main():
         return
 
     # 3. Filtrar tickets nuevos (anti-duplicación)
-    registro = _cargar_registro()
+    registro = cargar_registro(PROVEEDOR)
 
     if args.all:
         nuevos = tickets
@@ -494,17 +477,23 @@ def main():
         if detalle and detalle.get("corporate"):
             n_items = len(detalle["corporate"].get("items", []))
 
-        logger.info("  [%d/%d] %s | %6.2f€ | %d items → %s",
+        logger.info("  [%d/%d] %s | %6.2f EUR | %d items -> %s",
                      descargados, len(nuevos), fecha, total, n_items,
                      os.path.basename(path))
 
         time.sleep(0.5)  # ser amable con el servidor
 
-    # Guardar registro actualizado
-    _guardar_registro(registro)
+    # Guardar registro via comun.py
+    guardar_registro(PROVEEDOR, registro)
 
-    logger.info("Descarga completada: %d nuevos, %d errores, %d total en registro.",
-                descargados, errores, len(registro))
+    # Resumen
+    imprimir_resumen(
+        proveedor=PROVEEDOR,
+        analizados=len(tickets),
+        nuevos=descargados,
+        duplicados=len(tickets) - len(nuevos),
+        errores=errores,
+    )
 
 
 if __name__ == "__main__":

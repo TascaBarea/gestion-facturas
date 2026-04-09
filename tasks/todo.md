@@ -5,7 +5,7 @@
 ---
 
 ## Próxima sesión
-**Objetivo:** CUADRE + mejoras pendientes
+**Objetivo:** CUADRE + pendientes menores
 
 ### Pendientes seguridad
 - [ ] Cambiar contraseñas Streamlit (las 4 son "2017") → decisión del usuario
@@ -22,24 +22,38 @@
 - [ ] CUADRE bugs: VINOS DE ARGANZA, SPOTIFY, Comunidad vecinos
 - [ ] Documentar instalación OCR
 
-### Ya no pendientes (resueltos)
-- ~~WooCommerce 69→10 columnas~~ → ya eran 7 en `_normalizar_pedidos_wc()`
-- ~~YEAR_LIST dinámico~~ → pestañas se descubren por prefijo (ya dinámico)
+### Alta evento — posibles mejoras futuras
+- [ ] Calendario HTML visual (fechas coloreadas) — descartado por ahora, riesgo alto
+- [ ] Cruce WC ↔ Loyverse para plazas pagadas online vs tienda (fuzzy matching)
+- [ ] Email automático al organizador con enlace privado (requiere Gmail API)
 
 ---
 
-## Sesión anterior (28/03/2026)
-**Objetivo:** Google Drive + Documentos + seguridad + auth centralizado + WC retry
+## Sesión anterior (28-31/03/2026)
+**Objetivo:** Drive + seguridad + alta evento completa + mov_banco
 
-### Completado
-- [x] Verificar Google Drive sync (nucleo/sync_drive.py ya implementado)
-- [x] Página "Documentos" en Streamlit (streamlit_app/pages/documentos.py)
+### Completado (28/03)
+- [x] Verificar Google Drive sync + página "Documentos" en Streamlit
 - [x] Seguridad: sanitizar importlib en gmail.py (path traversal)
 - [x] Auth OAuth2 centralizado: gmail/auth_manager.py (5 scripts actualizados)
 - [x] WooCommerce retry con backoff exponencial (3 intentos, 2/4/8s)
-- [x] requirements.txt verificado (ya existía)
-- [x] ESQUEMA actualizado a v5.4 (v5.3 + v5.4 añadidos)
-- [x] Pendientes.md actualizado (varios items ya estaban resueltos)
+- [x] ESQUEMA actualizado a v5.4
+
+### Completado (30/03)
+- [x] mov_banco.py: fix encoding UTF-8, ejecutado con archivos Sabadell reales
+- [x] Fix barea_auto.bat: PYTHONPATH + _to_float import + alerta_fallo scope
+- [x] Ejecución manual ventas semanales (03:00 falló por PYTHONPATH)
+
+### Completado (31/03)
+- [x] Alta evento: selector cascada tipo→subtipo + detección conflictos fecha
+- [x] Alta evento: soporte CERRADO (plazas pagadas/pendientes + enlace WhatsApp)
+- [x] Alta evento: modo test ([TEST] privado + limpieza desde Streamlit)
+- [x] Alta evento: lista fechas ocupadas antes del calendario
+- [x] Alta evento: fix tipo ticket-event + categorías + tag Producto_destacado
+- [x] Alta evento: fix meta_data _start_date_picker/_end_date_picker (calendario web)
+- [x] Calendario Streamlit: columna Tipo (CERRADO/Abierto) + enlace privado
+- [x] historico_eventos.py: Excel con 39 eventos desde WC (11 columnas)
+- [x] Fix producto 3350 (CATA ESPECIAL 14/05/26): tipo + categorías + meta_data
 
 ---
 

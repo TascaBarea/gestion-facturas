@@ -1,6 +1,6 @@
-# SPEC GESTION-FACTURAS v4.1
+# SPEC GESTION-FACTURAS v4.2
 
-> Documento maestro unificado — 01/04/2026
+> Documento maestro unificado — 09/04/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
 
@@ -223,6 +223,7 @@ Cuadre_011025-020126.xlsx  → Cuadre del 01/10/25 al 02/01/26
 9. **Sync Google Drive** → copia Excel + dashboards HTML
 
 **1er lunes del mes (día ≤ 7):** `--dashboard-mensual` → meses cerrados + email socios + PDF resumen
+**Meses cerrados (default):** Dashboards HTML y JSON Streamlit excluyen siempre el mes en curso (`solo_meses_cerrados=True`). Usar `--incluir-parcial` para incluirlo.
 
 ### 5.2 Output
 
@@ -473,6 +474,7 @@ python -m scripts.tickets.bm --parsear     # procesar + parsear con main.py
 **Login:** 4 roles (admin, socio, comes, eventos). Usuarios: Jaime (admin), Roberto (socio), Elena (comes), Benjamin (eventos).
 **Páginas:** Alta Evento, Calendario Eventos, Ventas (Plotly), Maestro Editor (admin), Cuadre (placeholder), Log Gmail (placeholder), Monitor (placeholder), Ejecutar Scripts (placeholder), Documentos (Drive)
 **Diseño:** Tipografía Syne + DM Sans, sidebar oscuro, identidad Tasca Barea (#8B0000, #FFF8F0)
+**Filtro meses cerrados:** Los gráficos mensuales de Ventas (evolución €, tickets, ticket medio, categorías, márgenes, WooCommerce) excluyen el mes en curso para evitar comparativas distorsionadas. KPIs totales y gráficos diarios no se filtran. Doble barrera: `generar_dashboard.py` filtra al generar JSON (default `solo_meses_cerrados=True`) + `pages/ventas.py` filtra al renderizar.
 
 ### 9.3 Google Drive Sync
 
@@ -697,6 +699,12 @@ Datos en `config/datos_sensibles.py`. Incluye: IBAN_TASCA, IBAN_COMESTIBLES, BIC
 ---
 
 ## CHANGELOG
+
+### v5.6 (09/04/2026) — FILTRO MESES CERRADOS EN STREAMLIT
+- Gráficos mensuales en `pages/ventas.py` excluyen mes en curso (doble barrera con generar_dashboard.py)
+- Afecta: evolución €, tickets/mes, ticket medio/mes, categorías, márgenes, WooCommerce
+- No afecta: KPIs totales, gráficos diarios, tab Productos
+- `generar_dashboard.py` ya tenía `solo_meses_cerrados=True` como default
 
 ### v5.5 (08/04/2026) — WOOCOMMERCE DEVENGO + DESPLIEGUE DOCUMENTADO
 - WooCommerce integrado en Ventas Netas con criterio de devengo (fecha de celebración)

@@ -80,12 +80,12 @@ SCRIPTS = {
     },
     "dashboard": {
         "script": os.path.join("ventas_semana", "generar_dashboard.py"),
-        "args_default": ["--no-open", "--solo-cerrados"],
+        "args_default": ["--no-open"],
         "description": "Generar dashboards HTML + PDF",
     },
     "dashboard_email": {
         "script": os.path.join("ventas_semana", "generar_dashboard.py"),
-        "args_default": ["--no-open", "--solo-cerrados", "--email"],
+        "args_default": ["--no-open", "--email"],
         "description": "Generar dashboards + enviar email",
     },
     "cuadre": {
@@ -95,12 +95,12 @@ SCRIPTS = {
         "requires_file": True,
     },
     "dia_tickets": {
-        "script": os.path.join("scripts", "dia_tickets.py"),
+        "script": os.path.join("scripts", "tickets", "dia.py"),
         "args_default": [],
         "description": "Descargar tickets de Dia (requiere sesión activa)",
     },
     "dia_tickets_stats": {
-        "script": os.path.join("scripts", "dia_tickets.py"),
+        "script": os.path.join("scripts", "tickets", "dia.py"),
         "args_default": ["--stats"],
         "description": "Estadísticas de tickets Dia descargados",
     },

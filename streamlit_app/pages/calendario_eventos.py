@@ -10,7 +10,7 @@ import pandas as pd
 from datetime import datetime, date
 from utils.auth import require_role
 
-require_role(["admin", "socio", "eventos"])
+require_role(["admin", "socio", "eventos", "tienda"])
 
 from utils.wc_client import (
     get_wc_api,

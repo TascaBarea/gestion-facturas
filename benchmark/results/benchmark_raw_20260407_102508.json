@@ -1,0 +1,4563 @@
+[
+  {
+    "filename": "1T26 0330 BM TJ.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1T26 0330 BM TJ.pdf",
+    "norm_key": "1T26 0330 BM TJ",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 16.26,
+          "fecha": "25-09-04",
+          "nif": "B20099586",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 2525
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 1039
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 16.26,
+          "fecha": "25-09-04",
+          "nif": "B20099586",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 3473
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 2097
+      },
+      "pypdf": {
+        "fields": {
+          "total": 16.26,
+          "fecha": "25-09-04",
+          "nif": "B20099586",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 3472
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 131
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1063 1T26 0131 LICORES MADRUENO SL RC.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1063 1T26 0131 LICORES MADRUENO SL RC.pdf",
+    "norm_key": "1T26 0131 LICORES MADRUENO SL RC",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 1155.67,
+          "fecha": "03/01/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "TANQUERAY 2",
+              "importes": [
+                12.25,
+                24.5
+              ],
+              "raw": "273 TANQUERAY 2 12,25 24,50"
+            },
+            {
+              "descripcion": "XIC DAL FONS 6",
+              "importes": [
+                3.65,
+                21.9
+              ],
+              "raw": "1764 XIC DAL FONS 6 3,65 21,90"
+            },
+            {
+              "descripcion": "ANTONIO MONTERO Godello 12",
+              "importes": [
+                6.3,
+                75.6
+              ],
+              "raw": "2488 ANTONIO MONTERO Godello 12 6,30 75,60"
+            },
+            {
+              "descripcion": "ANTONIO MONTERO Albariño 6",
+              "importes": [
+                5.95,
+                35.7
+              ],
+              "raw": "4291 ANTONIO MONTERO Albariño 6 5,95 35,70"
+            },
+            {
+              "descripcion": "JUAN GIL 4 MESES Amarillo 6",
+              "importes": [
+                5.25,
+                31.5
+              ],
+              "raw": "1381 JUAN GIL 4 MESES Amarillo 6 5,25 31,50"
+            },
+            {
+              "descripcion": "MARIA DE MOLINA Verdejo 6",
+              "importes": [
+                2.75,
+                16.5
+              ],
+              "raw": "4300 MARIA DE MOLINA Verdejo 6 2,75 16,50"
+            },
+            {
+              "descripcion": "ANTONIO MONTERO Albariño 6",
+              "importes": [
+                5.95,
+                35.7
+              ],
+              "raw": "4291 ANTONIO MONTERO Albariño 6 5,95 35,70"
+            },
+            {
+              "descripcion": "APEROL L 3",
+              "importes": [
+                11.75,
+                35.25
+              ],
+              "raw": "89 APEROL L 3 11,75 35,25"
+            },
+            {
+              "descripcion": "VERMUT NEGRO CASA MARIOL 3",
+              "importes": [
+                8.2,
+                24.6
+              ],
+              "raw": "1714 VERMUT NEGRO CASA MARIOL 3 8,20 24,60"
+            },
+            {
+              "descripcion": "FEVER-TREE 24",
+              "importes": [
+                0.75,
+                18.0
+              ],
+              "raw": "1594 FEVER-TREE 24 0,75 18,00"
+            },
+            {
+              "descripcion": "XIC DAL FONS 6",
+              "importes": [
+                3.65,
+                21.9
+              ],
+              "raw": "1764 XIC DAL FONS 6 3,65 21,90"
+            },
+            {
+              "descripcion": "VERMUT MIRO BOX. 5 L REUS 4",
+              "importes": [
+                18.2,
+                72.8
+              ],
+              "raw": "339 VERMUT MIRO BOX. 5 L REUS 4 18,20 72,80"
+            },
+            {
+              "descripcion": "JUAN GIL 4 MESES Amarillo 6",
+              "importes": [
+                5.25,
+                31.5
+              ],
+              "raw": "1381 JUAN GIL 4 MESES Amarillo 6 5,25 31,50"
+            },
+            {
+              "descripcion": "MARIA DE MOLINA Verdejo 6",
+              "importes": [
+                2.75,
+                16.5
+              ],
+              "raw": "4300 MARIA DE MOLINA Verdejo 6 2,75 16,50"
+            },
+            {
+              "descripcion": "ANTONIO MONTERO Albariño 6",
+              "importes": [
+                5.95,
+                35.7
+              ],
+              "raw": "4291 ANTONIO MONTERO Albariño 6 5,95 35,70"
+            },
+            {
+              "descripcion": "VERMUT ZECHINNI 5L 2",
+              "importes": [
+                18.95,
+                37.9
+              ],
+              "raw": "102 VERMUT ZECHINNI 5L 2 18,95 37,90"
+            },
+            {
+              "descripcion": "MARIA DE MOLINA Verdejo 6",
+              "importes": [
+                2.9,
+                17.4
+              ],
+              "raw": "4300 MARIA DE MOLINA Verdejo 6 2,90 17,40"
+            },
+            {
+              "descripcion": "XIC DAL FONS 6",
+              "importes": [
+                3.65,
+                21.9
+              ],
+              "raw": "1764 XIC DAL FONS 6 3,65 21,90"
+            },
+            {
+              "descripcion": "VERMUT ZECHINNI 5L 4",
+              "importes": [
+                18.95,
+                75.8
+              ],
+              "raw": "102 VERMUT ZECHINNI 5L 4 18,95 75,80"
+            },
+            {
+              "descripcion": "JUAN GIL 4 MESES Amarillo 6",
+              "importes": [
+                5.25,
+                31.5
+              ],
+              "raw": "1381 JUAN GIL 4 MESES Amarillo 6 5,25 31,50"
+            },
+            {
+              "descripcion": "ANTONIO MONTERO Godello 6",
+              "importes": [
+                6.45,
+                38.7
+              ],
+              "raw": "2488 ANTONIO MONTERO Godello 6 6,45 38,70"
+            },
+            {
+              "descripcion": "RECTORAL DE AMANDI Mencia 6",
+              "importes": [
+                4.95,
+                29.7
+              ],
+              "raw": "4399 RECTORAL DE AMANDI Mencia 6 4,95 29,70"
+            },
+            {
+              "descripcion": "VERMUT ZECHINNI 5L 2",
+              "importes": [
+                18.95,
+                37.9
+              ],
+              "raw": "102 VERMUT ZECHINNI 5L 2 18,95 37,90"
+            },
+            {
+              "descripcion": "Suma y sigue:",
+              "importes": [
+                788.45
+              ],
+              "raw": "Suma y sigue: 788,45"
+            },
+            {
+              "descripcion": "ANTONIO MONTERO Godello 6",
+              "importes": [
+                6.45,
+                38.7
+              ],
+              "raw": "2488 ANTONIO MONTERO Godello 6 6,45 38,70"
+            },
+            {
+              "descripcion": "MARIA DE MOLINA Verdejo 6",
+              "importes": [
+                2.9,
+                17.4
+              ],
+              "raw": "4300 MARIA DE MOLINA Verdejo 6 2,90 17,40"
+            },
+            {
+              "descripcion": "J. WALKER RED 0,7L 1",
+              "importes": [
+                11.25,
+                11.25
+              ],
+              "raw": "132 J. WALKER RED 0,7L 1 11,25 11,25"
+            },
+            {
+              "descripcion": "APEROL L 2",
+              "importes": [
+                11.75,
+                23.5
+              ],
+              "raw": "89 APEROL L 2 11,75 23,50"
+            },
+            {
+              "descripcion": "VERMUT LACUESTA rojo 2",
+              "importes": [
+                6.45,
+                12.9
+              ],
+              "raw": "2122 VERMUT LACUESTA rojo 2 6,45 12,90"
+            },
+            {
+              "descripcion": "TANQUERAY 1",
+              "importes": [
+                12.25,
+                12.25
+              ],
+              "raw": "273 TANQUERAY 1 12,25 12,25"
+            },
+            {
+              "descripcion": "PACHARAN BAINES VERDE Litro 1",
+              "importes": [
+                14.95,
+                14.95
+              ],
+              "raw": "98 PACHARAN BAINES VERDE Litro 1 14,95 14,95"
+            },
+            {
+              "descripcion": "ANTONIO MONTERO Albariño 6",
+              "importes": [
+                5.95,
+                35.7
+              ],
+              "raw": "4291 ANTONIO MONTERO Albariño 6 5,95 35,70"
+            },
+            {
+              "descripcion": "VENCIMIENTO: 31/01/2026",
+              "importes": [
+                1155.67
+              ],
+              "raw": "VENCIMIENTO: 31/01/2026 1.155,67 €"
+            },
+            {
+              "descripcion": "IMPUESTOS:",
+              "importes": [
+                200.57
+              ],
+              "raw": "IMPUESTOS: 200,57"
+            }
+          ],
+          "num_lineas": 34,
+          "text_length": 2305
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 213
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 1155.67,
+          "fecha": "03/01/2026",
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 2616
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 8
+      },
+      "pypdf": {
+        "fields": {
+          "total": 1155.67,
+          "fecha": "03/01/2026",
+          "nif": null,
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "2TA NQUERA Y",
+              "importes": [
+                24.5,
+                12.25
+              ],
+              "raw": "273 2TA NQUERA Y  24,5012,25"
+            },
+            {
+              "descripcion": "6XIC DA L FONS",
+              "importes": [
+                21.9,
+                3.65
+              ],
+              "raw": "1764 6XIC DA L FONS 21,903,65"
+            },
+            {
+              "descripcion": "12A NTONIO MONTERO Godello",
+              "importes": [
+                75.6,
+                6.3
+              ],
+              "raw": "2488 12A NTONIO MONTERO Godello 75,606,30"
+            },
+            {
+              "descripcion": "6A NTONIO MONTERO A lbariño",
+              "importes": [
+                35.7,
+                5.95
+              ],
+              "raw": "4291 6A NTONIO MONTERO A lbariño 35,705,95"
+            },
+            {
+              "descripcion": "6JUA N GIL 4 MESES A marillo",
+              "importes": [
+                31.5,
+                5.25
+              ],
+              "raw": "1381 6JUA N GIL 4 MESES A marillo 31,505,25"
+            },
+            {
+              "descripcion": "6MA RIA  DE MOLINA  V erdejo",
+              "importes": [
+                16.5,
+                2.75
+              ],
+              "raw": "4300 6MA RIA  DE MOLINA  V erdejo 16,502,75"
+            },
+            {
+              "descripcion": "6A NTONIO MONTERO A lbariño",
+              "importes": [
+                35.7,
+                5.95
+              ],
+              "raw": "4291 6A NTONIO MONTERO A lbariño 35,705,95"
+            },
+            {
+              "descripcion": "3A PEROL L",
+              "importes": [
+                35.25,
+                11.75
+              ],
+              "raw": "89 3A PEROL L 35,2511,75"
+            },
+            {
+              "descripcion": "3V ERMUT NEGRO CA SA  MA RIOL",
+              "importes": [
+                24.6,
+                8.2
+              ],
+              "raw": "1714 3V ERMUT NEGRO CA SA  MA RIOL 24,608,20"
+            },
+            {
+              "descripcion": "24FEV ER-TREE",
+              "importes": [
+                18.0,
+                0.75
+              ],
+              "raw": "1594 24FEV ER-TREE 18,000,75"
+            },
+            {
+              "descripcion": "6XIC DA L FONS",
+              "importes": [
+                21.9,
+                3.65
+              ],
+              "raw": "1764 6XIC DA L FONS 21,903,65"
+            },
+            {
+              "descripcion": "4V ERMUT MIRO  BOX. 5 L REUS",
+              "importes": [
+                72.8,
+                18.2
+              ],
+              "raw": "339 4V ERMUT MIRO  BOX. 5 L REUS 72,8018,20"
+            },
+            {
+              "descripcion": "6JUA N GIL 4 MESES A marillo",
+              "importes": [
+                31.5,
+                5.25
+              ],
+              "raw": "1381 6JUA N GIL 4 MESES A marillo 31,505,25"
+            },
+            {
+              "descripcion": "6MA RIA  DE MOLINA  V erdejo",
+              "importes": [
+                16.5,
+                2.75
+              ],
+              "raw": "4300 6MA RIA  DE MOLINA  V erdejo 16,502,75"
+            },
+            {
+              "descripcion": "6A NTONIO MONTERO A lbariño",
+              "importes": [
+                35.7,
+                5.95
+              ],
+              "raw": "4291 6A NTONIO MONTERO A lbariño 35,705,95"
+            },
+            {
+              "descripcion": "2V ERMUT Z ECHINNI 5L",
+              "importes": [
+                37.9,
+                18.95
+              ],
+              "raw": "102 2V ERMUT Z ECHINNI 5L 37,9018,95"
+            },
+            {
+              "descripcion": "6MA RIA  DE MOLINA  V erdejo",
+              "importes": [
+                17.4,
+                2.9
+              ],
+              "raw": "4300 6MA RIA  DE MOLINA  V erdejo 17,402,90"
+            },
+            {
+              "descripcion": "6XIC DA L FONS",
+              "importes": [
+                21.9,
+                3.65
+              ],
+              "raw": "1764 6XIC DA L FONS 21,903,65"
+            },
+            {
+              "descripcion": "4V ERMUT Z ECHINNI 5L",
+              "importes": [
+                75.8,
+                18.95
+              ],
+              "raw": "102 4V ERMUT Z ECHINNI 5L 75,8018,95"
+            },
+            {
+              "descripcion": "6JUA N GIL 4 MESES A marillo",
+              "importes": [
+                31.5,
+                5.25
+              ],
+              "raw": "1381 6JUA N GIL 4 MESES A marillo 31,505,25"
+            },
+            {
+              "descripcion": "6A NTONIO MONTERO Godello",
+              "importes": [
+                38.7,
+                6.45
+              ],
+              "raw": "2488 6A NTONIO MONTERO Godello 38,706,45"
+            },
+            {
+              "descripcion": "6RECTORA L DE A MA NDI Menc ia",
+              "importes": [
+                29.7,
+                4.95
+              ],
+              "raw": "4399 6RECTORA L DE A MA NDI Menc ia 29,704,95"
+            },
+            {
+              "descripcion": "2V ERMUT Z ECHINNI 5L",
+              "importes": [
+                37.9,
+                18.95
+              ],
+              "raw": "102 2V ERMUT Z ECHINNI 5L 37,9018,95"
+            },
+            {
+              "descripcion": "S u m a  y sig u e :",
+              "importes": [
+                788.45
+              ],
+              "raw": "S u m a  y sig u e : 788,45"
+            },
+            {
+              "descripcion": "6A NTONIO MONTERO Godello",
+              "importes": [
+                38.7,
+                6.45
+              ],
+              "raw": "2488 6A NTONIO MONTERO Godello 38,706,45"
+            },
+            {
+              "descripcion": "6MA RIA  DE MOLINA  V erdejo",
+              "importes": [
+                17.4,
+                2.9
+              ],
+              "raw": "4300 6MA RIA  DE MOLINA  V erdejo 17,402,90"
+            },
+            {
+              "descripcion": "1J. WA LKER RED 0,7L",
+              "importes": [
+                11.25,
+                11.25
+              ],
+              "raw": "132 1J. WA LKER RED 0,7L 11,2511,25"
+            },
+            {
+              "descripcion": "2A PEROL L",
+              "importes": [
+                23.5,
+                11.75
+              ],
+              "raw": "89 2A PEROL L 23,5011,75"
+            },
+            {
+              "descripcion": "2V ERMUT LA CUESTA  rojo",
+              "importes": [
+                12.9,
+                6.45
+              ],
+              "raw": "2122 2V ERMUT LA CUESTA  rojo 12,906,45"
+            },
+            {
+              "descripcion": "1TA NQUERA Y",
+              "importes": [
+                12.25,
+                12.25
+              ],
+              "raw": "273 1TA NQUERA Y  12,2512,25"
+            },
+            {
+              "descripcion": "1PA CHA RA N BA INES V ERDE Litro",
+              "importes": [
+                14.95,
+                14.95
+              ],
+              "raw": "98 1PA CHA RA N BA INES V ERDE Litro 14,9514,95"
+            },
+            {
+              "descripcion": "6A NTONIO MONTERO A lbariño",
+              "importes": [
+                35.7,
+                5.95
+              ],
+              "raw": "4291 6A NTONIO MONTERO A lbariño 35,705,95"
+            },
+            {
+              "descripcion": "T OT A L  BRUT O:",
+              "importes": [
+                955.1
+              ],
+              "raw": "T OT A L  BRUT O: 955,10"
+            },
+            {
+              "descripcion": "IM PUEST OS:",
+              "importes": [
+                200.57
+              ],
+              "raw": "IM PUEST OS: 200,57"
+            }
+          ],
+          "num_lineas": 34,
+          "text_length": 2621
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 0.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 43
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "922 ATRASADA 4T25 1223 BORBOTON TF.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\ATRASADAS\\922 ATRASADA 4T25 1223 BORBOTON TF.pdf",
+    "norm_key": "ATRASADA 4T25 1223 BORBOTON TF",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 432.12,
+          "fecha": "23/12/2025",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "ARS0283 A RAS DE SUELO \"EL TORREJÓN\" 75 cl 54",
+              "importes": [
+                9.92,
+                0.0,
+                9.92,
+                535.68
+              ],
+              "raw": "ARS0283 A RAS DE SUELO \"EL TORREJÓN\" 75 cl 54 9,92 € 0,00 % 9,92 € 535,68 €"
+            },
+            {
+              "descripcion": "Promoción especial 6+3 18 -",
+              "importes": [
+                9.92,
+                0.0,
+                9.92,
+                178.56
+              ],
+              "raw": "Promoción especial 6+3 18 -9,92 € 0,00 % -9,92 € -178,56 €"
+            },
+            {
+              "descripcion": "ARS0283 A RAS DE SUELO \"EL TORREJÓN\" 75 cl 6",
+              "importes": [
+                9.92,
+                100.0,
+                0.0,
+                0.0
+              ],
+              "raw": "ARS0283 A RAS DE SUELO \"EL TORREJÓN\" 75 cl 6 9,92 € 100,00 % 0,00 € 0,00 €"
+            }
+          ],
+          "num_lineas": 3,
+          "text_length": 556
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 33
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 432.12,
+          "fecha": "23/12/2025",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 559
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 3
+      },
+      "pypdf": {
+        "fields": {
+          "total": 432.12,
+          "fecha": "23/12/2025",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "ARS0283 A RAS DE SUELO \"EL TORREJÓN\" 75 cl 54",
+              "importes": [
+                9.92,
+                9.92,
+                535.68
+              ],
+              "raw": "ARS0283 A RAS DE SUELO \"EL TORREJÓN\" 75 cl 54 9,92 € 9,92 € 535,68 €"
+            },
+            {
+              "descripcion": "Promoción especial 6+3 18 -",
+              "importes": [
+                9.92,
+                9.92,
+                178.56
+              ],
+              "raw": "Promoción especial 6+3 18 -9,92 € -9,92 € -178,56 €"
+            },
+            {
+              "descripcion": "ARS0283 A RAS DE SUELO \"EL TORREJÓN\" 75 cl 6",
+              "importes": [
+                9.92,
+                0.0,
+                0.0
+              ],
+              "raw": "ARS0283 A RAS DE SUELO \"EL TORREJÓN\" 75 cl 6 9,92 € 0,00 € 0,00 €"
+            },
+            {
+              "descripcion": "TRANSFERENCIA",
+              "importes": [
+                357.12,
+                75.0,
+                432.12
+              ],
+              "raw": "TRANSFERENCIA 357,12 € 75,00 € 432,12 €ES37 2100 1913 1902 0013 5677"
+            }
+          ],
+          "num_lineas": 4,
+          "text_length": 558
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 10
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1143 1T26 0303 DISTRIBUCIONES LAVAPIES MAD TF.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1143 1T26 0303 DISTRIBUCIONES LAVAPIES MAD TF.pdf",
+    "norm_key": "1T26 0303 DISTRIBUCIONES LAVAPIES MAD TF",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 84.0,
+          "fecha": "03/03/26",
+          "nif": "F88424072",
+          "iva": [
+            {
+              "tipo": 21.0,
+              "importe": 31.24
+            },
+            {
+              "tipo": 10.0,
+              "importe": 15.55
+            },
+            {
+              "tipo": 21.0,
+              "importe": 148.74
+            },
+            {
+              "tipo": 21.0,
+              "importe": 31.24
+            },
+            {
+              "tipo": 10.0,
+              "importe": 155.46
+            },
+            {
+              "tipo": 10.0,
+              "importe": 15.55
+            }
+          ],
+          "lineas": [
+            {
+              "descripcion": "84/2026 AGUVIC AGUA VICHY CATALAN 300 ML 72",
+              "importes": [
+                0.84,
+                60.48
+              ],
+              "raw": "84/2026 AGUVIC AGUA VICHY CATALAN 300 ML 72 0,84 60,48 €"
+            },
+            {
+              "descripcion": "84/2026 PALESCO PALESTINA COLA 24",
+              "importes": [
+                0.62,
+                14.88
+              ],
+              "raw": "84/2026 PALESCO PALESTINA COLA 24 0,62 14,88 €"
+            },
+            {
+              "descripcion": "84/2026 PALESZE PALESTINA ZERO 24",
+              "importes": [
+                0.62,
+                14.88
+              ],
+              "raw": "84/2026 PALESZE PALESTINA ZERO 24 0,62 14,88 €"
+            },
+            {
+              "descripcion": "84/2026 REFFRIX FRIXEN REFRESCO COLA ZERO 24 1,1",
+              "importes": [
+                26.4
+              ],
+              "raw": "84/2026 REFFRIX FRIXEN REFRESCO COLA ZERO 24 1,1 26,40 €"
+            },
+            {
+              "descripcion": "84/2026 ZULINMA ZUMO NATURAL LINDA MANDARINA/ROMERO 12",
+              "importes": [
+                1.35,
+                16.2
+              ],
+              "raw": "84/2026 ZULINMA ZUMO NATURAL LINDA MANDARINA/ROMERO 12 1,35 16,20 €"
+            },
+            {
+              "descripcion": "84/2026 ZUMMOG1 MOSTO GREIP 1L 6",
+              "importes": [
+                1.65,
+                9.9
+              ],
+              "raw": "84/2026 ZUMMOG1 MOSTO GREIP 1L 6 1,65 9,90 €"
+            },
+            {
+              "descripcion": "123/2026 AGUVIC AGUA VICHY CATALAN 300 ML 72",
+              "importes": [
+                0.84,
+                60.48
+              ],
+              "raw": "123/2026 AGUVIC AGUA VICHY CATALAN 300 ML 72 0,84 60,48 €"
+            },
+            {
+              "descripcion": "123/2026 PALESZE PALESTINA ZERO 24",
+              "importes": [
+                0.62,
+                14.88
+              ],
+              "raw": "123/2026 PALESZE PALESTINA ZERO 24 0,62 14,88 €"
+            },
+            {
+              "descripcion": "123/2026 PALESCO PALESTINA COLA 24",
+              "importes": [
+                0.62,
+                14.88
+              ],
+              "raw": "123/2026 PALESCO PALESTINA COLA 24 0,62 14,88 €"
+            },
+            {
+              "descripcion": "123/2026 REFFRIX FRIXEN REFRESCO COLA 33CL 24 1,1",
+              "importes": [
+                26.4
+              ],
+              "raw": "123/2026 REFFRIX FRIXEN REFRESCO COLA 33CL 24 1,1 26,40 €"
+            },
+            {
+              "descripcion": "123/2026 REFFRIX FRIXEN REFRESCO COLA ZERO 24 1,1",
+              "importes": [
+                26.4
+              ],
+              "raw": "123/2026 REFFRIX FRIXEN REFRESCO COLA ZERO 24 1,1 26,40 €"
+            },
+            {
+              "descripcion": "123/2026 REFREV2 REVOLTOSA 2L LIMON 6 0,8",
+              "importes": [
+                4.8
+              ],
+              "raw": "123/2026 REFREV2 REVOLTOSA 2L LIMON 6 0,8 4,80 €"
+            },
+            {
+              "descripcion": "123/2026 REFCAS1 GASEOSA CASERA 1.5 L 6",
+              "importes": [
+                0.87,
+                5.22
+              ],
+              "raw": "123/2026 REFCAS1 GASEOSA CASERA 1.5 L 6 0,87 5,22 €"
+            },
+            {
+              "descripcion": "123/2026 REFSIFT SIFON TOSCA 1.5 L TRAD. 6 1,4",
+              "importes": [
+                8.4
+              ],
+              "raw": "123/2026 REFSIFT SIFON TOSCA 1.5 L TRAD. 6 1,4 8,40 €"
+            },
+            {
+              "descripcion": "VENCIMIENTO: 03/03/26",
+              "importes": [
+                350.99
+              ],
+              "raw": "VENCIMIENTO: 03/03/26 350,99 €"
+            }
+          ],
+          "num_lineas": 15,
+          "text_length": 1363
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 48
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 350.99,
+          "fecha": "03/03/26",
+          "nif": "F88424072",
+          "iva": [
+            {
+              "tipo": 10.0,
+              "importe": 10.0
+            },
+            {
+              "tipo": 21.0,
+              "importe": 21.0
+            },
+            {
+              "tipo": 2.0,
+              "importe": 1.0
+            }
+          ],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 1605
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 8
+      },
+      "pypdf": {
+        "fields": {
+          "total": 350.99,
+          "fecha": "03/03/26",
+          "nif": "F88424072",
+          "iva": [
+            {
+              "tipo": 10.0,
+              "importe": 10.0
+            },
+            {
+              "tipo": 21.0,
+              "importe": 21.0
+            },
+            {
+              "tipo": 2.0,
+              "importe": 1.0
+            }
+          ],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 1605
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 9
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1025 1T26 0116 ISTA 2 RC.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1025 1T26 0116 ISTA 2 RC.pdf",
+    "norm_key": "1T26 0116 ISTA 2 RC",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 0.9,
+          "fecha": "43/0/6364",
+          "nif": null,
+          "iva": [
+            {
+              "tipo": 47.0,
+              "importe": 239.0
+            },
+            {
+              "tipo": 69.0,
+              "importe": 0.03
+            },
+            {
+              "tipo": 10.0,
+              "importe": 470239.0
+            },
+            {
+              "tipo": 10.0,
+              "importe": 470239.0
+            },
+            {
+              "tipo": 10.0,
+              "importe": 6.9
+            }
+          ],
+          "lineas": [
+            {
+              "descripcion": "Consumo (A.Fria) 48",
+              "importes": [
+                42.07
+              ],
+              "raw": "470239 Consumo (A.Fria) 48 42,07 10%"
+            },
+            {
+              "descripcion": "Consumo (A.Fria) 11",
+              "importes": [
+                9.93
+              ],
+              "raw": "470239 Consumo (A.Fria) 11 9,93 10%"
+            },
+            {
+              "descripcion": "Cuotas de Servicio del Canal de Isabel II (A.Fria)",
+              "importes": [
+                17.03
+              ],
+              "raw": "470239 Cuotas de Servicio del Canal de Isabel II (A.Fria) 17,03 10%"
+            },
+            {
+              "descripcion": "Unidades de consumo",
+              "importes": [
+                190.0
+              ],
+              "raw": "Unidades de consumo 190,00"
+            },
+            {
+              "descripcion": "Coeficiente Finca",
+              "importes": [
+                16.0
+              ],
+              "raw": "50 Coeficiente Finca 16,000"
+            },
+            {
+              "descripcion": "Consumo medio de su comunidad",
+              "importes": [
+                11.88
+              ],
+              "raw": "Consumo medio de su comunidad 11,88"
+            },
+            {
+              "descripcion": "Consumo (A.Fria) 1 0 999999",
+              "importes": [
+                0.9
+              ],
+              "raw": "470239 Consumo (A.Fria) 1 0 999999 0,902700 11,0"
+            }
+          ],
+          "num_lineas": 7,
+          "text_length": 1500
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 0.0,
+          "lineas": 1.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 75
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 75.93,
+          "fecha": "43/0/6364",
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 1540
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 4
+      },
+      "pypdf": {
+        "fields": {
+          "total": 75.93,
+          "fecha": "43/0/6364",
+          "nif": null,
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "Consumo (A.Fria)",
+              "importes": [
+                0.9,
+                11.0
+              ],
+              "raw": "999999470239 Consumo (A.Fria) 0,902700 11,001"
+            }
+          ],
+          "num_lineas": 1,
+          "text_length": 1535
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 0.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 12
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1060 1T26 0131 COOPERATIVA DEL VINO DE YECLA LA PURISIMA SCL RC.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1060 1T26 0131 COOPERATIVA DEL VINO DE YECLA LA PURISIMA SCL RC.pdf",
+    "norm_key": "1T26 0131 COOPERATIVA DEL VINO DE YECLA LA PURISIMA SCL RC",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": null,
+          "fecha": "31/01/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "FILARMONIA MSM PROD.ECOLOGICA CAJA 6 2024 60",
+              "importes": [
+                4.15,
+                249.0
+              ],
+              "raw": "135490106 FILARMONIA MSM PROD.ECOLOGICA CAJA 6 2024 60 4,1500 249,00"
+            },
+            {
+              "descripcion": "LA PURISIMA BLANCO CAJA 6 2025 60",
+              "importes": [
+                3.25,
+                195.0
+              ],
+              "raw": "131050106 LA PURISIMA BLANCO CAJA 6 2025 60 3,2500 195,00"
+            },
+            {
+              "descripcion": "02/03/2026",
+              "importes": [
+                537.24
+              ],
+              "raw": "02/03/2026 537,24"
+            }
+          ],
+          "num_lineas": 3,
+          "text_length": 1790
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 47
+      },
+      "pymupdf": {
+        "fields": {
+          "total": null,
+          "fecha": "31/01/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 1723
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 4
+      },
+      "pypdf": {
+        "fields": {
+          "total": null,
+          "fecha": "31/01/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "FILARMONIA MSM  PROD.ECOLOGICA CAJA 6 2024 60",
+              "importes": [
+                4.15,
+                249.0
+              ],
+              "raw": "135490106 FILARMONIA MSM  PROD.ECOLOGICA CAJA 6 2024 60 4,1500 249,00"
+            },
+            {
+              "descripcion": "LA PURISIMA BLANCO CAJA 6 2025 60",
+              "importes": [
+                3.25,
+                195.0
+              ],
+              "raw": "131050106 LA PURISIMA BLANCO CAJA 6 2025 60 3,2500 195,00"
+            },
+            {
+              "descripcion": "02/03/2026",
+              "importes": [
+                537.24
+              ],
+              "raw": "02/03/2026 537,24"
+            }
+          ],
+          "num_lineas": 3,
+          "text_length": 1798
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 9
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1T26 0218 BM TJ.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1T26 0218 BM TJ.pdf",
+    "norm_key": "1T26 0218 BM TJ",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 25.18,
+          "fecha": "25-09-04",
+          "nif": "B20099586",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 2417
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 70
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 25.18,
+          "fecha": "25-09-04",
+          "nif": "B20099586",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 3385
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 4
+      },
+      "pypdf": {
+        "fields": {
+          "total": 25.18,
+          "fecha": "25-09-04",
+          "nif": "B20099586",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 3384
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 6
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1109 1T26 0224 LA LLILDIRIA SL TF.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1109 1T26 0224 LA LLILDIRIA SL TF.pdf",
+    "norm_key": "1T26 0224 LA LLILDIRIA SL TF",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": null,
+          "fecha": null,
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 0
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 0.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 0.0
+        },
+        "error": null,
+        "time_ms": 1050
+      },
+      "pymupdf": {
+        "fields": {
+          "total": null,
+          "fecha": null,
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 0
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 0.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 0.0
+        },
+        "error": null,
+        "time_ms": 28
+      },
+      "pypdf": {
+        "fields": {
+          "total": null,
+          "fecha": null,
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 0
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 0.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 0.0
+        },
+        "error": null,
+        "time_ms": 337
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1089 1T26 0206 ODOO RC.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1089 1T26 0206 ODOO RC.pdf",
+    "norm_key": "1T26 0206 ODOO RC",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 14.8,
+          "fecha": "26/01/0251",
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 2059
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 162
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 14.8,
+          "fecha": "01/26/2026",
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 2048
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 6
+      },
+      "pypdf": {
+        "fields": {
+          "total": 14.8,
+          "fecha": "01/26/2026",
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 2105
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 51
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1035 1T26 0122 SABORES DE PATERNA SCA TF.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1035 1T26 0122 SABORES DE PATERNA SCA TF.pdf",
+    "norm_key": "1T26 0122 SABORES DE PATERNA SCA TF",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 197.02,
+          "fecha": "22/01/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "CHICHARRON ESPECIAL 08-01-26 8",
+              "importes": [
+                8.07,
+                17.3,
+                10.0,
+                139.61
+              ],
+              "raw": "0-0039 CHICHARRON ESPECIAL 08-01-26 8 8,07 17,30 10,00 139,61"
+            },
+            {
+              "descripcion": "LOMO EN MANTECA VACIO 1KG 14-01-26 1",
+              "importes": [
+                1.41,
+                16.8,
+                10.0,
+                23.69
+              ],
+              "raw": "0-0026 LOMO EN MANTECA VACIO 1KG 14-01-26 1 1,41 16,80 10,00 23,69"
+            },
+            {
+              "descripcion": "BUTIFARRA CASERA (VACIO) 07-01-26 2",
+              "importes": [
+                1.7,
+                9.3,
+                10.0,
+                15.81
+              ],
+              "raw": "0-0008 BUTIFARRA CASERA (VACIO) 07-01-26 2 1,70 9,30 10,00 15,81"
+            }
+          ],
+          "num_lineas": 3,
+          "text_length": 780
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 142
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 197.02,
+          "fecha": "22/01/2026",
+          "nif": "F11794542",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 776
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 5
+      },
+      "pypdf": {
+        "fields": {
+          "total": 197.02,
+          "fecha": "22/01/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "CHICHARRON ESPECIAL 8",
+              "importes": [
+                8.07,
+                17.3,
+                10.0,
+                139.61
+              ],
+              "raw": "0-0039 CHICHARRON ESPECIAL 8 8,07 17,30 10,00 139,6108-01-26"
+            },
+            {
+              "descripcion": "LOMO EN MANTECA VACIO 1KG 1",
+              "importes": [
+                1.41,
+                16.8,
+                10.0,
+                23.69
+              ],
+              "raw": "0-0026 LOMO EN MANTECA VACIO 1KG 1 1,41 16,80 10,00 23,6914-01-26"
+            },
+            {
+              "descripcion": "BUTIFARRA CASERA (VACIO) 2",
+              "importes": [
+                1.7,
+                9.3,
+                10.0,
+                15.81
+              ],
+              "raw": "0-0008 BUTIFARRA CASERA (VACIO) 2 1,70 9,30 10,00 15,8107-01-26"
+            }
+          ],
+          "num_lineas": 3,
+          "text_length": 778
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 10
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1153 1T26 0308 LA LLILDIRIA SL TF.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1153 1T26 0308 LA LLILDIRIA SL TF.pdf",
+    "norm_key": "1T26 0308 LA LLILDIRIA SL TF",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": null,
+          "fecha": null,
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 0
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 0.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 0.0
+        },
+        "error": null,
+        "time_ms": 979
+      },
+      "pymupdf": {
+        "fields": {
+          "total": null,
+          "fecha": null,
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 0
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 0.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 0.0
+        },
+        "error": null,
+        "time_ms": 29
+      },
+      "pypdf": {
+        "fields": {
+          "total": null,
+          "fecha": null,
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 0
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 0.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 0.0
+        },
+        "error": null,
+        "time_ms": 321
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1001 1T26 0101 SEGURMA RC.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1001 1T26 0101 SEGURMA RC.pdf",
+    "norm_key": "1T26 0101 SEGURMA RC",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 40.94,
+          "fecha": "26/01/0153",
+          "nif": "A48198626",
+          "iva": [
+            {
+              "tipo": 21.0,
+              "importe": 8.6
+            },
+            {
+              "tipo": 21.0,
+              "importe": 8.6
+            }
+          ],
+          "lineas": [
+            {
+              "descripcion": "IVA 21%",
+              "importes": [
+                8.6
+              ],
+              "raw": "IVA 21% 8,60 €"
+            }
+          ],
+          "num_lineas": 1,
+          "text_length": 1742
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 172
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 39.86,
+          "fecha": "26/01/0153",
+          "nif": "B87760575",
+          "iva": [
+            {
+              "tipo": 21.0,
+              "importe": 8.6
+            },
+            {
+              "tipo": 21.0,
+              "importe": 8.6
+            }
+          ],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 1752
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 5
+      },
+      "pypdf": {
+        "fields": {
+          "total": 39.86,
+          "fecha": "26/01/0153",
+          "nif": "B87760575",
+          "iva": [
+            {
+              "tipo": 21.0,
+              "importe": 8.6
+            },
+            {
+              "tipo": 21.0,
+              "importe": 8.6
+            }
+          ],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 1788
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 41
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1100 1T26 0218 BORBOTON FINCA Y BODEGA SLU TF.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1100 1T26 0218 BORBOTON FINCA Y BODEGA SLU TF.pdf",
+    "norm_key": "1T26 0218 BORBOTON FINCA Y BODEGA SLU TF",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 355.45,
+          "fecha": "18/02/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "ARS0337 A RAS DE SUELO COUPAGE 2024 75cl 48",
+              "importes": [
+                8.16,
+                0.0,
+                8.16,
+                391.68
+              ],
+              "raw": "ARS0337 A RAS DE SUELO COUPAGE 2024 75cl 48 8,16 € 0,00 % 8,16 € 391,68 €"
+            },
+            {
+              "descripcion": "Promoción especial 6+2 12 -",
+              "importes": [
+                8.16,
+                0.0,
+                8.16,
+                97.92
+              ],
+              "raw": "Promoción especial 6+2 12 -8,16 € 0,00 % -8,16 € -97,92 €"
+            }
+          ],
+          "num_lineas": 2,
+          "text_length": 451
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 29
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 355.45,
+          "fecha": "18/02/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 455
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 3
+      },
+      "pypdf": {
+        "fields": {
+          "total": 355.45,
+          "fecha": "18/02/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "ARS0337 A RAS DE SUELO  COUPAGE 2024 75cl 48",
+              "importes": [
+                8.16,
+                8.16,
+                391.68
+              ],
+              "raw": "ARS0337 A RAS DE SUELO  COUPAGE 2024 75cl 48 8,16 € 8,16 € 391,68 €"
+            },
+            {
+              "descripcion": "Promoción especial 6+2 12 -",
+              "importes": [
+                8.16,
+                8.16,
+                97.92
+              ],
+              "raw": "Promoción especial 6+2 12 -8,16 € -8,16 € -97,92 €"
+            },
+            {
+              "descripcion": "TRANSFERENCIA",
+              "importes": [
+                293.76,
+                61.69,
+                355.45
+              ],
+              "raw": "TRANSFERENCIA 293,76 € 61,69 € 355,45 €ES37 2100 1913 1902 0013 5677"
+            }
+          ],
+          "num_lineas": 3,
+          "text_length": 454
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 6
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1145 1T26 0304 PORVAZ VILAGARCIA SL TF.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1145 1T26 0304 PORVAZ VILAGARCIA SL TF.pdf",
+    "norm_key": "1T26 0304 PORVAZ VILAGARCIA SL TF",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 332.2,
+          "fecha": "04-03-2026",
+          "nif": "B36281087",
+          "iva": [
+            {
+              "tipo": 10.0,
+              "importe": 3.75
+            }
+          ],
+          "lineas": [
+            {
+              "descripcion": "MEJILLON ESCABECHE 8/12 RR120 AL 30",
+              "importes": [
+                3.8,
+                114.0
+              ],
+              "raw": "MEJILLON ESCABECHE 8/12 RR120 AL 30 3,800 10,0 114,00"
+            },
+            {
+              "descripcion": "MEJILLON ESCABECHE 13/18 RR120 AL PICANTE 30",
+              "importes": [
+                2.9,
+                87.0
+              ],
+              "raw": "MEJILLON ESCABECHE 13/18 RR120 AL PICANTE 30 2,900 10,0 87,00"
+            },
+            {
+              "descripcion": "VENTRESCA EN ACEITE DE OLIVA 10",
+              "importes": [
+                3.75,
+                37.5
+              ],
+              "raw": "VENTRESCA EN ACEITE DE OLIVA 10 3,750 10,0 37,50"
+            },
+            {
+              "descripcion": "NAVAJAS AL NATURAL 8/10 RR120 AL 10",
+              "importes": [
+                3.3,
+                33.0
+              ],
+              "raw": "NAVAJAS AL NATURAL 8/10 RR120 AL 10 3,300 10,0 33,00"
+            },
+            {
+              "descripcion": "SARDINILLAS ACEITE OLIVA RR120 AL 10",
+              "importes": [
+                3.05,
+                30.5
+              ],
+              "raw": "SARDINILLAS ACEITE OLIVA RR120 AL 10 3,050 10,0 30,50"
+            },
+            {
+              "descripcion": "Forma de pago: Base Imponible:",
+              "importes": [
+                302.0
+              ],
+              "raw": "Forma de pago: Base Imponible: 302,00"
+            },
+            {
+              "descripcion": "Pagaré a 30 días I.V.A.:",
+              "importes": [
+                30.2
+              ],
+              "raw": "Pagaré a 30 días I.V.A.: 30,20"
+            },
+            {
+              "descripcion": "04-04-2026",
+              "importes": [
+                332.2
+              ],
+              "raw": "04-04-2026 332,20"
+            },
+            {
+              "descripcion": "quenosfacilite,seránincorporadosaunficherotitularidaddePORVAZVILAGARCÍA,S.L.,condomicilioenCALLEGARCÍACAAMAÑO,",
+              "importes": [
+                23.36
+              ],
+              "raw": "quenosfacilite,seránincorporadosaunficherotitularidaddePORVAZVILAGARCÍA,S.L.,condomicilioenCALLEGARCÍACAAMAÑO,23,36600-VILAGARCIADE"
+            }
+          ],
+          "num_lineas": 9,
+          "text_length": 1930
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 259
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 332.2,
+          "fecha": "04-03-2026",
+          "nif": "B36281087",
+          "iva": [
+            {
+              "tipo": 10.0,
+              "importe": 3.75
+            }
+          ],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 2077
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 7
+      },
+      "pypdf": {
+        "fields": {
+          "total": 332.2,
+          "fecha": "04-03-2026",
+          "nif": "B36281087",
+          "iva": [
+            {
+              "tipo": 10.0,
+              "importe": 3.75
+            }
+          ],
+          "lineas": [
+            {
+              "descripcion": "MEJILLON ESCABECHE 8/12 RR120 AL 30",
+              "importes": [
+                3.8,
+                114.0
+              ],
+              "raw": "MEJILLON ESCABECHE 8/12 RR120 AL 30 3,800 10,0 114,00"
+            },
+            {
+              "descripcion": "MEJILLON ESCABECHE 13/18 RR120 AL PICANTE 30",
+              "importes": [
+                2.9,
+                87.0
+              ],
+              "raw": "MEJILLON ESCABECHE 13/18 RR120 AL PICANTE 30 2,900 10,0 87,00"
+            },
+            {
+              "descripcion": "VENTRESCA EN ACEITE DE OLIVA 10",
+              "importes": [
+                3.75,
+                37.5
+              ],
+              "raw": "VENTRESCA EN ACEITE DE OLIVA 10 3,750 10,0 37,50"
+            },
+            {
+              "descripcion": "NAVAJAS AL NATURAL 8/10 RR120 AL 10",
+              "importes": [
+                3.3,
+                33.0
+              ],
+              "raw": "NAVAJAS AL NATURAL 8/10 RR120 AL 10 3,300 10,0 33,00"
+            },
+            {
+              "descripcion": "SARDINILLAS ACEITE OLIVA RR120 AL 10",
+              "importes": [
+                3.05,
+                30.5
+              ],
+              "raw": "SARDINILLAS ACEITE OLIVA RR120 AL 10 3,050 10,0 30,50"
+            },
+            {
+              "descripcion": "04-04-2026",
+              "importes": [
+                332.2
+              ],
+              "raw": "04-04-2026 332,20"
+            }
+          ],
+          "num_lineas": 6,
+          "text_length": 2077
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 386
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1061 1T26 0131 DISTRIBUCION LEVANTINA ALIMENTOS TF.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1061 1T26 0131 DISTRIBUCION LEVANTINA ALIMENTOS TF.pdf",
+    "norm_key": "1T26 0131 DISTRIBUCION LEVANTINA ALIMENTOS TF",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 59001353.0,
+          "fecha": "31/01/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "Tlfo.: 964225",
+              "importes": [
+                50.63
+              ],
+              "raw": "Tlfo.: 964225050,630946669"
+            },
+            {
+              "descripcion": "COMESTIBLES BAREA",
+              "importes": [
+                259.2
+              ],
+              "raw": "59001353 COMESTIBLES BAREA 259,20"
+            },
+            {
+              "descripcion": "Albarán: A0 - 4088 Fecha: 21/01/2026 Total albarán:",
+              "importes": [
+                259.2
+              ],
+              "raw": "Albarán: A0 - 4088 Fecha: 21/01/2026 Total albarán: 259,20"
+            },
+            {
+              "descripcion": "=ALCACHOFAS EN ACEITE 12u x (330",
+              "importes": [
+                4.0,
+                5.4,
+                259.2
+              ],
+              "raw": "11080 =ALCACHOFAS EN ACEITE 12u x (330 4,000 C 5,400 259,20"
+            }
+          ],
+          "num_lineas": 4,
+          "text_length": 919
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 47
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 259.2,
+          "fecha": "31/01/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "Tlfo.: 964225",
+              "importes": [
+                50.63
+              ],
+              "raw": "Tlfo.: 964225050,630946669"
+            }
+          ],
+          "num_lineas": 1,
+          "text_length": 993
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 5
+      },
+      "pypdf": {
+        "fields": {
+          "total": 259.203,
+          "fecha": "31/01/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "Tlfo.: 964225",
+              "importes": [
+                50.63
+              ],
+              "raw": "Tlfo.: 964225050,630946669"
+            },
+            {
+              "descripcion": "Albarán:A0 - 4088 Fecha:21/01/2026Total albarán:",
+              "importes": [
+                259.2
+              ],
+              "raw": "Albarán:A0 - 4088 Fecha:21/01/2026Total albarán: 259,20"
+            }
+          ],
+          "num_lineas": 2,
+          "text_length": 978
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 14
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1T26 0224 BM TJ.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1T26 0224 BM TJ.pdf",
+    "norm_key": "1T26 0224 BM TJ",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 34.39,
+          "fecha": "25-09-04",
+          "nif": "B20099586",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 2314
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 61
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 34.39,
+          "fecha": "25-09-04",
+          "nif": "B20099586",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 3099
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 4
+      },
+      "pypdf": {
+        "fields": {
+          "total": 34.39,
+          "fecha": "25-09-04",
+          "nif": "B20099586",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 3098
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 6
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1178 1T26 0326 VIANDANTES TJ .pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1178 1T26 0326 VIANDANTES TJ .pdf",
+    "norm_key": "1T26 0326 VIANDANTES TJ",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 14.46,
+          "fecha": "26/03/2026",
+          "nif": "B88579586",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "GOURMET LEON CREMA RABANO CON WASABI 160 ML",
+              "importes": [
+                5.8,
+                5.8
+              ],
+              "raw": "1 GOURMET LEON CREMA RABANO CON WASABI 160 ML 5,80 € 5,80 €"
+            },
+            {
+              "descripcion": "ONENA SAL AHUMADA 125 G",
+              "importes": [
+                4.5,
+                4.5
+              ],
+              "raw": "1 ONENA SAL AHUMADA 125 G 4,50 € 4,50 €"
+            },
+            {
+              "descripcion": "DELICAT CRACKER SIN GLUTEN 140 GRS",
+              "importes": [
+                5.3,
+                5.3
+              ],
+              "raw": "1 DELICAT CRACKER SIN GLUTEN 140 GRS 5,30 € 5,30 €"
+            },
+            {
+              "descripcion": "Impuesto Base Cuota Total Entregado:",
+              "importes": [
+                15.6,
+                0.0
+              ],
+              "raw": "Impuesto Base Cuota Total Entregado: 15,60 € Cambio: 0,00 €"
+            }
+          ],
+          "num_lineas": 4,
+          "text_length": 812
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 48
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 4.0,
+          "fecha": "26/03/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 820
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 13
+      },
+      "pypdf": {
+        "fields": {
+          "total": 4.0,
+          "fecha": "26/03/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 820
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 17
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1028 1T26 0116 ZUBELZU PIPARRAK . TF.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1028 1T26 0116 ZUBELZU PIPARRAK . TF.pdf",
+    "norm_key": "1T26 0116 ZUBELZU PIPARRAK . TF",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 900.12,
+          "fecha": "12/01/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "MOUSSE DE PIPARRA 400 g 4 24",
+              "importes": [
+                5.63,
+                135.12
+              ],
+              "raw": "1901 MOUSSE DE PIPARRA 400 g 4 24 5,630 135,12"
+            },
+            {
+              "descripcion": "MOUSSE DE PIPARRA 100 g 12 144",
+              "importes": [
+                2.45,
+                352.8
+              ],
+              "raw": "1900 MOUSSE DE PIPARRA 100 g 12 144 2,450 352,80"
+            },
+            {
+              "descripcion": "GUINDILLAS de IBARRA 1/2 GALON 6 36",
+              "importes": [
+                11.45,
+                412.2
+              ],
+              "raw": "150 GUINDILLAS de IBARRA 1/2 GALON 6 36 11,450 412,20"
+            }
+          ],
+          "num_lineas": 3,
+          "text_length": 785
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 43
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 900.12,
+          "fecha": "12/01/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 808
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 3
+      },
+      "pypdf": {
+        "fields": {
+          "total": 900.12,
+          "fecha": "12/01/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 846
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 13
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1088 1T26 0206 ISIFAR SOLUTIONS SL TF.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1088 1T26 0206 ISIFAR SOLUTIONS SL TF.pdf",
+    "norm_key": "1T26 0206 ISIFAR SOLUTIONS SL TF",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 256.52,
+          "fecha": "02/02/2026",
+          "nif": "B67582049",
+          "iva": [
+            {
+              "tipo": 10.0,
+              "importe": 23.32
+            },
+            {
+              "tipo": 10.0,
+              "importe": 77.88
+            },
+            {
+              "tipo": 10.0,
+              "importe": 138.6
+            },
+            {
+              "tipo": 10.0,
+              "importe": 27.5
+            },
+            {
+              "tipo": 10.0,
+              "importe": 12.54
+            },
+            {
+              "tipo": 10.0,
+              "importe": 23.32
+            }
+          ],
+          "lineas": [
+            {
+              "descripcion": "TASCA BAREA S.L. TOTAL",
+              "importes": [
+                256.52
+              ],
+              "raw": "TASCA BAREA S.L. TOTAL 256,52€"
+            },
+            {
+              "descripcion": "- MIXTO 20G 6 x",
+              "importes": [
+                70.8,
+                70.8,
+                77.88
+              ],
+              "raw": "8013299002206 - MIXTO 20G 6 x 70,80€ 1 0% 70,80€ 10% 77,88€"
+            },
+            {
+              "descripcion": "- MIXTO 60G",
+              "importes": [
+                126.0,
+                126.0,
+                138.6
+              ],
+              "raw": "8013299006600 - MIXTO 60G 126,00€ 1 0% 126,00€ 10% 138,60€"
+            },
+            {
+              "descripcion": "- MOU & REGALIZ",
+              "importes": [
+                25.0,
+                25.0,
+                27.5
+              ],
+              "raw": "8013299007195 - MOU & REGALIZ 25,00€ 1 0% 25,00€ 10% 27,50€"
+            },
+            {
+              "descripcion": "- AMARELLE",
+              "importes": [
+                3.8,
+                11.4,
+                12.54
+              ],
+              "raw": "8013299007201 - AMARELLE 3,80€ 3 0% 11,40€ 10% 12,54€"
+            }
+          ],
+          "num_lineas": 5,
+          "text_length": 1040
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 144
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 256.52,
+          "fecha": "02/02/2026",
+          "nif": "B67582049",
+          "iva": [
+            {
+              "tipo": 10.0,
+              "importe": 23.32
+            },
+            {
+              "tipo": 10.0,
+              "importe": 77.88
+            },
+            {
+              "tipo": 10.0,
+              "importe": 138.6
+            },
+            {
+              "tipo": 10.0,
+              "importe": 27.5
+            },
+            {
+              "tipo": 10.0,
+              "importe": 12.54
+            },
+            {
+              "tipo": 10.0,
+              "importe": 23.32
+            }
+          ],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 1041
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 3
+      },
+      "pypdf": {
+        "fields": {
+          "total": 256.52,
+          "fecha": "02/02/2026",
+          "nif": "B67582049",
+          "iva": [
+            {
+              "tipo": 10.0,
+              "importe": 23.32
+            },
+            {
+              "tipo": 10.0,
+              "importe": 77.88
+            },
+            {
+              "tipo": 10.0,
+              "importe": 138.6
+            },
+            {
+              "tipo": 10.0,
+              "importe": 27.5
+            },
+            {
+              "tipo": 10.0,
+              "importe": 12.54
+            },
+            {
+              "tipo": 10.0,
+              "importe": 23.32
+            }
+          ],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 1040
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 249
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1T26 0327 BM TJ.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1T26 0327 BM TJ.pdf",
+    "norm_key": "1T26 0327 BM TJ",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 43.18,
+          "fecha": "25-09-04",
+          "nif": "B20099586",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 2518
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 100
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 43.18,
+          "fecha": "25-09-04",
+          "nif": "B20099586",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 3375
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 5
+      },
+      "pypdf": {
+        "fields": {
+          "total": 43.18,
+          "fecha": "25-09-04",
+          "nif": "B20099586",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 3374
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 5
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1134 1T26 0228 PANIFIESTO LAVAPIES.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1134 1T26 0228 PANIFIESTO LAVAPIES.pdf",
+    "norm_key": "1T26 0228 PANIFIESTO LAVAPIES",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 185.4,
+          "fecha": null,
+          "nif": "B87874327",
+          "iva": [
+            {
+              "tipo": 17.0,
+              "importe": 8.27
+            }
+          ],
+          "lineas": [
+            {
+              "descripcion": "01-feb.-2026",
+              "importes": [
+                8.65,
+                0.35,
+                9.0
+              ],
+              "raw": "26-101101-369 01-feb.-2026 8,65 0,35 9,00"
+            },
+            {
+              "descripcion": "01-feb.-2026",
+              "importes": [
+                5.0,
+                0.2,
+                5.2
+              ],
+              "raw": "26-101101-370 01-feb.-2026 5,00 0,20 5,20"
+            },
+            {
+              "descripcion": "02-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-381 02-feb.-2026 3,94 0,16 4,10"
+            },
+            {
+              "descripcion": "03-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-389 03-feb.-2026 3,94 0,16 4,10"
+            },
+            {
+              "descripcion": "04-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-405 04-feb.-2026 3,94 0,16 4,10"
+            },
+            {
+              "descripcion": "05-feb.-2026",
+              "importes": [
+                6.44,
+                0.26,
+                6.7
+              ],
+              "raw": "26-101101-412 05-feb.-2026 6,44 0,26 6,70"
+            },
+            {
+              "descripcion": "06-feb.-2026",
+              "importes": [
+                5.91,
+                0.24,
+                6.15
+              ],
+              "raw": "26-101101-427 06-feb.-2026 5,91 0,24 6,15"
+            },
+            {
+              "descripcion": "07-feb.-2026",
+              "importes": [
+                8.94,
+                0.36,
+                9.3
+              ],
+              "raw": "26-101101-448 07-feb.-2026 8,94 0,36 9,30"
+            },
+            {
+              "descripcion": "08-feb.-2026",
+              "importes": [
+                7.6,
+                0.3,
+                7.9
+              ],
+              "raw": "26-101101-462 08-feb.-2026 7,60 0,30 7,90"
+            },
+            {
+              "descripcion": "09-feb.-2026",
+              "importes": [
+                5.91,
+                0.24,
+                6.15
+              ],
+              "raw": "26-101101-476 09-feb.-2026 5,91 0,24 6,15"
+            },
+            {
+              "descripcion": "10-feb.-2026",
+              "importes": [
+                6.44,
+                0.26,
+                6.7
+              ],
+              "raw": "26-101101-484 10-feb.-2026 6,44 0,26 6,70"
+            },
+            {
+              "descripcion": "11-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-490 11-feb.-2026 3,94 0,16 4,10"
+            },
+            {
+              "descripcion": "11-feb.-2026",
+              "importes": [
+                3.8,
+                0.15,
+                3.95
+              ],
+              "raw": "26-101101-496 11-feb.-2026 3,80 0,15 3,95"
+            },
+            {
+              "descripcion": "12-feb.-2026",
+              "importes": [
+                3.65,
+                0.15,
+                3.8
+              ],
+              "raw": "26-101101-507 12-feb.-2026 3,65 0,15 3,80"
+            },
+            {
+              "descripcion": "13-feb.-2026",
+              "importes": [
+                7.88,
+                0.32,
+                8.2
+              ],
+              "raw": "26-101101-514 13-feb.-2026 7,88 0,32 8,20"
+            },
+            {
+              "descripcion": "14-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-534 14-feb.-2026 3,94 0,16 4,10"
+            },
+            {
+              "descripcion": "15-feb.-2026",
+              "importes": [
+                12.6,
+                0.5,
+                13.1
+              ],
+              "raw": "26-101101-555 15-feb.-2026 12,60 0,50 13,10"
+            },
+            {
+              "descripcion": "16-feb.-2026",
+              "importes": [
+                5.96,
+                0.24,
+                6.2
+              ],
+              "raw": "26-101101-569 16-feb.-2026 5,96 0,24 6,20"
+            },
+            {
+              "descripcion": "17-feb.-2026",
+              "importes": [
+                3.65,
+                0.15,
+                3.8
+              ],
+              "raw": "26-101101-583 17-feb.-2026 3,65 0,15 3,80"
+            },
+            {
+              "descripcion": "18-feb.-2026",
+              "importes": [
+                5.91,
+                0.24,
+                6.15
+              ],
+              "raw": "26-101101-594 18-feb.-2026 5,91 0,24 6,15"
+            },
+            {
+              "descripcion": "19-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-602 19-feb.-2026 3,94 0,16 4,10"
+            },
+            {
+              "descripcion": "20-feb.-2026",
+              "importes": [
+                6.87,
+                0.28,
+                7.15
+              ],
+              "raw": "26-101101-612 20-feb.-2026 6,87 0,28 7,15"
+            },
+            {
+              "descripcion": "21-feb.-2026",
+              "importes": [
+                7.88,
+                0.32,
+                8.2
+              ],
+              "raw": "26-101101-636 21-feb.-2026 7,88 0,32 8,20"
+            },
+            {
+              "descripcion": "22-feb.-2026",
+              "importes": [
+                13.65,
+                0.55,
+                14.2
+              ],
+              "raw": "26-101101-649 22-feb.-2026 13,65 0,55 14,20"
+            },
+            {
+              "descripcion": "23-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-660 23-feb.-2026 3,94 0,16 4,10"
+            },
+            {
+              "descripcion": "24-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-668 24-feb.-2026 3,94 0,16 4,10"
+            },
+            {
+              "descripcion": "25-feb.-2026",
+              "importes": [
+                3.65,
+                0.15,
+                3.8
+              ],
+              "raw": "26-101101-678 25-feb.-2026 3,65 0,15 3,80"
+            },
+            {
+              "descripcion": "26-feb.-2026",
+              "importes": [
+                6.44,
+                0.26,
+                6.7
+              ],
+              "raw": "26-101101-685 26-feb.-2026 6,44 0,26 6,70"
+            },
+            {
+              "descripcion": "27-feb.-2026",
+              "importes": [
+                5.91,
+                0.24,
+                6.15
+              ],
+              "raw": "26-101101-702 27-feb.-2026 5,91 0,24 6,15"
+            },
+            {
+              "descripcion": "28-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-724 28-feb.-2026 3,94 0,16 4,10"
+            },
+            {
+              "descripcion": "Forma de pago Tarjeta Precios Con IVA incluido Total Neto",
+              "importes": [
+                185.4
+              ],
+              "raw": "Forma de pago Tarjeta Precios Con IVA incluido Total Neto 185,40 €"
+            }
+          ],
+          "num_lineas": 31,
+          "text_length": 1839
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 0.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 97
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 178.27,
+          "fecha": null,
+          "nif": "B87874327",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 1938
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 0.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 5
+      },
+      "pypdf": {
+        "fields": {
+          "total": 178.27,
+          "fecha": null,
+          "nif": "B87874327",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "01-feb.-2026",
+              "importes": [
+                8.65,
+                0.35,
+                9.0
+              ],
+              "raw": "26-101101-369 01-feb.-2026  8,65  0,35  9,00"
+            },
+            {
+              "descripcion": "01-feb.-2026",
+              "importes": [
+                5.0,
+                0.2,
+                5.2
+              ],
+              "raw": "26-101101-370 01-feb.-2026  5,00  0,20  5,20"
+            },
+            {
+              "descripcion": "02-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-381 02-feb.-2026  3,94  0,16  4,10"
+            },
+            {
+              "descripcion": "03-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-389 03-feb.-2026  3,94  0,16  4,10"
+            },
+            {
+              "descripcion": "04-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-405 04-feb.-2026  3,94  0,16  4,10"
+            },
+            {
+              "descripcion": "05-feb.-2026",
+              "importes": [
+                6.44,
+                0.26,
+                6.7
+              ],
+              "raw": "26-101101-412 05-feb.-2026  6,44  0,26  6,70"
+            },
+            {
+              "descripcion": "06-feb.-2026",
+              "importes": [
+                5.91,
+                0.24,
+                6.15
+              ],
+              "raw": "26-101101-427 06-feb.-2026  5,91  0,24  6,15"
+            },
+            {
+              "descripcion": "07-feb.-2026",
+              "importes": [
+                8.94,
+                0.36,
+                9.3
+              ],
+              "raw": "26-101101-448 07-feb.-2026  8,94  0,36  9,30"
+            },
+            {
+              "descripcion": "08-feb.-2026",
+              "importes": [
+                7.6,
+                0.3,
+                7.9
+              ],
+              "raw": "26-101101-462 08-feb.-2026  7,60  0,30  7,90"
+            },
+            {
+              "descripcion": "09-feb.-2026",
+              "importes": [
+                5.91,
+                0.24,
+                6.15
+              ],
+              "raw": "26-101101-476 09-feb.-2026  5,91  0,24  6,15"
+            },
+            {
+              "descripcion": "10-feb.-2026",
+              "importes": [
+                6.44,
+                0.26,
+                6.7
+              ],
+              "raw": "26-101101-484 10-feb.-2026  6,44  0,26  6,70"
+            },
+            {
+              "descripcion": "11-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-490 11-feb.-2026  3,94  0,16  4,10"
+            },
+            {
+              "descripcion": "11-feb.-2026",
+              "importes": [
+                3.8,
+                0.15,
+                3.95
+              ],
+              "raw": "26-101101-496 11-feb.-2026  3,80  0,15  3,95"
+            },
+            {
+              "descripcion": "12-feb.-2026",
+              "importes": [
+                3.65,
+                0.15,
+                3.8
+              ],
+              "raw": "26-101101-507 12-feb.-2026  3,65  0,15  3,80"
+            },
+            {
+              "descripcion": "13-feb.-2026",
+              "importes": [
+                7.88,
+                0.32,
+                8.2
+              ],
+              "raw": "26-101101-514 13-feb.-2026  7,88  0,32  8,20"
+            },
+            {
+              "descripcion": "14-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-534 14-feb.-2026  3,94  0,16  4,10"
+            },
+            {
+              "descripcion": "15-feb.-2026",
+              "importes": [
+                12.6,
+                0.5,
+                13.1
+              ],
+              "raw": "26-101101-555 15-feb.-2026  12,60  0,50  13,10"
+            },
+            {
+              "descripcion": "16-feb.-2026",
+              "importes": [
+                5.96,
+                0.24,
+                6.2
+              ],
+              "raw": "26-101101-569 16-feb.-2026  5,96  0,24  6,20"
+            },
+            {
+              "descripcion": "17-feb.-2026",
+              "importes": [
+                3.65,
+                0.15,
+                3.8
+              ],
+              "raw": "26-101101-583 17-feb.-2026  3,65  0,15  3,80"
+            },
+            {
+              "descripcion": "18-feb.-2026",
+              "importes": [
+                5.91,
+                0.24,
+                6.15
+              ],
+              "raw": "26-101101-594 18-feb.-2026  5,91  0,24  6,15"
+            },
+            {
+              "descripcion": "19-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-602 19-feb.-2026  3,94  0,16  4,10"
+            },
+            {
+              "descripcion": "20-feb.-2026",
+              "importes": [
+                6.87,
+                0.28,
+                7.15
+              ],
+              "raw": "26-101101-612 20-feb.-2026  6,87  0,28  7,15"
+            },
+            {
+              "descripcion": "21-feb.-2026",
+              "importes": [
+                7.88,
+                0.32,
+                8.2
+              ],
+              "raw": "26-101101-636 21-feb.-2026  7,88  0,32  8,20"
+            },
+            {
+              "descripcion": "22-feb.-2026",
+              "importes": [
+                13.65,
+                0.55,
+                14.2
+              ],
+              "raw": "26-101101-649 22-feb.-2026  13,65  0,55  14,20"
+            },
+            {
+              "descripcion": "23-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-660 23-feb.-2026  3,94  0,16  4,10"
+            },
+            {
+              "descripcion": "24-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-668 24-feb.-2026  3,94  0,16  4,10"
+            },
+            {
+              "descripcion": "25-feb.-2026",
+              "importes": [
+                3.65,
+                0.15,
+                3.8
+              ],
+              "raw": "26-101101-678 25-feb.-2026  3,65  0,15  3,80"
+            },
+            {
+              "descripcion": "26-feb.-2026",
+              "importes": [
+                6.44,
+                0.26,
+                6.7
+              ],
+              "raw": "26-101101-685 26-feb.-2026  6,44  0,26  6,70"
+            },
+            {
+              "descripcion": "27-feb.-2026",
+              "importes": [
+                5.91,
+                0.24,
+                6.15
+              ],
+              "raw": "26-101101-702 27-feb.-2026  5,91  0,24  6,15"
+            },
+            {
+              "descripcion": "28-feb.-2026",
+              "importes": [
+                3.94,
+                0.16,
+                4.1
+              ],
+              "raw": "26-101101-724 28-feb.-2026  3,94  0,16  4,10"
+            }
+          ],
+          "num_lineas": 30,
+          "text_length": 1926
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 0.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 8
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "910 ATRASADA 2T25 MANIPULADOS ABELLAN TF.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\ATRASADAS\\910 ATRASADA 2T25 MANIPULADOS ABELLAN TF.pdf",
+    "norm_key": "ATRASADA 2T25 MANIPULADOS ABELLAN TF",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": null,
+          "fecha": null,
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 0
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 0.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 0.0
+        },
+        "error": null,
+        "time_ms": 4
+      },
+      "pymupdf": {
+        "fields": {
+          "total": null,
+          "fecha": null,
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 0
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 0.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 0.0
+        },
+        "error": null,
+        "time_ms": 2
+      },
+      "pypdf": {
+        "fields": {
+          "total": null,
+          "fecha": null,
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 0
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 0.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 0.0
+        },
+        "error": null,
+        "time_ms": 1
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1034 1T26 0121 PORVAZ VILAGARCIA SL TF.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1034 1T26 0121 PORVAZ VILAGARCIA SL TF.pdf",
+    "norm_key": "1T26 0121 PORVAZ VILAGARCIA SL TF",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 537.13,
+          "fecha": "21-01-2026",
+          "nif": "B36281087",
+          "iva": [
+            {
+              "tipo": 10.0,
+              "importe": 3.75
+            }
+          ],
+          "lineas": [
+            {
+              "descripcion": "BERBERECHO ENLATADO 40/60 RR120 AL 29",
+              "importes": [
+                4.5,
+                130.5
+              ],
+              "raw": "BERBERECHO ENLATADO 40/60 RR120 AL 29 4,500 10,0 130,50"
+            },
+            {
+              "descripcion": "MEJILLON ESCABECHE 8/12 RR120 AL 30",
+              "importes": [
+                3.8,
+                114.0
+              ],
+              "raw": "MEJILLON ESCABECHE 8/12 RR120 AL 30 3,800 10,0 114,00"
+            },
+            {
+              "descripcion": "VENTRESCA EN ACEITE DE OLIVA 10",
+              "importes": [
+                3.75,
+                37.5
+              ],
+              "raw": "VENTRESCA EN ACEITE DE OLIVA 10 3,750 10,0 37,50"
+            },
+            {
+              "descripcion": "NAVAJAS AL NATURAL 8/10 RR120 AL 20",
+              "importes": [
+                3.3,
+                66.0
+              ],
+              "raw": "NAVAJAS AL NATURAL 8/10 RR120 AL 20 3,300 10,0 66,00"
+            },
+            {
+              "descripcion": "SARDINILLAS ACEITE OLIVA RR120 AL 20",
+              "importes": [
+                3.05,
+                61.0
+              ],
+              "raw": "SARDINILLAS ACEITE OLIVA RR120 AL 20 3,050 10,0 61,00"
+            },
+            {
+              "descripcion": "ALMEJA BLANCA AL NATURAL OL120 AL 6",
+              "importes": [
+                3.05,
+                18.3
+              ],
+              "raw": "ALMEJA BLANCA AL NATURAL OL120 AL 6 3,050 10,0 18,30"
+            },
+            {
+              "descripcion": "ZAMBURIÑAS SALSA VIEIRA 20",
+              "importes": [
+                3.05,
+                61.0
+              ],
+              "raw": "ZAMBURIÑAS SALSA VIEIRA 20 3,050 10,0 61,00"
+            },
+            {
+              "descripcion": "Forma de pago: Base Imponible:",
+              "importes": [
+                488.3
+              ],
+              "raw": "Forma de pago: Base Imponible: 488,30"
+            },
+            {
+              "descripcion": "Pagaré a 30 días I.V.A.:",
+              "importes": [
+                48.83
+              ],
+              "raw": "Pagaré a 30 días I.V.A.: 48,83"
+            },
+            {
+              "descripcion": "21-02-2026",
+              "importes": [
+                537.13
+              ],
+              "raw": "21-02-2026 537,13"
+            },
+            {
+              "descripcion": "quenosfacilite,seránincorporadosaunficherotitularidaddePORVAZVILAGARCÍA,S.L.,condomicilioenCALLEGARCÍACAAMAÑO,",
+              "importes": [
+                23.36
+              ],
+              "raw": "quenosfacilite,seránincorporadosaunficherotitularidaddePORVAZVILAGARCÍA,S.L.,condomicilioenCALLEGARCÍACAAMAÑO,23,36600-VILAGARCIADE"
+            }
+          ],
+          "num_lineas": 11,
+          "text_length": 2020
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 357
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 537.13,
+          "fecha": "21-01-2026",
+          "nif": "B36281087",
+          "iva": [
+            {
+              "tipo": 10.0,
+              "importe": 3.75
+            }
+          ],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 2167
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 9
+      },
+      "pypdf": {
+        "fields": {
+          "total": 537.13,
+          "fecha": "21-01-2026",
+          "nif": "B36281087",
+          "iva": [
+            {
+              "tipo": 10.0,
+              "importe": 3.75
+            }
+          ],
+          "lineas": [
+            {
+              "descripcion": "BERBERECHO ENLATADO 40/60 RR120 AL 29",
+              "importes": [
+                4.5,
+                130.5
+              ],
+              "raw": "BERBERECHO ENLATADO 40/60 RR120 AL 29 4,500 10,0 130,50"
+            },
+            {
+              "descripcion": "MEJILLON ESCABECHE 8/12 RR120 AL 30",
+              "importes": [
+                3.8,
+                114.0
+              ],
+              "raw": "MEJILLON ESCABECHE 8/12 RR120 AL 30 3,800 10,0 114,00"
+            },
+            {
+              "descripcion": "VENTRESCA EN ACEITE DE OLIVA 10",
+              "importes": [
+                3.75,
+                37.5
+              ],
+              "raw": "VENTRESCA EN ACEITE DE OLIVA 10 3,750 10,0 37,50"
+            },
+            {
+              "descripcion": "NAVAJAS AL NATURAL 8/10 RR120 AL 20",
+              "importes": [
+                3.3,
+                66.0
+              ],
+              "raw": "NAVAJAS AL NATURAL 8/10 RR120 AL 20 3,300 10,0 66,00"
+            },
+            {
+              "descripcion": "SARDINILLAS ACEITE OLIVA RR120 AL 20",
+              "importes": [
+                3.05,
+                61.0
+              ],
+              "raw": "SARDINILLAS ACEITE OLIVA RR120 AL 20 3,050 10,0 61,00"
+            },
+            {
+              "descripcion": "ALMEJA BLANCA AL NATURAL OL120 AL 6",
+              "importes": [
+                3.05,
+                18.3
+              ],
+              "raw": "ALMEJA BLANCA AL NATURAL OL120 AL 6 3,050 10,0 18,30"
+            },
+            {
+              "descripcion": "ZAMBURIÑAS SALSA VIEIRA 20",
+              "importes": [
+                3.05,
+                61.0
+              ],
+              "raw": "ZAMBURIÑAS SALSA VIEIRA 20 3,050 10,0 61,00"
+            },
+            {
+              "descripcion": "21-02-2026",
+              "importes": [
+                537.13
+              ],
+              "raw": "21-02-2026 537,13"
+            }
+          ],
+          "num_lineas": 8,
+          "text_length": 2167
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 598
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1095 1T26 0213 INDUSTRIAS CARNICAS MRM TF.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1095 1T26 0213 INDUSTRIAS CARNICAS MRM TF.pdf",
+    "norm_key": "1T26 0213 INDUSTRIAS CARNICAS MRM TF",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 86.15,
+          "fecha": "13/02/2026",
+          "nif": "A80280845",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "Cajas :",
+              "importes": [
+                1.0
+              ],
+              "raw": "Cajas : 1,00"
+            },
+            {
+              "descripcion": "Cajas :",
+              "importes": [
+                1.0
+              ],
+              "raw": "Cajas : 1,00"
+            },
+            {
+              "descripcion": "CAJAS : 2 PESO NETO :",
+              "importes": [
+                2.72,
+                4.19,
+                86.15
+              ],
+              "raw": "CAJAS : 2 PESO NETO : 2,72 PESO BRUTO : 4,19 SUMA : 86,150"
+            },
+            {
+              "descripcion": "Vencimiento : 20/02/2026 Importe Líquido :",
+              "importes": [
+                94.77
+              ],
+              "raw": "Vencimiento : 20/02/2026 Importe Líquido : 94,77 €"
+            }
+          ],
+          "num_lineas": 4,
+          "text_length": 1789
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 61
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 86.15,
+          "fecha": "13/02/2026",
+          "nif": "A80280845",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "PESO NETO :",
+              "importes": [
+                2.72
+              ],
+              "raw": "PESO NETO : 2,72"
+            },
+            {
+              "descripcion": "PESO BRUTO :",
+              "importes": [
+                4.19
+              ],
+              "raw": "PESO BRUTO : 4,19"
+            }
+          ],
+          "num_lineas": 2,
+          "text_length": 1837
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 6
+      },
+      "pypdf": {
+        "fields": {
+          "total": 86.15,
+          "fecha": "13/02/2026",
+          "nif": "A80280845",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "PESO NETO :",
+              "importes": [
+                2.72,
+                4.19,
+                86.15
+              ],
+              "raw": "PESO NETO : 2,72 PESO BRUTO : 4,19 SUMA :  86,150"
+            }
+          ],
+          "num_lineas": 1,
+          "text_length": 1832
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 10
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1097 1T26 0216 CASA DEL DUQUE SL TJ.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1097 1T26 0216 CASA DEL DUQUE SL TJ.pdf",
+    "norm_key": "1T26 0216 CASA DEL DUQUE SL TJ",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": null,
+          "fecha": null,
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 0
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 0.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 0.0
+        },
+        "error": null,
+        "time_ms": 3
+      },
+      "pymupdf": {
+        "fields": {
+          "total": null,
+          "fecha": null,
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 0
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 0.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 0.0
+        },
+        "error": null,
+        "time_ms": 1
+      },
+      "pypdf": {
+        "fields": {
+          "total": null,
+          "fecha": null,
+          "nif": null,
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 0
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 0.0,
+          "nif": 0.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 0.0
+        },
+        "error": null,
+        "time_ms": 0
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1125 1T26 0227 MOLLETES ARTESANOS DE ANTEQUERA SL TF.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1125 1T26 0227 MOLLETES ARTESANOS DE ANTEQUERA SL TF.pdf",
+    "norm_key": "1T26 0227 MOLLETES ARTESANOS DE ANTEQUERA SL TF",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 190.4,
+          "fecha": "26/02/2026",
+          "nif": "B93662708",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "MOLLETE AT.80GR C-26 U*2M - CAD.: 29/04/2026 8",
+              "importes": [
+                208.0,
+                1.11,
+                30.0,
+                161.54
+              ],
+              "raw": "10108 MOLLETE AT.80GR C-26 U*2M - CAD.: 29/04/2026 8 208,000 1,11 30,00 161,54"
+            },
+            {
+              "descripcion": "PICOS GOURMET B 130gr - CAD.: 06/05/2026",
+              "importes": [
+                20.0,
+                1.54,
+                30.0,
+                21.54
+              ],
+              "raw": "20101 PICOS GOURMET B 130gr - CAD.: 06/05/2026 20,000 1,54 30,00 21,54"
+            },
+            {
+              "descripcion": "Entrega a cta. :",
+              "importes": [
+                0.0
+              ],
+              "raw": "Entrega a cta. : 0,00"
+            }
+          ],
+          "num_lineas": 3,
+          "text_length": 907
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 40
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 190.4,
+          "fecha": "27/02/2026",
+          "nif": "B93662708",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 924
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 3
+      },
+      "pypdf": {
+        "fields": {
+          "total": 190.4,
+          "fecha": "27/02/2026",
+          "nif": "B93662708",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 924
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 6
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "ATRASADA 2T25 0401 SOM ENERGIA SCCL RC.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\2 TRIMESTRE 2026\\ATRASADAS\\ATRASADA 2T25 0401 SOM ENERGIA SCCL RC.pdf",
+    "norm_key": "ATRASADA 2T25 0401 SOM ENERGIA SCCL RC",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": null,
+          "fecha": "01/04/2025",
+          "nif": "F55091367",
+          "iva": [
+            {
+              "tipo": 5.0,
+              "importe": 0.2
+            }
+          ],
+          "lineas": [
+            {
+              "descripcion": "Potencia contratada (kW):",
+              "importes": [
+                5.0,
+                5.0
+              ],
+              "raw": "Potencia contratada (kW): 5,000 5,000"
+            },
+            {
+              "descripcion": "Término potencia (€/kW y año)",
+              "importes": [
+                29.93,
+                2.95,
+                33.09,
+                3.26
+              ],
+              "raw": "Término potencia (€/kW y año) 29,934000 2,955000 33,092037 3,266753"
+            },
+            {
+              "descripcion": "Término energía (€/kWh)",
+              "importes": [
+                0.22,
+                0.15,
+                0.12,
+                0.25,
+                0.16,
+                0.13
+              ],
+              "raw": "Término energía (€/kWh) 0,229000 0,153000 0,125000 0,253160 0,169141 0,138187"
+            },
+            {
+              "descripcion": "Término potencia (€/kW y año)",
+              "importes": [
+                29.93,
+                2.95,
+                33.09,
+                3.26
+              ],
+              "raw": "Término potencia (€/kW y año) 29,934000 2,955000 33,092037 3,266753"
+            },
+            {
+              "descripcion": "Término energía (€/kWh)",
+              "importes": [
+                0.22,
+                0.15,
+                0.12,
+                0.24,
+                0.16,
+                0.13
+              ],
+              "raw": "Término energía (€/kWh) 0,226000 0,150000 0,124000 0,249843 0,165825 0,137082"
+            }
+          ],
+          "num_lineas": 5,
+          "text_length": 65214
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 1862
+      },
+      "pymupdf": {
+        "fields": {
+          "total": null,
+          "fecha": "30/04/2026",
+          "nif": "B87760575",
+          "iva": [
+            {
+              "tipo": 5.0,
+              "importe": 0.2
+            }
+          ],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 65233
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 51
+      },
+      "pypdf": {
+        "fields": {
+          "total": null,
+          "fecha": "30/04/2026",
+          "nif": "B87760575",
+          "iva": [
+            {
+              "tipo": 5.0,
+              "importe": 0.2
+            }
+          ],
+          "lineas": [
+            {
+              "descripcion": "Potencia contratada (kW):",
+              "importes": [
+                5.0,
+                5.0
+              ],
+              "raw": "Potencia contratada (kW): 5,000 5,000"
+            },
+            {
+              "descripcion": "Término potencia (€/kW y año)",
+              "importes": [
+                29.93,
+                2.95,
+                33.09,
+                3.26
+              ],
+              "raw": "Término potencia (€/kW y año)29,934000 2,955000 33,092037 3,266753"
+            },
+            {
+              "descripcion": "Término energía (€/kWh)",
+              "importes": [
+                0.22,
+                0.15,
+                0.12,
+                0.25,
+                0.16,
+                0.13
+              ],
+              "raw": "Término energía (€/kWh) 0,229000 0,153000 0,125000 0,253160 0,169141 0,138187"
+            },
+            {
+              "descripcion": "Término potencia (€/kW y año)",
+              "importes": [
+                29.93,
+                2.95,
+                33.09,
+                3.26
+              ],
+              "raw": "Término potencia (€/kW y año)29,934000 2,955000 33,092037 3,266753"
+            },
+            {
+              "descripcion": "Término energía (€/kWh)",
+              "importes": [
+                0.22,
+                0.15,
+                0.12,
+                0.24,
+                0.16,
+                0.13
+              ],
+              "raw": "Término energía (€/kWh) 0,226000 0,150000 0,124000 0,249843 0,165825 0,137082"
+            }
+          ],
+          "num_lineas": 5,
+          "text_length": 65106
+        },
+        "scores": {
+          "total": 0.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 1.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 429
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1T26 0314 BM TJ.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1T26 0314 BM TJ.pdf",
+    "norm_key": "1T26 0314 BM TJ",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 50.25,
+          "fecha": "25-09-04",
+          "nif": "B20099586",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 2644
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 68
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 50.25,
+          "fecha": "25-09-04",
+          "nif": "B20099586",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 3672
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 4
+      },
+      "pypdf": {
+        "fields": {
+          "total": 50.25,
+          "fecha": "25-09-04",
+          "nif": "B20099586",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 3671
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 6
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1141 1T26 0302 SABORES DE PATERNA SCA TF.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1141 1T26 0302 SABORES DE PATERNA SCA TF.pdf",
+    "norm_key": "1T26 0302 SABORES DE PATERNA SCA TF",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 356.76,
+          "fecha": "02/03/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "CHICHARRON ESPECIAL 26-02-26 9",
+              "importes": [
+                14.25,
+                17.3,
+                10.0,
+                246.53
+              ],
+              "raw": "0-0039 CHICHARRON ESPECIAL 26-02-26 9 14,25 17,30 10,00 246,53"
+            },
+            {
+              "descripcion": "CABEZA DE LOMO MECHADA 25-02-26 1",
+              "importes": [
+                1.6,
+                16.8,
+                10.0,
+                26.88
+              ],
+              "raw": "0-0016 CABEZA DE LOMO MECHADA 25-02-26 1 1,60 16,80 10,00 26,88"
+            },
+            {
+              "descripcion": "LOMO EN MANTECA VACIO 1KG 17-02-26 2",
+              "importes": [
+                2.3,
+                16.8,
+                10.0,
+                38.64
+              ],
+              "raw": "0-0026 LOMO EN MANTECA VACIO 1KG 17-02-26 2 2,30 16,80 10,00 38,64"
+            },
+            {
+              "descripcion": "BUTIFARRA CASERA (VACIO) 17-02-26 3",
+              "importes": [
+                1.32,
+                9.3,
+                10.0,
+                12.28
+              ],
+              "raw": "0-0008 BUTIFARRA CASERA (VACIO) 17-02-26 3 1,32 9,30 10,00 12,28"
+            }
+          ],
+          "num_lineas": 4,
+          "text_length": 838
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 311
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 356.76,
+          "fecha": "02/03/2026",
+          "nif": "F11794542",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 835
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 4
+      },
+      "pypdf": {
+        "fields": {
+          "total": 356.76,
+          "fecha": "02/03/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "CHICHARRON ESPECIAL 9",
+              "importes": [
+                14.25,
+                17.3,
+                10.0,
+                246.53
+              ],
+              "raw": "0-0039 CHICHARRON ESPECIAL 9 14,25 17,30 10,00 246,5326-02-26"
+            },
+            {
+              "descripcion": "CABEZA DE LOMO MECHADA 1",
+              "importes": [
+                1.6,
+                16.8,
+                10.0,
+                26.88
+              ],
+              "raw": "0-0016 CABEZA DE LOMO MECHADA 1 1,60 16,80 10,00 26,8825-02-26"
+            },
+            {
+              "descripcion": "LOMO EN MANTECA VACIO 1KG 2",
+              "importes": [
+                2.3,
+                16.8,
+                10.0,
+                38.64
+              ],
+              "raw": "0-0026 LOMO EN MANTECA VACIO 1KG 2 2,30 16,80 10,00 38,6417-02-26"
+            },
+            {
+              "descripcion": "BUTIFARRA CASERA (VACIO) 3",
+              "importes": [
+                1.32,
+                9.3,
+                10.0,
+                12.28
+              ],
+              "raw": "0-0008 BUTIFARRA CASERA (VACIO) 3 1,32 9,30 10,00 12,2817-02-26"
+            }
+          ],
+          "num_lineas": 4,
+          "text_length": 835
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 9
+      }
+    },
+    "gt_matched": false
+  },
+  {
+    "filename": "1024 1T26 0116 DEBORA GARCIA TOLEDANO TF OJO RETENCION.pdf",
+    "path": "C:\\Users\\jaime\\Dropbox\\File inviati\\TASCA BAREA S.L.L\\CONTABILIDAD\\FACTURAS 2026\\FACTURAS RECIBIDAS\\1 TRIMESTRE 2026\\1024 1T26 0116 DEBORA GARCIA TOLEDANO TF OJO RETENCION.pdf",
+    "norm_key": "1T26 0116 DEBORA GARCIA TOLEDANO TF OJO RETENCION",
+    "engines": {
+      "pdfplumber": {
+        "fields": {
+          "total": 43.5,
+          "fecha": "16/01/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [
+            {
+              "descripcion": "IVA (21%)",
+              "importes": [
+                7.61
+              ],
+              "raw": "IVA (21%) 7,61 €"
+            },
+            {
+              "descripcion": "IRPF (1%) -",
+              "importes": [
+                0.36
+              ],
+              "raw": "IRPF (1%) -0,36 €"
+            }
+          ],
+          "num_lineas": 2,
+          "text_length": 448
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 1.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 45
+      },
+      "pymupdf": {
+        "fields": {
+          "total": 43.5,
+          "fecha": "16/01/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 450
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 3
+      },
+      "pypdf": {
+        "fields": {
+          "total": 43.5,
+          "fecha": "16/01/2026",
+          "nif": "B87760575",
+          "iva": [],
+          "lineas": [],
+          "num_lineas": 0,
+          "text_length": 450
+        },
+        "scores": {
+          "total": 1.0,
+          "fecha": 1.0,
+          "nif": 1.0,
+          "lineas": 0.0,
+          "iva": 0.0,
+          "has_text": 1.0
+        },
+        "error": null,
+        "time_ms": 12
+      }
+    },
+    "gt_matched": false
+  }
+]

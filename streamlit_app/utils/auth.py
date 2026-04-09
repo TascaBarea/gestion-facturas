@@ -17,6 +17,7 @@ ROLE_PAGES = {
     "socio":   ["inicio", "ventas", "calendario_eventos", "alta_evento", "documentos"],
     "comes":   ["inicio", "ventas", "documentos"],
     "eventos": ["inicio", "alta_evento", "calendario_eventos"],
+    "tienda":  ["ventas", "calendario_eventos", "alta_evento"],
 }
 
 

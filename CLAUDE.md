@@ -1,5 +1,5 @@
 # CLAUDE.md — gestion-facturas
-<!-- Versión: 4.3 — 01/04/2026 -->
+<!-- Versión: 4.4 — 09/04/2026 -->
 <!-- IMPORTANTE: Leer tasks/lessons.md al iniciar cada sesión -->
 
 ## Proyecto
@@ -8,10 +8,24 @@ Tasca Barea SLL (bar + tienda gourmet + experiencias, Madrid). Ver `docs/TASCA_B
 Parseo (extractores PDF): repo separado → `Parseo/` · ver `Parseo/CLAUDE.md`.
 Documentación técnica completa: `docs/SPEC_GESTION_FACTURAS_v4.md` (documento maestro único).
 
+## Arquitectura (en migración)
+Objetivo: 3 capas. Migración progresiva en curso.
+```
+core/          → Capa 1: datos, modelos, config, utilidades (EN CONSTRUCCIÓN)
+engines/       → Capa 2: lógica de negocio (EN CONSTRUCCIÓN)
+cli/           → Capa 3: interfaces CLI (EN CONSTRUCCIÓN)
+api/           → Capa 3: REST API (FastAPI, ya funcional)
+streamlit_app/ → Capa 3: web UI (ya funcional)
+```
+Config centralizada en `core/config.py`. Env vars para cloud: GESTION_FACTURAS_DIR, DROPBOX_BASE, PARSEO_DIR.
+
 ## Estructura
 ```
 gestion-facturas/
 ├── CLAUDE.md               ← Este archivo (carga automática)
+├── core/                   # Capa 1 — config centralizada (nuevo)
+├── engines/                # Capa 2 — motores de negocio (nuevo, vacío)
+├── cli/                    # Capa 3 — interfaces CLI (nuevo, vacío)
 ├── tasks/
 │   ├── lessons.md          ← LEER al iniciar sesión
 │   └── todo.md             ← Plan de sesión activa
@@ -46,7 +60,7 @@ gestion-facturas/
 | Gmail   | v1.14   | gmail/gmail.py                     |
 | Ventas  | v4.7    | ventas_semana/script_barea.py      |
 | Cuadre  | v1.7    | cuadre/banco/cuadre.py             |
-| SPEC    | v4.1    | docs/SPEC_GESTION_FACTURAS_v4.md   |
+| SPEC    | v4.2    | docs/SPEC_GESTION_FACTURAS_v4.md   |
 
 ---
 

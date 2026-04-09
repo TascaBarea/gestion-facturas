@@ -1,0 +1,4 @@
+﻿engine;n_pdfs;total_avg;fecha_avg;nif_avg;lineas_avg;iva_avg;has_text_avg;total_n;fecha_n;nif_n;lineas_n;iva_n;has_text_n;avg_time_ms;errors
+pdfplumber;30;0.800;0.833;0.800;0.667;0.267;0.867;30;30;30;30;30;30;254;0
+pymupdf;30;0.800;0.833;0.767;0.067;0.200;0.867;30;30;30;30;30;30;78;0
+pypdf;30;0.800;0.833;0.767;0.433;0.200;0.867;30;30;30;30;30;30;92;0

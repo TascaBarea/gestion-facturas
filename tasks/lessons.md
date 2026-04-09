@@ -69,3 +69,6 @@
 | 2026-03-30 | Ventas/bat | barea_auto.bat falló con mismo error que gmail_auto.bat | Verificar TODOS los .bat del proyecto tras cambios de imports, no solo el afectado |
 | 2026-03-30 | Ventas | `_to_float` no definido en email semanal | Tras refactorizar imports a nucleo.utils, verificar que TODAS las funciones referenciadas se importan |
 | 2026-03-30 | Alerta | alerta_fallo.py pedía scope gmail.send no presente en token | Usar scopes del token existente (gmail.modify cubre envío). No inventar scopes nuevos |
+| 2026-03-31 | WooCommerce | Evento creado como `simple` no aparecía en calendario web | Crear siempre como `type: "ticket-event"`, con categorías (Comestibles Barea + tipo) y tag Producto_destacado |
+| 2026-03-31 | WooCommerce | Evento sin meta_data no aparecía en calendario web | Siempre incluir `_start_date_picker`, `_end_date_picker` en meta_data. Sin ellos el plugin de eventos no posiciona el evento |
+| 2026-03-31 | WooCommerce | CERRADO con catalog_visibility hidden no aparecía en web | Los CERRADOS deben ser `visibility: visible` (como los manuales). stock=0 impide la compra |

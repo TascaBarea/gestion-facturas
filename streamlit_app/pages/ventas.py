@@ -4,13 +4,15 @@ Muestra datos agregados desde JSON exportado a Netlify.
 Gráficos interactivos con Plotly.
 """
 
+from datetime import date
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from utils.auth import require_role, get_role
 from utils.data_client import get_ventas_comes, get_ventas_tasca, ultima_actualizacion
 
-require_role(["admin", "socio", "comes"])
+require_role(["admin", "socio", "comes", "tienda"])
 
 MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun",
          "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
@@ -36,7 +38,9 @@ role = get_role()
 st.sidebar.caption(f"Datos: {ultima_actualizacion()}")
 
 # ── Selector de tienda ──
-if role == "comes":
+
+# Solo Comestibles para roles 'comes' y 'tienda'
+if role in ("comes", "tienda"):
     tiendas = ["Comestibles"]
 else:
     tiendas = ["Comestibles", "Tasca"]
@@ -105,6 +109,15 @@ def fmt_eur(valor, decimales=0):
 st.header(f"{'🛒' if tienda == 'Comestibles' else '🍺'} {tienda} — {año}")
 
 meses_act = meses_con_datos(mensual)
+
+# Meses completos: excluir mes en curso si estamos viendo el año actual
+# (un mes incompleto distorsiona las comparativas mensuales)
+hoy = date.today()
+if int(año) == hoy.year:
+    meses_completos = [m for m in meses_act if m < hoy.month]
+else:
+    meses_completos = meses_act
+
 total_euros = sum(mensual.get(str(m), {}).get("euros", 0) for m in meses_act)
 total_tickets = sum(mensual.get(str(m), {}).get("tickets", 0) for m in meses_act)
 total_unidades = sum(mensual.get(str(m), {}).get("unidades", 0) for m in meses_act)
@@ -149,10 +162,10 @@ with tab_resumen:
             marker=dict(size=5), hovertemplate="%{x}: %{y:,.0f} €<extra>" + año_ant + "</extra>",
         ))
 
-    # Año actual
+    # Año actual (solo meses completos)
     fig_euros.add_trace(go.Scatter(
-        x=[MESES[m - 1] for m in meses_act],
-        y=[mensual[str(m)].get("euros", 0) for m in meses_act],
+        x=[MESES[m - 1] for m in meses_completos],
+        y=[mensual[str(m)].get("euros", 0) for m in meses_completos],
         name=año, mode="lines+markers",
         line=dict(color=color_1, width=3),
         marker=dict(size=7), fill="tozeroy",
@@ -177,8 +190,8 @@ with tab_resumen:
                 hovertemplate="%{x}: %{y:,}<extra>" + año_ant + "</extra>",
             ))
         fig_tix.add_trace(go.Bar(
-            x=[MESES[m - 1] for m in meses_act],
-            y=[mensual[str(m)].get("tickets", 0) for m in meses_act],
+            x=[MESES[m - 1] for m in meses_completos],
+            y=[mensual[str(m)].get("tickets", 0) for m in meses_completos],
             name=año, marker_color=color_1,
             hovertemplate="%{x}: %{y:,}<extra>" + año + "</extra>",
         ))
@@ -199,8 +212,8 @@ with tab_resumen:
                 hovertemplate="%{x}: %{y:.2f} €<extra>" + año_ant + "</extra>",
             ))
         fig_tm.add_trace(go.Scatter(
-            x=[MESES[m - 1] for m in meses_act],
-            y=[mensual[str(m)].get("prom_ticket", 0) for m in meses_act],
+            x=[MESES[m - 1] for m in meses_completos],
+            y=[mensual[str(m)].get("prom_ticket", 0) for m in meses_completos],
             name=año, mode="lines+markers",
             line=dict(color=color_2, width=3), marker=dict(size=6),
             hovertemplate="%{x}: %{y:.2f} €<extra>" + año + "</extra>",
@@ -213,6 +226,9 @@ with tab_resumen:
     st.subheader("Categorías")
     categorias_total = {}
     for mes_str, cats in data_año.get("categorias", {}).items():
+        # Solo meses completos en gráficos
+        if int(mes_str) not in meses_completos:
+            continue
         euros_mes = mensual.get(mes_str, {}).get("euros", 0)
         for cat, pct in cats.items():
             categorias_total[cat] = categorias_total.get(cat, 0) + euros_mes * pct / 100
@@ -252,6 +268,8 @@ with tab_resumen:
         st.subheader("Márgenes por categoría")
         margenes_total = {}
         for mes_str, cats in data_año.get("margenes", {}).items():
+            if int(mes_str) not in meses_completos:
+                continue
             for cat, val in cats.items():
                 if cat not in margenes_total:
                     margenes_total[cat] = {"euros": 0, "margen_sum": 0, "n": 0}
@@ -380,6 +398,11 @@ with tab_productos:
 if tienda == "Comestibles" and datos.get("woo"):
     woo_data = datos["woo"]
     woo_meses = {m: v for m, v in woo_data.items() if v.get("euros", 0) > 0}
+    # Excluir mes en curso del gráfico WooCommerce
+    if int(año) == hoy.year:
+        woo_meses_graf = {m: v for m, v in woo_meses.items() if int(m) < hoy.month}
+    else:
+        woo_meses_graf = woo_meses
     woo_euros = sum(v.get("euros", 0) for v in woo_meses.values())
     woo_pedidos = sum(v.get("pedidos", 0) for v in woo_meses.values())
     if woo_euros > 0:
@@ -390,7 +413,7 @@ if tienda == "Comestibles" and datos.get("woo"):
         c2.metric("Pedidos", f"{woo_pedidos:,}".replace(",", "."))
         c3.metric("Ticket medio", fmt_eur(woo_euros / woo_pedidos, 2) if woo_pedidos > 0 else "—")
 
-        woo_sorted = sorted(woo_meses.items(), key=lambda x: int(x[0]))
+        woo_sorted = sorted(woo_meses_graf.items(), key=lambda x: int(x[0]))
         fig_woo = go.Figure(data=[go.Bar(
             x=[MESES[int(m) - 1] for m, _ in woo_sorted],
             y=[v.get("euros", 0) for _, v in woo_sorted],

@@ -18,6 +18,14 @@ datos/MAESTRO_PROVEEDORES.xlsx
 datos/emails_procesados.json
 datos/Ventas*.xlsx
 datos/Articulos*.xlsx
+datos/Compras*.xlsx
+datos/backups/
+datos/dia_tickets/
+datos/dia_session.json
+datos/snapshots/
+datos/correcciones.json
+datos/alias_diccionario.json
+datos/tickets_registros/
 
 # Extractos bancarios (Norma 43)
 *.n43
@@ -30,9 +38,18 @@ outputs/*.json
 outputs/*.txt
 outputs/*.tsv
 outputs/*.csv
+outputs/*.log
+outputs/*.html
+outputs/*.png
+outputs/*.md
 outputs/backups/
 outputs/logs_gmail/
 outputs/logs_barea/
+outputs/logs_ventas/
+outputs/logs_test/
+
+# Cuadre datos generados
+cuadre/banco/clasificaciones_historicas.json
 
 # Dashboards generados
 ventas_semana/dashboards/dashboard_comes.html

@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:dev.to)",
+      "WebFetch(domain:developer.loyverse.com)",
+      "WebFetch(domain:docs.dataddo.com)",
+      "WebFetch(domain:loyverse.town)",
+      "Bash(python3:*)",
+      "Bash(python:*)",
+      "Bash(gh repo list:*)",
+      "Bash(where:*)",
+      "Bash(pip install:*)",
+      "Bash(winget install:*)",
+      "Bash(scoop install:*)",
+      "Bash(choco install:*)",
+      "Bash(git -C \"C:/_ARCHIVOS/TRABAJO/Facturas/gestion-facturas\" log --oneline -10)",
+      "Bash(git -C \"C:/_ARCHIVOS/TRABAJO/Facturas/gestion-facturas\" ls-files --cached)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(schtasks /query:*)",
+      "Bash(cmd.exe //c \"schtasks /query /tn \"\"Ventas_Barea_Semanal\"\" /v /fo LIST\")",
+      "Bash(cmd.exe //c \"schtasks /create /tn \"\"Ventas_Barea_Semanal\"\" /tr \"\"\\\\\"\"C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\ventas_semana\\\\barea_auto.bat\\\\\"\"\"\" /sc WEEKLY /d MON /st 03:00 /rl HIGHEST /f\")",
+      "Bash(py:*)",
+      "Bash(\"C:\\\\Users\\\\jaime\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" -c \"import pandas, openpyxl, matplotlib; print\\(''all ok''\\)\")",
+      "Bash(du:*)",
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:skillsmp.com)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(export PATH:*)",
+      "Bash(gh auth login:*)",
+      "Bash(gh repo edit:*)",
+      "Bash(git filter-repo:*)"
+    ]
+  }
+}
