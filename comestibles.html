@@ -419,6 +419,14 @@ let charts = {};
 function availMonths(yr) {
   return [1,2,3,4,5,6,7,8,9,10,11,12].filter(m => (D[yr].mensual[String(m)]?.tickets||0)>0);
 }
+// Meses cerrados: excluir mes en curso del año actual
+const _NOW = new Date();
+const _CUR_YEAR = String(_NOW.getFullYear());
+const _CUR_MONTH = _NOW.getMonth() + 1;
+function closedMonths(yr) {
+  const all = availMonths(yr);
+  return yr === _CUR_YEAR ? all.filter(m => m < _CUR_MONTH) : all;
+}
 function getCompareYear() {
   if (compareMode==='none'||compareMode==='all') return null;
   if (compareMode==='prev') return activeYear==='2025' ? null : String(Number(activeYear)-1);
@@ -427,7 +435,7 @@ function getCompareYear() {
 function getComparePeriod() {
   const cyr = getCompareYear();
   if (!cyr) return [];
-  return activePeriod.filter(m => availMonths(cyr).includes(m));
+  return activePeriod.filter(m => closedMonths(cyr).includes(m));
 }
 function getWooDevengoTotal(yr, months) {
   const wd = D[yr]?.woo_devengo;
@@ -485,7 +493,7 @@ function setPage(p) {
 function setYear(yr) {
   activeYear = yr;
   document.querySelectorAll('.year-tab').forEach(b => b.classList.toggle('active', b.dataset.yr===yr));
-  const avail = availMonths(yr);
+  const avail = closedMonths(yr);
   activePeriod = periodMode==='all' ? avail : activePeriod.filter(m=>avail.includes(m));
   if (!activePeriod.length) activePeriod = [avail[0]];
   rebuildPeriodUI();
@@ -498,7 +506,7 @@ function setPeriodMode(mode) {
   document.getElementById('month-selector').style.display = mode==='month'?'flex':'none';
   document.getElementById('quarter-selector').style.display = mode==='quarter'?'flex':'none';
   document.getElementById('range-selector').style.display = mode==='range'?'flex':'none';
-  const avail = availMonths(activeYear);
+  const avail = closedMonths(activeYear);
   if (mode==='all') activePeriod = avail;
   else if (mode==='month') { activePeriod=[avail[0]]; highlightMonthPill(avail[0]); }
   else if (mode==='quarter') { setQuarter(1); return; }
@@ -508,7 +516,7 @@ function setPeriodMode(mode) {
 function setMonth(m) { activePeriod=[m]; highlightMonthPill(m); renderAll(); }
 function highlightMonthPill(m) { document.querySelectorAll('.month-pill').forEach(b=>b.classList.toggle('active',Number(b.dataset.m)===m)); }
 function setQuarter(q) {
-  const avail=availMonths(activeYear);
+  const avail=closedMonths(activeYear);
   activePeriod=Q_MONTHS[q].filter(m=>avail.includes(m));
   if(!activePeriod.length) return;
   document.querySelectorAll('#quarter-selector .pill').forEach((b,i)=>b.classList.toggle('active',i+1===q));
@@ -517,7 +525,7 @@ function setQuarter(q) {
 function setRange() {
   const from=parseInt(document.getElementById('range-from').value);
   const to=parseInt(document.getElementById('range-to').value);
-  const avail=availMonths(activeYear);
+  const avail=closedMonths(activeYear);
   activePeriod=avail.filter(m=>m>=from&&m<=to);
   if(!activePeriod.length) activePeriod=[from];
   renderAll();
@@ -528,13 +536,13 @@ function setCompare(mode) {
   renderAll();
 }
 function renderRange() {
-  const avail=availMonths(activeYear);
+  const avail=closedMonths(activeYear);
   const mkOpts = sel => avail.map(m=>`<option value="${m}"${m===sel?' selected':''}>${MESES_FULL[m-1]}</option>`).join('');
   document.getElementById('range-from').innerHTML = mkOpts(activePeriod[0]||avail[0]);
   document.getElementById('range-to').innerHTML = mkOpts(activePeriod[activePeriod.length-1]||avail[avail.length-1]);
 }
 function rebuildPeriodUI() {
-  const avail=availMonths(activeYear);
+  const avail=closedMonths(activeYear);
   document.getElementById('month-grid').innerHTML = MESES.map((n,i)=>{
     const m=i+1, dis=!avail.includes(m);
     return `<button class="month-pill${activePeriod.includes(m)?' active':''}" data-m="${m}" onclick="setMonth(${m})" ${dis?'disabled':''}>${n}</button>`;
@@ -551,13 +559,13 @@ function renderKPIs() {
   const fmt=[fmtE, n=>Math.round(n).toLocaleString('es-ES'), n=>Math.round(n).toLocaleString('es-ES'), n=>n.toFixed(2)+'€'];
 
   if (compareMode==='all') {
-    const years = YEARS.filter(yr=>availMonths(yr).some(m=>activePeriod.includes(m)));
+    const years = YEARS.filter(yr=>closedMonths(yr).some(m=>activePeriod.includes(m)));
     const currVals = fields.map(f=>getTotal(activeYear,f,activePeriod));
     let html = '<div class="kpi-all-wrap">';
     fields.forEach((f,fi)=>{
       html += '<div class="kpi-all-row"><div class="kpi-all-label">'+labels[fi]+'</div>';
       years.forEach(yr=>{
-        const cp=activePeriod.filter(m=>availMonths(yr).includes(m));
+        const cp=activePeriod.filter(m=>closedMonths(yr).includes(m));
         const val=getTotal(yr,f,cp);
         const isActive=yr===activeYear;
         let dHtml='';
@@ -598,7 +606,7 @@ function renderCharts() {
   const shownYrs = cyr ? [cyr,activeYear] : [activeYear];
 
   function makeDS(yr, field) {
-    const avail=availMonths(yr), col=YEAR_COLORS[yr], isAct=yr===activeYear;
+    const avail=closedMonths(yr), col=YEAR_COLORS[yr], isAct=yr===activeYear;
     return {label:yr,
       data:allM.map(m=>avail.includes(m)?(D[yr].mensual[String(m)]?.[field]||0):null),
       borderColor:isAct||yr===cyr?col:col+'55', backgroundColor:isAct?col+'18':'transparent',
@@ -707,7 +715,7 @@ function renderCanal() {
 
   // Canal chart (all months)
   const allM=[1,2,3,4,5,6,7,8,9,10,11,12];
-  const avail=availMonths(activeYear);
+  const avail=closedMonths(activeYear);
   destroyChart('cCanal');
   charts['cCanal']=new Chart(document.getElementById('cCanal'),{type:'bar',
     data:{labels:MESES,datasets:[
@@ -793,7 +801,7 @@ function renderRotation() {
   let prods=[...D[activeYear].rotation];
   if(cat!=='ALL') prods=prods.filter(p=>p.cat===cat);
   // Coverage threshold: dinámico para pocos meses (1/avail+ε cuando avail<4)
-  const _n=availMonths(activeYear).length, _lowTh=Math.max(0.3,1/_n+0.01);
+  const _n=closedMonths(activeYear).length, _lowTh=Math.max(0.3,1/_n+0.01);
   if(rotView==='fast') prods=prods.filter(p=>p.meses/p.avail>=0.6);
   else if(rotView==='slow') prods=prods.filter(p=>p.meses/p.avail<_lowTh);
   prods=prods.slice(0,n);
@@ -1130,7 +1138,7 @@ function renderDias() {
 
   // Heatmap: día × mes
   const hmData = DIAS[activeYear]?.heatmap || {};
-  const avail = availMonths(activeYear);
+  const avail = closedMonths(activeYear);
   const hmMonths = activePeriod.filter(m => avail.includes(m));
   let maxVal = 0;
   for (let d = 0; d < 7; d++) {
@@ -1199,7 +1207,7 @@ Chart.defaults.plugins.tooltip.callbacks.label = function(ctx) {
   return ' ' + ctx.dataset.label + ': ' + v;
 };
 populateSelects();
-activePeriod=availMonths(activeYear);
+activePeriod=closedMonths(activeYear);
 renderAll();
 </script>
 </body>
