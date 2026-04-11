@@ -337,6 +337,14 @@ let charts = {};
 function availMonths(yr) {
   return [1,2,3,4,5,6,7,8,9,10,11,12].filter(m => (RAW[yr].mensual[String(m)]?.tickets||0) > 0);
 }
+// Meses cerrados: excluir mes en curso del año actual (mes incompleto distorsiona comparativas)
+const _NOW = new Date();
+const _CUR_YEAR = String(_NOW.getFullYear());
+const _CUR_MONTH = _NOW.getMonth() + 1;
+function closedMonths(yr) {
+  const all = availMonths(yr);
+  return yr === _CUR_YEAR ? all.filter(m => m < _CUR_MONTH) : all;
+}
 function getCompareYear() {
   if (compareMode === 'none' || compareMode === 'all') return null;
   if (compareMode === 'prev') return activeYear === '2023' ? null : String(Number(activeYear)-1);
@@ -345,7 +353,7 @@ function getCompareYear() {
 function getComparePeriod() {
   const cyr = getCompareYear();
   if (!cyr) return [];
-  const avail = availMonths(cyr);
+  const avail = closedMonths(cyr);
   return activePeriod.filter(m => avail.includes(m));
 }
 function periodLabel() {
@@ -385,8 +393,8 @@ function chartBase() {
 function setYear(yr) {
   activeYear = yr;
   document.querySelectorAll('.year-tab').forEach(b => b.classList.toggle('active', b.dataset.yr===yr));
-  // Clamp period to available months
-  const avail = availMonths(yr);
+  // Clamp period to closed months (excl. current month)
+  const avail = closedMonths(yr);
   activePeriod = activePeriod.filter(m => avail.includes(m));
   if (!activePeriod.length) activePeriod = periodMode==='all' ? avail : [avail[0]];
   rebuildPeriodUI();
@@ -401,7 +409,7 @@ function setPeriodMode(mode) {
   document.getElementById('quarter-selector').style.display = mode==='quarter' ? 'flex' : 'none';
   document.getElementById('range-selector').style.display = mode==='range' ? 'flex' : 'none';
 
-  const avail = availMonths(activeYear);
+  const avail = closedMonths(activeYear);
   if (mode==='all') activePeriod = avail;
   else if (mode==='month') { activePeriod = [avail[0]]; highlightMonthPill(avail[0]); }
   else if (mode==='quarter') { setQuarter(1); return; }
@@ -418,7 +426,7 @@ function highlightMonthPill(m) {
   document.querySelectorAll('.month-pill').forEach(b => b.classList.toggle('active', Number(b.dataset.m)===m));
 }
 function setQuarter(q) {
-  const avail = availMonths(activeYear);
+  const avail = closedMonths(activeYear);
   activePeriod = Q_MONTHS[q].filter(m => avail.includes(m));
   if (!activePeriod.length) return;
   document.querySelectorAll('#quarter-selector .pill').forEach((b,i) => b.classList.toggle('active', i+1===q));
@@ -427,7 +435,7 @@ function setQuarter(q) {
 function setRange() {
   const from = parseInt(document.getElementById('range-from').value);
   const to = parseInt(document.getElementById('range-to').value);
-  const avail = availMonths(activeYear);
+  const avail = closedMonths(activeYear);
   activePeriod = avail.filter(m => m>=from && m<=to);
   if (!activePeriod.length) activePeriod = [from];
   renderAll();
@@ -439,7 +447,7 @@ function setCompare(mode) {
 }
 
 function rebuildPeriodUI() {
-  const avail = availMonths(activeYear);
+  const avail = closedMonths(activeYear);
   // Month pills
   const grid = document.getElementById('month-grid');
   grid.innerHTML = MESES.map((name,i) => {
@@ -484,7 +492,7 @@ function renderKPIs() {
 
   if (compareMode === 'all') {
     // MULTI-YEAR MODE: one row per metric, one column per year
-    const years = YEARS.filter(yr => availMonths(yr).some(m => activePeriod.includes(m)));
+    const years = YEARS.filter(yr => closedMonths(yr).some(m => activePeriod.includes(m)));
     const currVals = fields.map(f => getVal(activeYear, f, activePeriod));
 
     let html = '<div class="kpi-all-wrap">';
@@ -492,7 +500,7 @@ function renderKPIs() {
       html += '<div class="kpi-all-row">';
       html += '<div class="kpi-all-label">'+labels[fi]+'</div>';
       years.forEach(yr => {
-        const cp = activePeriod.filter(m => availMonths(yr).includes(m));
+        const cp = activePeriod.filter(m => closedMonths(yr).includes(m));
         const val = getVal(yr, f, cp);
         const isActive = yr === activeYear;
         let deltaHtml = '';
@@ -554,7 +562,7 @@ function renderEvolution() {
   const inPeriod = m => activePeriod.includes(m);
 
   function makeDS(yr, field) {
-    const avail = availMonths(yr);
+    const avail = closedMonths(yr);
     const color = YEAR_COLORS[yr];
     const isActive = yr === activeYear;
     const isCmp = yr === cyr;
@@ -588,7 +596,7 @@ function renderEvolution() {
   charts['tickets'] = new Chart(document.getElementById('chartTickets'), {
     type:'bar', data:{labels, datasets: shownYears.map(yr => ({
       label: yr,
-      data: allMonths.map(m => availMonths(yr).includes(m) ? (RAW[yr].mensual[String(m)]?.tickets||0) : null),
+      data: allMonths.map(m => closedMonths(yr).includes(m) ? (RAW[yr].mensual[String(m)]?.tickets||0) : null),
       backgroundColor: allMonths.map(m => inPeriod(m) ? YEAR_COLORS[yr]+'cc' : YEAR_COLORS[yr]+'44'),
       borderRadius: 3,
     }))},
@@ -634,7 +642,7 @@ function renderDonut() {
 
 // ── RENDER CAT EVOL ──────────────────────────────────────────────────────────
 function renderCatEvol() {
-  const avail = availMonths(activeYear);
+  const avail = closedMonths(activeYear);
   const cats = ['BEBIDA','COMIDA','VINOS','MOLLETES'];
   destroyChart('catEvol');
   charts['catEvol'] = new Chart(document.getElementById('chartCatEvol'), {
@@ -859,7 +867,7 @@ function renderProductDetail() {
 
   function prodMonthlyData(yr) {
     return allMonths.map(mo => {
-      if (!availMonths(yr).includes(mo)) return null;
+      if (!closedMonths(yr).includes(mo)) return null;
       const prods = PBM[yr]?.[String(mo)]?.[cat] || [];
       const found = prods.find(p => p.art === prod);
       return found ? found[field] : 0;
@@ -930,7 +938,7 @@ function buildYearlySeries() {
   const labels = [], values = [], colors = [];
   if (yearlyGrain === 'monthly') {
     YEARS.forEach(yr => {
-      availMonths(yr).forEach(m => {
+      closedMonths(yr).forEach(m => {
         labels.push(MESES[m-1].slice(0,3)+' '+yr.slice(2));
         values.push(RAW[yr].mensual[String(m)]?.euros||0);
         colors.push(YEAR_COLORS[yr]);
@@ -938,7 +946,7 @@ function buildYearlySeries() {
     });
   } else if (yearlyGrain === 'quarterly') {
     YEARS.forEach(yr => {
-      const avail = availMonths(yr);
+      const avail = closedMonths(yr);
       for (let q=0; q<4; q++) {
         const qMonths = [q*3+1, q*3+2, q*3+3].filter(m => avail.includes(m));
         if (qMonths.length === 0) continue;
@@ -951,7 +959,7 @@ function buildYearlySeries() {
     });
   } else {
     YEARS.forEach(yr => {
-      const avail = availMonths(yr);
+      const avail = closedMonths(yr);
       const total = avail.reduce((s,m) => s+(RAW[yr].mensual[String(m)]?.euros||0), 0);
       labels.push(yr);
       values.push(total);
@@ -1058,7 +1066,7 @@ Chart.defaults.plugins.tooltip.callbacks.label = function(ctx) {
 };
 populateCatSelect();
 populatePdCatSelect();
-activePeriod = availMonths(activeYear);
+activePeriod = closedMonths(activeYear);
 renderAll();
 </script>
 </body>

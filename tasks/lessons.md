@@ -67,6 +67,9 @@
 | 2026-03-13 | La Llildiria | Total 93.94 en vez de 172.75 | PyPDF no captura tabla totales en PDFs imagen. Añadido cálculo desde subtotales + cambio a OCR primario |
 | 2026-03-27 | Gmail/bat | gmail_auto.bat falló con ModuleNotFoundError: nucleo | Añadir `set "PYTHONPATH=%PROJECT_ROOT%"` en bat. Verificar bat tras cambios de imports |
 | 2026-03-30 | Ventas/bat | barea_auto.bat falló con mismo error que gmail_auto.bat | Verificar TODOS los .bat del proyecto tras cambios de imports, no solo el afectado |
+| 2026-04-09 | Dashboard | Template Comestibles tenía datos JSON hardcodeados, sin placeholders | Verificar que templates HTML tengan placeholders `{{D_DATA}}` etc. Si no existen, generar_html no actualiza datos |
+| 2026-04-09 | Dashboard | exportar_json_streamlit usaba DIAS de Comestibles para JSON de Tasca | Cada tienda debe tener su propio cálculo de DIAS. `calcular_DIAS` parametrizado con year_list |
+| 2026-04-09 | Streamlit | Delta interanual incluía mes parcial → inflaba cifra año anterior | Usar `meses_completos` (no `meses_act`) para comparativas interanuales |
 | 2026-03-30 | Ventas | `_to_float` no definido en email semanal | Tras refactorizar imports a nucleo.utils, verificar que TODAS las funciones referenciadas se importan |
 | 2026-03-30 | Alerta | alerta_fallo.py pedía scope gmail.send no presente en token | Usar scopes del token existente (gmail.modify cubre envío). No inventar scopes nuevos |
 | 2026-03-31 | WooCommerce | Evento creado como `simple` no aparecía en calendario web | Crear siempre como `type: "ticket-event"`, con categorías (Comestibles Barea + tipo) y tag Producto_destacado |

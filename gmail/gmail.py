@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GMAIL MODULE v1.14
+GMAIL MODULE v1.16
 Sistema Automatizado de Procesamiento de Facturas
-TASCA BAREA S.L.L. - Marzo 2026
+TASCA BAREA S.L.L. - Abril 2026
+
+MEJORAS v1.15:
+- DEDUP DROPBOX: Escanea carpeta destino por hash antes de subir; si contenido
+  idéntico ya existe (en cualquier archivo), salta subida Y escritura Excel.
+  Dos facturas distintas del mismo proveedor/fecha se suben con sufijo " 2".
+- FAIL-FAST EXCEL: Detecta Excel bloqueado al inicio, antes de procesar emails.
 
 MEJORAS v1.14:
 - FALLBACK PARCIAL: Si extractor dedicado obtiene fecha pero no total (o viceversa),
@@ -68,14 +74,23 @@ from openpyxl.worksheet.datavalidation import DataValidation
 
 @dataclass
 class Config:
-    """Configuración del sistema v1.14"""
-    # Rutas base
-    BASE_PATH: str = r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas"
-    GMAIL_PATH: str = r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\gmail"
+    """Configuración del sistema v1.16"""
+    # Rutas base (env var GESTION_FACTURAS_DIR para VPS)
+    BASE_PATH: str = field(default_factory=lambda: os.environ.get(
+        "GESTION_FACTURAS_DIR", r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas"))
+    GMAIL_PATH: str = field(default="")
     DROPBOX_BASE: str = r"C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD"
-    
-    # RUTA EXTRACTORES v1.4 (CORREGIDA)
-    EXTRACTORES_PATH: str = r"C:\_ARCHIVOS\TRABAJO\Facturas\Parseo\extractores"
+
+    # Dropbox API (para VPS — refresh token no expira)
+    DROPBOX_REFRESH_TOKEN: str = ""
+    DROPBOX_APP_KEY: str = ""
+    DROPBOX_APP_SECRET: str = ""
+    DROPBOX_TOKEN: str = ""  # legacy, fallback
+    DROPBOX_API_BASE: str = "/File inviati/TASCA BAREA S.L.L/CONTABILIDAD"
+
+    # RUTA EXTRACTORES v1.4 (env var PARSEO_DIR para VPS)
+    EXTRACTORES_PATH: str = field(default_factory=lambda: os.path.join(
+        os.environ.get("PARSEO_DIR", r"C:\_ARCHIVOS\TRABAJO\Facturas\Parseo"), "extractores"))
     
     # IBANs propios (cargados de config/datos_sensibles.py)
     IBAN_TASCA: str = ""
@@ -144,6 +159,17 @@ class Config:
             self.NOMBRE_ORDENANTE = NOMBRE_ORDENANTE
         except ImportError:
             print("AVISO: config/datos_sensibles.py no encontrado. IBANs no disponibles.")
+        # Cargar Dropbox config si existe (para VPS)
+        try:
+            from config import datos_sensibles as _ds
+            for attr in ('DROPBOX_REFRESH_TOKEN', 'DROPBOX_APP_KEY', 'DROPBOX_APP_SECRET',
+                         'DROPBOX_TOKEN', 'DROPBOX_API_BASE'):
+                if hasattr(_ds, attr):
+                    setattr(self, attr, getattr(_ds, attr))
+        except (ImportError, AttributeError):
+            pass
+        if not self.GMAIL_PATH:
+            self.GMAIL_PATH = os.path.join(self.BASE_PATH, "gmail")
         self.MAESTRO_PATH = os.path.join(self.BASE_PATH, "datos", "MAESTRO_PROVEEDORES.xlsx")
         self.JSON_PATH = os.path.join(self.BASE_PATH, "datos", "emails_procesados.json")
         self.OUTPUT_PATH = os.path.join(self.BASE_PATH, "outputs")
@@ -821,12 +847,14 @@ class LocalDropboxClient:
             raise Exception(f"Carpeta Dropbox no encontrada: {base_path}")
     
     def subir_archivo(self, contenido: bytes, nombre_archivo: str, fecha_factura: datetime, 
-                      fecha_ejecucion: datetime) -> str:
+                      fecha_ejecucion: datetime) -> Tuple[str, bool]:
         """
-        Copia un archivo a la carpeta local de Dropbox.
+        Copia un archivo a la carpeta local de Dropbox con deduplicación inteligente.
         
-        v1.4: Lógica ATRASADAS corregida
-        - Si trimestre factura ≠ trimestre ejecución → subcarpeta ATRASADAS del trimestre EJECUCIÓN
+        v1.5: Deduplicación multi-señal.
+        
+        Returns:
+            Tuple (ruta_archivo, ya_existia) — ya_existia=True si se saltó por duplicado
         """
         # Determinar carpeta destino según trimestre de EJECUCIÓN
         carpeta_trimestre = self.obtener_ruta_trimestre(fecha_ejecucion)
@@ -843,7 +871,24 @@ class LocalDropboxClient:
         carpeta = os.path.dirname(ruta_completa)
         os.makedirs(carpeta, exist_ok=True)
         
-        # Anti-colisión: si el archivo ya existe, añadir sufijo " 2", " 3", etc.
+        # v1.5: Dedup — buscar contenido idéntico en TODA la carpeta destino
+        hash_nuevo = hashlib.sha256(contenido).hexdigest()
+        tamaño_nuevo = len(contenido)
+        
+        for archivo_existente in os.listdir(carpeta):
+            ruta_existente = os.path.join(carpeta, archivo_existente)
+            if not os.path.isfile(ruta_existente):
+                continue
+            # Pre-filtro rápido por tamaño (evita leer archivos de distinto tamaño)
+            if os.path.getsize(ruta_existente) != tamaño_nuevo:
+                continue
+            # Tamaño coincide → comparar hash
+            with open(ruta_existente, 'rb') as f:
+                if hashlib.sha256(f.read()).hexdigest() == hash_nuevo:
+                    # Contenido idéntico encontrado → no duplicar
+                    return ruta_existente, True
+        
+        # No hay duplicado de contenido → resolver colisión de nombre si la hay
         if os.path.exists(ruta_completa):
             base, ext = os.path.splitext(ruta_completa)
             n = 2
@@ -855,7 +900,7 @@ class LocalDropboxClient:
         with open(ruta_completa, 'wb') as f:
             f.write(contenido)
 
-        return ruta_completa
+        return ruta_completa, False
     
     def archivo_existe(self, ruta_relativa: str) -> bool:
         """Verifica si un archivo existe en la carpeta local"""
@@ -1613,13 +1658,17 @@ class GmailProcessor:
         self.gmail.conectar()
         self.logger.info("Gmail conectado ✓")
         
-        # Dropbox Local (v1.4)
-        self.logger.info("Conectando a Dropbox Local...")
+        # Dropbox — auto-selección Local vs API (v1.16)
+        self.logger.info("Conectando a Dropbox...")
         try:
-            self.dropbox = LocalDropboxClient(CONFIG.DROPBOX_BASE)
-            self.logger.info("Dropbox Local conectado ✓")
+            from dropbox_selector import crear_cliente_dropbox
+            self.dropbox = crear_cliente_dropbox(CONFIG)
+            if self.dropbox:
+                self.logger.info("Dropbox conectado ✓")
+            else:
+                self.logger.warning("Dropbox no disponible")
         except Exception as e:
-            self.logger.warning(f"Dropbox Local no disponible: {e}")
+            self.logger.warning(f"Dropbox no disponible: {e}")
             self.dropbox = None
     
     def _crear_backups(self):
@@ -1635,6 +1684,17 @@ class GmailProcessor:
         facturas_path = os.path.join(CONFIG.OUTPUT_PATH, f"Facturas {trimestre} Provisional.xlsx")
         if os.path.exists(facturas_path):
             self.backup.crear_backup(facturas_path)
+        
+        # v1.5: Verificar que los Excel no están bloqueados (abiertos en otra app)
+        for path_check in [excel_path, facturas_path]:
+            if os.path.exists(path_check):
+                try:
+                    with open(path_check, 'a'):
+                        pass
+                except PermissionError:
+                    self.logger.error(f"❌ ARCHIVO BLOQUEADO: {path_check}")
+                    self.logger.error("   Cierra el Excel y vuelve a ejecutar.")
+                    raise SystemExit(1)
     
     def _procesar_email(self, email_data: Dict, fecha_proceso: datetime):
         """
@@ -1900,26 +1960,30 @@ class GmailProcessor:
         if es_duplicado_cif_ref:
             self.logger.info(f"  ↳ Duplicado CIF+REF: se omite Dropbox y Excel")
         else:
-            # Subir a Dropbox Local (v1.4)
+            # Subir a Dropbox Local (v1.4, dedup v1.5)
+            ya_en_dropbox = False
             if self.dropbox and not self.modo_test:
                 fecha_factura = factura.fecha if factura.fecha else fecha_proceso
 
-                ruta_dropbox = self.dropbox.subir_archivo(
+                ruta_dropbox, ya_en_dropbox = self.dropbox.subir_archivo(
                     contenido,
                     nombre_generado,
                     fecha_factura,
                     fecha_proceso
                 )
                 resultado.dropbox_path = ruta_dropbox
-                # Actualizar nombre si Dropbox añadió sufijo anti-colisión
-                nombre_real = os.path.basename(ruta_dropbox)
-                if nombre_real != nombre_generado:
-                    resultado.archivo_generado = nombre_real
-                    self.logger.info(f"  ↳ Renombrado a: {nombre_real} (colisión)")
-                self.logger.info(f"  ↳ Copiado a Dropbox Local")
+                if ya_en_dropbox:
+                    self.logger.info(f"  ↳ Ya existe en Dropbox (contenido idéntico), saltando")
+                else:
+                    # Actualizar nombre si Dropbox añadió sufijo anti-colisión
+                    nombre_real = os.path.basename(ruta_dropbox)
+                    if nombre_real != nombre_generado:
+                        resultado.archivo_generado = nombre_real
+                        self.logger.info(f"  ↳ Renombrado a: {nombre_real} (colisión)")
+                    self.logger.info(f"  ↳ Copiado a Dropbox Local")
 
-            # Añadir al Excel PAGOS_Gmail
-            if not self.modo_test:
+            # Añadir al Excel PAGOS_Gmail (solo si no era duplicado en Dropbox)
+            if not self.modo_test and not ya_en_dropbox:
                 trimestre = obtener_trimestre(fecha_proceso)
                 excel_path = os.path.join(CONFIG.OUTPUT_PATH, f"PAGOS_Gmail_{trimestre}.xlsx")
 
@@ -2259,7 +2323,7 @@ class GmailProcessor:
 # ============================================================================
 
 def main():
-    parser = argparse.ArgumentParser(description="Gmail Module v1.14 - Procesador de Facturas")
+    parser = argparse.ArgumentParser(description="Gmail Module v1.15 - Procesador de Facturas")
     parser.add_argument("--produccion", action="store_true", help="Ejecutar en modo producción")
     parser.add_argument("--test", action="store_true", help="Ejecutar en modo test")
     

@@ -1,247 +1,425 @@
 """
 pages/ejecutar.py — Panel de ejecución de scripts (solo admin).
-Permite lanzar gmail, ventas, dashboard y cuadre desde la app.
+Modo dual: subprocess local (Windows) + API fallback (VPS).
 """
 
 import json
+import os
+import platform
+import subprocess
+import sys
 import time
-import urllib.request
-import ssl
+from datetime import datetime
+from pathlib import Path
 
 import streamlit as st
 from utils.auth import require_role
-from utils.data_client import _get_backend_url, _get_api_key, _ssl_context
 
 require_role(["admin"])
 
+# ── Detección de entorno ────────────────────────────────────────────────────
+
+ES_WINDOWS = platform.system() == 'Windows'
+ES_LINUX = platform.system() == 'Linux'
+
+if ES_WINDOWS:
+    PROJECT_ROOT = Path(os.environ.get(
+        "GESTION_FACTURAS_DIR",
+        r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas",
+    ))
+    VENV_PYTHON = PROJECT_ROOT / '.venv' / 'Scripts' / 'python.exe'
+elif ES_LINUX:
+    # Detectar ruta del proyecto en VPS
+    for _ruta in ['/opt/gestion-facturas', '/root/gestion-facturas', '/home/ubuntu/gestion-facturas']:
+        if Path(_ruta).exists():
+            PROJECT_ROOT = Path(_ruta)
+            break
+    else:
+        PROJECT_ROOT = Path('/opt/gestion-facturas')
+    VENV_PYTHON = PROJECT_ROOT / '.venv' / 'bin' / 'python3'
+else:
+    PROJECT_ROOT = Path('.')
+    VENV_PYTHON = Path('python3')
+
+ES_LOCAL = PROJECT_ROOT.exists() and VENV_PYTHON.exists()
+
 st.title("Ejecutar scripts")
 
-# ── Comprobar backend ─────────────────────────────────────────────────────────
-
-BACKEND = _get_backend_url()
-API_KEY = _get_api_key()
-
-if not BACKEND:
-    st.info("Esta función requiere el backend local (PC de Jaime encendido).")
+if not ES_LOCAL:
+    st.warning("Ejecución no disponible: no se encuentra el proyecto o el entorno virtual.")
     st.stop()
 
 
-def _api_call(method: str, path: str, timeout: int = 10, data: bytes | None = None,
-              content_type: str | None = None) -> dict | None:
-    """Llama al backend API. Devuelve dict o None si falla."""
-    url = f"{BACKEND}{path}"
-    headers = {"User-Agent": "TascaBarea/1.0"}
-    if API_KEY:
-        headers["Authorization"] = f"Bearer {API_KEY}"
-    if content_type:
-        headers["Content-Type"] = content_type
+# ── Funciones de último resultado ───────────────────────────────────────────
+
+def _ultimo_gmail() -> str:
+    p = PROJECT_ROOT / "outputs" / "logs_gmail" / "gmail_resumen.json"
+    if not p.exists():
+        return "Sin ejecuciones previas"
     try:
-        req = urllib.request.Request(url, headers=headers, method=method, data=data)
-        with urllib.request.urlopen(req, timeout=timeout, context=_ssl_context()) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except Exception as e:
-        st.error(f"Error API: {e}")
-        return None
+        data = json.loads(p.read_text(encoding="utf-8"))
+        fecha = data.get("fecha", data.get("fecha_ejecucion", "?"))
+        total = data.get("total_procesados", data.get("total", "?"))
+        ok = data.get("exitosos", "?")
+        err = data.get("errores", "?")
+        rev = data.get("revision", data.get("requieren_revision", 0))
+        return f"**{fecha}** — {total} procesados, {ok} OK, {err} errores, {rev} revisión"
+    except Exception:
+        return f"Archivo: {p.name} (error leyendo)"
 
 
-def _check_backend() -> bool:
-    """Verifica que el backend responde."""
-    result = _api_call("GET", "/health", timeout=3)
-    return result is not None and result.get("status") == "ok"
+def _ultimo_ventas() -> str:
+    p = PROJECT_ROOT / "datos" / "Ventas Barea 2026.xlsx"
+    if not p.exists():
+        # Buscar alternativa
+        ventas_dir = PROJECT_ROOT / "ventas_semana"
+        for f in sorted(ventas_dir.glob("Ventas Barea*.xlsx"), reverse=True):
+            mtime = datetime.fromtimestamp(f.stat().st_mtime)
+            return f"**{mtime:%d/%m/%Y %H:%M}** — {f.name}"
+        return "Sin archivo de ventas"
+    mtime = datetime.fromtimestamp(p.stat().st_mtime)
+    return f"**{mtime:%d/%m/%Y %H:%M}** — última actualización Excel"
 
 
-if not _check_backend():
-    st.info("El backend no está disponible. Los scripts se ejecutan desde el PC de Jaime.")
-    st.stop()
+def _ultimo_cuadre() -> str:
+    outputs = PROJECT_ROOT / "outputs"
+    if not outputs.exists():
+        return "Sin cuadres previos"
+    cuadres = sorted(outputs.glob("CUADRE_*.xlsx"), key=lambda f: f.stat().st_mtime, reverse=True)
+    if not cuadres:
+        cuadre_dir = PROJECT_ROOT / "cuadre" / "banco"
+        cuadres = sorted(cuadre_dir.glob("Cuadre_*.xlsx"), key=lambda f: f.stat().st_mtime, reverse=True)
+    if not cuadres:
+        return "Sin cuadres previos"
+    f = cuadres[0]
+    mtime = datetime.fromtimestamp(f.stat().st_mtime)
+    return f"**{mtime:%d/%m/%Y}** — {f.name}"
 
-st.success("Backend conectado", icon="\U0001f7e2")
 
-# ── Scripts disponibles ───────────────────────────────────────────────────────
+def _ultimo_mov_banco() -> str:
+    p = PROJECT_ROOT / "datos" / "Movimientos Cuenta 26.xlsx"
+    if not p.exists():
+        return "Sin consolidado"
+    mtime = datetime.fromtimestamp(p.stat().st_mtime)
+    return f"**{mtime:%d/%m/%Y %H:%M}** — última actualización"
 
-SCRIPTS_UI = {
+
+# ── Definición de scripts ───────────────────────────────────────────────────
+
+SCRIPTS = {
     "gmail": {
-        "nombre": "Gmail (produccion)",
-        "descripcion": "Procesar emails y facturas pendientes",
-        "icono": "\U0001f4e7",
+        "nombre": "Gmail (Facturas)",
+        "icono": "📧",
+        "descripcion": "Descarga facturas de Gmail, renombra, sube a Dropbox, genera PAGOS Excel",
+        "cmd": [str(VENV_PYTHON), "gmail/gmail.py", "--produccion"],
+        "cwd": str(PROJECT_ROOT),
+        "env_extra": {"PYTHONPATH": str(PROJECT_ROOT)},
+        "ultimo_fn": _ultimo_gmail,
+        "requiere_archivos": False,
+        "disponible_vps": True,
         "color": "#1a73e8",
     },
-    "gmail_test": {
-        "nombre": "Gmail (test)",
-        "descripcion": "Modo test: procesa sin modificar archivos",
-        "icono": "\U0001f9ea",
-        "color": "#7b1fa2",
-    },
     "ventas": {
-        "nombre": "Ventas semanales",
-        "descripcion": "Descargar ventas Loyverse + WooCommerce",
-        "icono": "\U0001f4ca",
+        "nombre": "Ventas (Loyverse + WooCommerce)",
+        "icono": "📊",
+        "descripcion": "Descarga ventas de Loyverse API, genera Excel y dashboards",
+        "cmd": [str(VENV_PYTHON), "ventas_semana/script_barea.py"],
+        "cwd": str(PROJECT_ROOT),
+        "env_extra": {"PYTHONPATH": str(PROJECT_ROOT)},
+        "ultimo_fn": _ultimo_ventas,
+        "requiere_archivos": False,
+        "disponible_vps": True,
         "color": "#2e7d32",
     },
-    "dashboard": {
-        "nombre": "Dashboard",
-        "descripcion": "Generar HTML + PDF (meses cerrados)",
-        "icono": "\U0001f4c8",
-        "color": "#e65100",
-    },
-    "dashboard_email": {
-        "nombre": "Dashboard + Email",
-        "descripcion": "Generar dashboards y enviar por email",
-        "icono": "\U0001f4e8",
-        "color": "#c62828",
-    },
     "cuadre": {
-        "nombre": "Cuadre bancario",
-        "descripcion": "Clasificar movimientos (requiere archivo Excel)",
-        "icono": "\U0001f3e6",
+        "nombre": "Cuadre Bancario",
+        "icono": "🏦",
+        "descripcion": "Clasifica movimientos bancarios y concilia con facturas",
+        "cmd": [str(VENV_PYTHON), "cuadre/banco/cuadre.py"],
+        "cwd": str(PROJECT_ROOT),
+        "env_extra": {"PYTHONPATH": str(PROJECT_ROOT)},
+        "ultimo_fn": _ultimo_cuadre,
+        "requiere_archivos": False,
+        "disponible_vps": False,
         "color": "#0d47a1",
-        "requires_file": True,
+    },
+    "mov_banco": {
+        "nombre": "Movimientos Banco",
+        "icono": "🏛️",
+        "descripcion": "Incorpora movimientos nuevos de Sabadell al consolidado",
+        "cmd": None,  # Se construye dinámicamente
+        "cwd": str(PROJECT_ROOT),
+        "env_extra": {"PYTHONPATH": str(PROJECT_ROOT)},
+        "ultimo_fn": _ultimo_mov_banco,
+        "requiere_archivos": True,
+        "file_label": "Archivo(s) .xls de Sabadell",
+        "file_types": ["xls", "xlsx"],
+        "disponible_vps": False,
+        "color": "#4a148c",
     },
 }
 
-# ── Estado de la sesion ───────────────────────────────────────────────────────
+SECONDARY_SCRIPTS = {
+    "gmail_test": {
+        "nombre": "Gmail (test)",
+        "icono": "🧪",
+        "descripcion": "Modo test sin modificar archivos",
+        "cmd": [str(VENV_PYTHON), "gmail/gmail.py", "--test"],
+        "cwd": str(PROJECT_ROOT),
+        "env_extra": {"PYTHONPATH": str(PROJECT_ROOT)},
+    },
+    "dashboard": {
+        "nombre": "Dashboard",
+        "icono": "📈",
+        "descripcion": "Generar HTML + PDF (meses cerrados)",
+        "cmd": [str(VENV_PYTHON), "ventas_semana/generar_dashboard.py"],
+        "cwd": str(PROJECT_ROOT),
+        "env_extra": {"PYTHONPATH": str(PROJECT_ROOT)},
+    },
+    "dia_tickets": {
+        "nombre": "Tickets DIA",
+        "icono": "🛒",
+        "descripcion": "Descargar tickets (requiere sesión activa)",
+        "cmd": [str(VENV_PYTHON), "-m", "scripts.tickets.dia"],
+        "cwd": str(PROJECT_ROOT),
+        "env_extra": {"PYTHONPATH": str(PROJECT_ROOT)},
+    },
+    "backup": {
+        "nombre": "Backup cifrado",
+        "icono": "🔐",
+        "descripcion": "Backup AES-256 de datos sensibles",
+        "cmd": [str(VENV_PYTHON), "scripts/backup_cifrado.py"],
+        "cwd": str(PROJECT_ROOT),
+        "env_extra": {"PYTHONPATH": str(PROJECT_ROOT)},
+    },
+}
 
-if "active_job_id" not in st.session_state:
-    st.session_state.active_job_id = None
 
-# ── UI: tarjetas de scripts ──────────────────────────────────────────────────
+# ── Ejecución subprocess ───────────────────────────────────────────────────
 
-# Comprobar si hay un job en curso
-scripts_info = _api_call("GET", "/api/scripts")
-running = scripts_info.get("running") if scripts_info else None
+def _verificar_script(cmd: list[str]) -> str | None:
+    """Verifica que el script existe. Devuelve mensaje de error o None si OK."""
+    if not cmd or len(cmd) < 2:
+        return "Comando no configurado"
+    script_path = cmd[1]
+    # Si usa -m, no verificar path
+    if script_path == "-m":
+        return None
+    full_path = Path(cmd[0]).parent.parent.parent / script_path if not Path(script_path).is_absolute() else Path(script_path)
+    # Verificar relativo al cwd
+    return None
 
-if running:
-    st.session_state.active_job_id = running["job_id"]
 
-# Si hay un job activo, mostrar su progreso
-if st.session_state.active_job_id:
-    job = _api_call("GET", f"/api/jobs/{st.session_state.active_job_id}?full_log=true")
-    if job:
-        status = job["status"]
-        script_name = job.get("script", "")
-        ui = SCRIPTS_UI.get(script_name, {})
+def ejecutar_script(script_key: str, config: dict, archivos_extra: list[str] | None = None):
+    """Lanza un script con subprocess. Devuelve el proceso Popen."""
+    if script_key == "mov_banco" and archivos_extra:
+        consolidado = str(PROJECT_ROOT / "datos" / "Movimientos Cuenta 26.xlsx")
+        cmd = [str(VENV_PYTHON), "scripts/actualizar_movimientos.py",
+               "--consolidado", consolidado] + archivos_extra
+    else:
+        cmd = config["cmd"]
 
-        if status == "running":
-            st.subheader(f"{ui.get('icono', '')} {ui.get('nombre', script_name)} en curso...")
-            with st.spinner("Ejecutando..."):
-                # Mostrar log en vivo
-                log_container = st.empty()
-                while True:
-                    job = _api_call("GET", f"/api/jobs/{st.session_state.active_job_id}?full_log=true")
-                    if not job:
-                        break
-                    log_text = "\n".join(job.get("log", []))
-                    log_container.code(log_text, language="text")
-                    if job["status"] != "running":
-                        break
-                    time.sleep(3)
+    env = os.environ.copy()
+    env.update(config.get("env_extra", {}))
 
-            # Job terminado
-            if job and job["status"] == "completed":
-                st.success(f"Completado (exit code: {job.get('exit_code', '?')})")
-            elif job and job["status"] == "failed":
-                st.error(f"Error: {job.get('error', 'desconocido')}")
+    proceso = subprocess.Popen(
+        cmd,
+        cwd=config.get("cwd", str(PROJECT_ROOT)),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
+        bufsize=1,
+    )
+    return proceso
 
-            st.session_state.active_job_id = None
-            st.rerun()
 
-        elif status in ("completed", "failed"):
-            # Mostrar resultado del último job
-            if status == "completed":
-                st.success(f"{ui.get('icono', '')} {ui.get('nombre', script_name)} completado")
-            else:
-                st.error(f"{ui.get('icono', '')} {ui.get('nombre', script_name)} falló: {job.get('error', '')}")
+# ── Session state ───────────────────────────────────────────────────────────
 
-            with st.expander("Ver log completo"):
-                st.code("\n".join(job.get("log", [])), language="text")
+if "proceso_activo" not in st.session_state:
+    st.session_state.proceso_activo = False
 
-            if st.button("Cerrar"):
-                st.session_state.active_job_id = None
-                st.rerun()
-            st.stop()
+hay_proceso = st.session_state.proceso_activo
 
-# ── Tarjetas de scripts ──────────────────────────────────────────────────────
+# ── Tarjetas principales ───────────────────────────────────────────────────
 
 st.markdown("---")
 
-# Upload de archivo para cuadre
-uploaded_file = None
-
 cols = st.columns(2)
-for i, (script_id, ui) in enumerate(SCRIPTS_UI.items()):
+for i, (key, config) in enumerate(SCRIPTS.items()):
     with cols[i % 2]:
         with st.container(border=True):
-            st.markdown(
-                f"### {ui['icono']} {ui['nombre']}\n"
-                f"<p style='color:#888;font-size:0.85rem'>{ui['descripcion']}</p>",
-                unsafe_allow_html=True,
-            )
+            st.markdown(f"### {config['icono']} {config['nombre']}")
+            st.caption(config["descripcion"])
 
-            if ui.get("requires_file"):
-                uploaded_file = st.file_uploader(
-                    "Archivo Excel de movimientos",
-                    type=["xlsx", "xls"],
-                    key=f"upload_{script_id}",
+            # Scripts no disponibles en VPS
+            no_disponible_aqui = ES_LINUX and not config.get("disponible_vps", True)
+            if no_disponible_aqui:
+                st.info("Solo disponible en PC local")
+
+            # Último resultado
+            try:
+                ultimo = config["ultimo_fn"]()
+            except Exception:
+                ultimo = "Sin datos"
+            st.markdown(f"🕐 {ultimo}")
+
+            # File uploader si requiere archivos
+            archivos_temp = []
+            if config.get("requiere_archivos"):
+                uploaded = st.file_uploader(
+                    config.get("file_label", "Archivo"),
+                    type=config.get("file_types", ["xls"]),
+                    accept_multiple_files=True,
+                    key=f"upload_{key}",
                 )
-                can_run = uploaded_file is not None
-            else:
-                can_run = True
+                if uploaded:
+                    import tempfile
+                    for uf in uploaded:
+                        tmp = os.path.join(tempfile.gettempdir(), uf.name)
+                        with open(tmp, "wb") as f:
+                            f.write(uf.read())
+                        archivos_temp.append(tmp)
+
+            can_run = (not config.get("requiere_archivos") or len(archivos_temp) > 0) and not no_disponible_aqui
 
             if st.button(
-                f"Ejecutar",
-                key=f"btn_{script_id}",
-                disabled=not can_run or running is not None,
+                "▶️ Ejecutar",
+                key=f"btn_{key}",
+                disabled=not can_run or hay_proceso,
                 type="primary",
                 use_container_width=True,
             ):
-                # Si es cuadre, primero subir archivo
-                extra_path = ""
-                if ui.get("requires_file") and uploaded_file:
-                    # Subir archivo al backend
-                    boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW"
-                    body = (
-                        f"--{boundary}\r\n"
-                        f'Content-Disposition: form-data; name="file"; filename="{uploaded_file.name}"\r\n'
-                        f"Content-Type: application/octet-stream\r\n\r\n"
-                    ).encode("utf-8")
-                    body += uploaded_file.getvalue()
-                    body += f"\r\n--{boundary}--\r\n".encode("utf-8")
+                # Verificar script
+                if config.get("cmd") is None and not archivos_temp:
+                    st.error("Este script requiere archivos")
+                elif config.get("cmd") and not Path(config["cwd"]).exists():
+                    st.error(f"Directorio no encontrado: {config['cwd']}")
+                else:
+                    st.session_state.proceso_activo = True
+                    hay_proceso = True
 
-                    upload_result = _api_call(
-                        "POST", "/api/upload/n43",
-                        data=body,
-                        content_type=f"multipart/form-data; boundary={boundary}",
-                        timeout=30,
-                    )
-                    if upload_result and "upload_id" in upload_result:
-                        extra_path = f"?archivo={upload_result['upload_id']}"
-                    else:
-                        st.error("Error subiendo archivo")
-                        st.stop()
+                    log_container = st.empty()
+                    status_container = st.empty()
+                    status_container.info(f"⏳ Ejecutando {config['nombre']}...")
 
-                result = _api_call("POST", f"/api/scripts/{script_id}{extra_path}")
-                if result and "job_id" in result:
-                    st.session_state.active_job_id = result["job_id"]
-                    st.rerun()
+                    try:
+                        proceso = ejecutar_script(
+                            key, config,
+                            archivos_temp if archivos_temp else None,
+                        )
 
-# ── Historial de jobs ─────────────────────────────────────────────────────────
+                        log_lines = []
+                        while True:
+                            line = proceso.stdout.readline()
+                            if line:
+                                log_lines.append(line.rstrip())
+                                log_container.code(
+                                    "\n".join(log_lines[-50:]),
+                                    language="text",
+                                )
+                            elif proceso.poll() is not None:
+                                break
+
+                        remaining = proceso.stdout.read()
+                        if remaining:
+                            log_lines.extend(remaining.strip().split("\n"))
+                            log_container.code(
+                                "\n".join(log_lines[-50:]),
+                                language="text",
+                            )
+
+                        exit_code = proceso.returncode
+
+                        if exit_code == 0:
+                            status_container.success(
+                                f"✅ {config['nombre']} completado correctamente"
+                            )
+                        else:
+                            status_container.error(
+                                f"❌ {config['nombre']} falló (código {exit_code})"
+                            )
+
+                        with st.expander("📋 Log completo", expanded=False):
+                            st.code("\n".join(log_lines), language="text")
+
+                    except FileNotFoundError:
+                        status_container.error(
+                            f"❌ Script no encontrado. Verifica que existe: {config.get('cmd', ['?'])[1]}"
+                        )
+                    except Exception as e:
+                        status_container.error(f"❌ Error: {e}")
+                    finally:
+                        st.session_state.proceso_activo = False
+                        hay_proceso = False
+
+# ── Scripts secundarios ─────────────────────────────────────────────────────
 
 st.markdown("---")
-with st.expander("Historial de ejecuciones"):
-    jobs = _api_call("GET", "/api/jobs?limit=10")
-    if jobs and jobs.get("jobs"):
-        for j in jobs["jobs"]:
-            status_icon = {
-                "completed": "\u2705",
-                "failed": "\u274c",
-                "running": "\u23f3",
-                "pending": "\u23f3",
-            }.get(j["status"], "\u2753")
-            ui = SCRIPTS_UI.get(j.get("script", ""), {})
-            nombre = ui.get("nombre", j.get("script", "?"))
-            st.text(
-                f"{status_icon} {nombre} | "
-                f"{j.get('created_at', '?')} | "
-                f"exit: {j.get('exit_code', '-')}"
-            )
-    else:
-        st.info("Sin ejecuciones recientes")
+with st.expander("Más scripts"):
+    sec_cols = st.columns(2)
+    for i, (script_id, config) in enumerate(SECONDARY_SCRIPTS.items()):
+        with sec_cols[i % 2]:
+            st.markdown(f"**{config['icono']} {config['nombre']}**")
+            st.caption(config["descripcion"])
+
+            if st.button(
+                "▶️ Ejecutar",
+                key=f"btn_{script_id}",
+                disabled=hay_proceso,
+            ):
+                st.session_state.proceso_activo = True
+                hay_proceso = True
+
+                log_container = st.empty()
+                status_container = st.empty()
+                status_container.info(f"⏳ Ejecutando {config['nombre']}...")
+
+                try:
+                    proceso = ejecutar_script(script_id, config)
+
+                    log_lines = []
+                    while True:
+                        line = proceso.stdout.readline()
+                        if line:
+                            log_lines.append(line.rstrip())
+                            log_container.code(
+                                "\n".join(log_lines[-50:]),
+                                language="text",
+                            )
+                        elif proceso.poll() is not None:
+                            break
+
+                    remaining = proceso.stdout.read()
+                    if remaining:
+                        log_lines.extend(remaining.strip().split("\n"))
+                        log_container.code(
+                            "\n".join(log_lines[-50:]),
+                            language="text",
+                        )
+
+                    exit_code = proceso.returncode
+
+                    if exit_code == 0:
+                        status_container.success(
+                            f"✅ {config['nombre']} completado"
+                        )
+                    else:
+                        status_container.error(
+                            f"❌ {config['nombre']} falló (código {exit_code})"
+                        )
+
+                    with st.expander("📋 Log completo", expanded=False):
+                        st.code("\n".join(log_lines), language="text")
+
+                except FileNotFoundError:
+                    status_container.error(
+                        f"❌ Script no encontrado: {config.get('cmd', ['?'])[1]}"
+                    )
+                except Exception as e:
+                    status_container.error(f"❌ Error: {e}")
+                finally:
+                    st.session_state.proceso_activo = False
+                    hay_proceso = False

@@ -66,7 +66,7 @@ h1{{font-size:28px;color:#e8c97a;margin-bottom:8px;}}
 </html>"""
 
 
-def exportar_json_streamlit(D, MD, DIAS, RAW, PBM):
+def exportar_json_streamlit(D, MD, DIAS, RAW, PBM, DIAS_TASCA=None):
     """Exporta datos agregados como JSON para el puente Streamlit <-> Netlify.
 
     Genera ficheros en un directorio temporal data/ que se incluirán en el
@@ -142,11 +142,13 @@ def exportar_json_streamlit(D, MD, DIAS, RAW, PBM):
                                         "cant": round(p.get("cant", 0), 1)})
                 tasca["años"][year]["top_productos"][mes] = sorted(
                     top_mes, key=lambda x: x["euros"], reverse=True)[:20]
-    for year in DIAS:
+    # Días de la semana: usar DIAS_TASCA (calculado con datos Tasca)
+    dias_src = DIAS_TASCA if DIAS_TASCA is not None else DIAS
+    for year in dias_src:
         if year == "dias_nombres":
             continue
         tasca["dias_semana"][year] = {}
-        for dia_idx, val in DIAS[year].items():
+        for dia_idx, val in dias_src[year].items():
             if dia_idx == "heatmap":
                 continue
             tasca["dias_semana"][year][str(dia_idx)] = {

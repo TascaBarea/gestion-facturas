@@ -35,7 +35,9 @@
       "Bash(export PATH:*)",
       "Bash(gh auth login:*)",
       "Bash(gh repo edit:*)",
-      "Bash(git filter-repo:*)"
+      "Bash(git filter-repo:*)",
+      "Bash(ssh root@194.34.232.6 \"cat ~/.cloudflared/config.yml\")",
+      "Bash(ssh root@194.34.232.6 \"find / -name 'config.yml' -path '*cloudflared*' 2>/dev/null; systemctl status cloudflared 2>/dev/null | head -5; which cloudflared 2>/dev/null\")"
     ]
   }
 }

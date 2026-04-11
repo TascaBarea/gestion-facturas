@@ -730,19 +730,21 @@ def calcular_MD(items_por_año):
     return MD
 
 
-def calcular_DIAS(items_por_año, recibos_por_año):
+def calcular_DIAS(items_por_año, recibos_por_año, year_list=None):
     """
     Genera estructura DIAS para análisis por día de la semana.
     DIAS[year][dia_idx] = {euros, tickets, ticket_medio}  (0=Lunes..6=Domingo)
     DIAS[year]["heatmap"][dia_idx][mes] = euros
     DIAS["dias_nombres"] = ["Lunes", ..., "Domingo"]
     """
+    if year_list is None:
+        year_list = YEAR_LIST
     DIAS = {}
     dias_nombres = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes",
                     "Sábado", "Domingo"]
     DIAS["dias_nombres"] = dias_nombres
 
-    for year in YEAR_LIST:
+    for year in year_list:
         df_items = items_por_año.get(year)
         df_recibos = recibos_por_año.get(year)
 
@@ -1073,12 +1075,13 @@ def main(abrir_navegador=True, solo_meses_cerrados=True, enviar_email=False):
 
     RAW = calcular_RAW(t_items, t_recibos)
     PBM = calcular_PBM_tasca(t_items)
+    DIAS_TASCA = calcular_DIAS(t_items, t_recibos, year_list=TASCA_YEAR_LIST)
     path_tasca = generar_html_tasca(RAW, PBM)
 
     # ── 3. JSON Streamlit + Netlify ──
     print("\n--- JSON Streamlit + Netlify ---")
     try:
-        data_dir = exportar_json_streamlit(D, MD, DIAS, RAW, PBM)
+        data_dir = exportar_json_streamlit(D, MD, DIAS, RAW, PBM, DIAS_TASCA)
     except Exception as e:
         print(f"  Error exportando JSON Streamlit: {e}")
         data_dir = None

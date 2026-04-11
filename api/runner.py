@@ -104,6 +104,12 @@ SCRIPTS = {
         "args_default": ["--stats"],
         "description": "Estadísticas de tickets Dia descargados",
     },
+    "mov_banco": {
+        "script": os.path.join("scripts", "mov_banco.py"),
+        "args_default": ["--consolidado", os.path.join("datos", "Movimientos Cuenta 26.xlsx")],
+        "description": "Incorpora movimientos Sabadell al consolidado",
+        "requires_file": True,
+    },
 }
 
 # ── Estado global ─────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
-# SPEC GESTION-FACTURAS v4.2
+# SPEC GESTION-FACTURAS v4.4
 
-> Documento maestro unificado — 09/04/2026
+> Documento maestro unificado — 10/04/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
 
@@ -474,7 +474,11 @@ python -m scripts.tickets.bm --parsear     # procesar + parsear con main.py
 **Login:** 4 roles (admin, socio, comes, eventos). Usuarios: Jaime (admin), Roberto (socio), Elena (comes), Benjamin (eventos).
 **Páginas:** Alta Evento, Calendario Eventos, Ventas (Plotly), Maestro Editor (admin), Cuadre (placeholder), Log Gmail (placeholder), Monitor (placeholder), Ejecutar Scripts (placeholder), Documentos (Drive)
 **Diseño:** Tipografía Syne + DM Sans, sidebar oscuro, identidad Tasca Barea (#8B0000, #FFF8F0)
-**Filtro meses cerrados:** Los gráficos mensuales de Ventas (evolución €, tickets, ticket medio, categorías, márgenes, WooCommerce) excluyen el mes en curso para evitar comparativas distorsionadas. KPIs totales y gráficos diarios no se filtran. Doble barrera: `generar_dashboard.py` filtra al generar JSON (default `solo_meses_cerrados=True`) + `pages/ventas.py` filtra al renderizar.
+**Filtro meses cerrados:** Triple barrera para excluir meses incompletos de comparativas:
+1. `generar_dashboard.py` filtra DataFrames al generar datos (default `solo_meses_cerrados=True`)
+2. Templates HTML (`closedMonths()` en JS) filtran al renderizar gráficos
+3. `pages/ventas.py` filtra `meses_completos` al renderizar + delta interanual usa solo meses cerrados
+Afecta: evolución €, tickets/mes, ticket medio/mes, categorías, márgenes, WooCommerce, delta YoY. No afecta: KPIs totales, gráficos diarios, tab Productos.
 
 ### 9.3 Google Drive Sync
 
@@ -508,7 +512,7 @@ Carpeta "Barea - Datos Compartidos" con subcarpetas Ventas y Facturas.
 | Tarea | Cuándo | Cómo | Migración prevista |
 |-------|--------|------|-------------------|
 | Ventas (script_barea.py) | Lunes 03:00 | Task Scheduler Windows | CRON en VPS (Fase 2 cloud) |
-| Gmail (gmail.py) | Viernes 03:00 | Task Scheduler Windows | CRON en VPS (Fase 2 cloud) |
+| Gmail (gmail.py) | Viernes 03:00 | **CRON en VPS Contabo** | ✅ Migrado (v5.10, 12/04/2026) |
 | PARSEO (main.py) | Manual (menú) | — | Se queda en PC local |
 | Validación Kinema | Manual (trimestral) | — | Se queda en PC local |
 | CUADRE | Manual (bajo demanda) | — | Se queda en PC local |
@@ -541,7 +545,7 @@ Carpeta "Barea - Datos Compartidos" con subcarpetas Ventas y Facturas.
 ### 12.2 Qué se mueve y qué se queda
 
 **En PC local:** PARSEO, CUADRE, MOV_BANCO, Validación Kinema (todos manuales)
-**En VPS:** Ventas (cron), Gmail (cron), Streamlit dashboard, file storage, Dropbox API
+**En VPS (operativo):** Gmail (cron vie, ✅ migrado v5.10), Ventas (cron lun, pendiente), Streamlit dashboard, file storage, Dropbox API
 **Nuevo:** `sync_cloud.py` (rsync outputs al VPS), `.env` centralizado en VPS
 
 ### 12.3 Stack cloud
@@ -698,13 +702,152 @@ Datos en `config/datos_sensibles.py`. Incluye: IBAN_TASCA, IBAN_COMESTIBLES, BIC
 
 ---
 
+## 18. INFRAESTRUCTURA CLOUD Y ACCESO WEB
+
+### Dominios y DNS (Cloudflare — tascabarea.com)
+
+| Subdominio | Tipo | Destino | Proxy | Servicio |
+|-----------|------|---------|-------|----------|
+| tascabarea.com | A | 213.158.86.111 | Proxied | Web principal (Webempresa) |
+| gestion | CNAME | Tunnel 54062b38... | Proxied | Streamlit (puerto 8501 via tunnel) |
+| api | CNAME | Tunnel 54062b38... | Proxied | FastAPI gestion-facturas (puerto 8000) |
+| dashboard | CNAME | Tunnel 54062b38... | Proxied | Dashboards HTML |
+| controlhorario | A | 194.34.232.6 | DNS only | App Control Barea (Caddy + Let's Encrypt) |
+| cpanel / ftp / mail / webmail | A | 213.158.86.111 | Varios | Hosting Webempresa |
+
+### VPS Contabo
+
+- **Plan:** Cloud VPS 10 — 4 vCPU, 8GB RAM, 75GB NVMe, 3,96$/mes
+- **IP:** 194.34.232.6
+- **OS:** Ubuntu 24.04 LTS
+- **SSH:** `ssh root@194.34.232.6` (clave ed25519 configurada)
+- **Docker:** 29.1.3, Docker Compose 2.40.3
+
+**Servicios en ejecución:**
+
+| Servicio | Puerto | Bind | Acceso externo |
+|----------|--------|------|----------------|
+| Streamlit (gestion-facturas) | 8501 | 127.0.0.1 | https://gestion.tascabarea.com (tunnel) |
+| Control Barea API (Docker) | 8000 | Docker internal | https://controlhorario.tascabarea.com (Caddy) |
+| Control Barea Caddy (Docker) | 8080 | 0.0.0.0 | Reverse proxy interno para controlhorario |
+| PostgreSQL (Docker) | 5432 | Docker internal | No expuesto |
+| Caddy (sistema) | 80/443 | 0.0.0.0 | TLS para controlhorario.tascabarea.com |
+| cloudflared | — | — | Tunnel barea-api (gestion, api, dashboard) |
+| gmail.py (cron) | — | — | Viernes 03:00, Dropbox API (✅ migrado v5.10) |
+
+**Firewall (UFW):** 22/tcp (SSH), 80/tcp, 443/tcp. Puertos 8080, 8501, 5432 NO expuestos.
+
+**Backups:**
+- control-barea: cron diario 3:00 AM → `/root/backups/control_barea_*.sql.gz`
+- gestion-facturas: `backup_cifrado.py` (AES-256) + rclone a Google Drive
+
+**Control Barea — Docker Compose (producción):**
+- Archivo: `/opt/control-barea/docker-compose.prod.yml`
+- Contenedores: `barea_api` (Python/FastAPI), `barea_caddy` (reverse proxy :8080), `barea_postgres` (PostgreSQL 16)
+- Frontend: build estático React → servido por Caddy interno
+- Caddy interno escucha en :8080, Caddy del sistema proxea controlhorario.tascabarea.com → localhost:8080
+- Admin: jaime (password en .env del servidor, NO en repo)
+
+**Cloudflare Tunnel (barea-api):**
+- ID: 54062b38-f8c9-45b3-8281-35030bf71130
+- Conector: cloudflared en VPS (systemd service, auto-start)
+- Rutas: gestion → localhost:8501, api → localhost:8000, dashboard → dashboards HTML
+- Token instalado con `cloudflared service install`
+
+### Dominios registrados (Webempresa)
+
+| Dominio | Vencimiento | Nameservers |
+|---------|-------------|-------------|
+| tascabarea.com | 06/09/2026 | Cloudflare (emerson/irena) |
+| comestiblesbarea.com | 21/10/2026 | Webempresa (ns1611/ns1612) |
+| salvatierrasalvatierra.es | 25/04/2027 | Webempresa (ns1611/ns1612) |
+
+### Acceso Streamlit
+
+- **Local:** http://localhost:8501 (desarrollo)
+- **Producción:** https://gestion.tascabarea.com (Cloudflare Tunnel)
+- **Auth:** Login 4 roles (admin, socio, comes, tienda)
+- **Seguridad:** Streamlit bind 127.0.0.1 (no accesible por IP directa), puerto 8501 cerrado en firewall
+
+---
+
 ## CHANGELOG
 
-### v5.6 (09/04/2026) — FILTRO MESES CERRADOS EN STREAMLIT
-- Gráficos mensuales en `pages/ventas.py` excluyen mes en curso (doble barrera con generar_dashboard.py)
-- Afecta: evolución €, tickets/mes, ticket medio/mes, categorías, márgenes, WooCommerce
-- No afecta: KPIs totales, gráficos diarios, tab Productos
-- `generar_dashboard.py` ya tenía `solo_meses_cerrados=True` como default
+### v5.10 (12/04/2026) — MIGRACIÓN GMAIL AL VPS + EXTRACTORES NUEVOS
+
+**gmail.py v1.16 — Dropbox API:**
+- Selector automático Local/API según entorno (Windows → carpeta local, Linux → API REST)
+- Nuevos archivos: gmail/dropbox_api.py, gmail/dropbox_selector.py
+- Refresh token Dropbox configurado (permanente, no caduca)
+- DROPBOX_API_BASE: /File inviati/TASCA BAREA S.L.L/CONTABILIDAD
+- Config: DROPBOX_REFRESH_TOKEN, DROPBOX_APP_KEY, DROPBOX_APP_SECRET en datos_sensibles.py
+
+**VPS operativo para gmail.py:**
+- gmail.py --produccion ejecutado con éxito desde VPS Contabo
+- Facturas subidas a Dropbox vía API REST (verificado)
+- Cron Windows (Gmail_Facturas_Semanal) deshabilitado — VPS es ahora el entorno principal
+- Reactivar PC: `schtasks /change /tn "Gmail_Facturas_Semanal" /enable`
+
+**Extractores nuevos:**
+- alpenderez.py: Embutidos Alpénderez (OCR, CHACINAS, portes proporcionales)
+- contabo.py: Contabo GmbH (pdfplumber, GASTOS VARIOS, Reverse Charge 0% IVA)
+- Ambos dados de alta en MAESTRO_PROVEEDORES
+
+**Fix extractores:**
+- sabores_paterna.py: UNDS hecho opcional en regex (antes 0 líneas, ahora extrae correctamente)
+- pago_alto_landon.py: cantidad + precio_ud + consolidación SIN CARGO + precio_real
+
+**Ejecutar Scripts (Streamlit):**
+- Modo dual: subprocess directo en Windows, detección Linux para VPS
+- 4 tarjetas: Gmail, Ventas, Cuadre, Mov Banco con log tiempo real
+
+### v5.9 (11/04/2026) — EXTRACTORES: CAMPOS + CATEGORÍA CENTRALIZADA
+
+**CANTIDAD/PRECIO_UD:** 7 extractores ya tenían los campos capturados (emjamesa, odoo, organia_oleum, jesus_figueroa, horno_santo_cristo, dist_levantina, pago_alto_landon).
+
+**precio_real (campo nuevo):**
+- Coste efectivo con IVA por unidad cuando hay producto gratis (SIN CARGO / promociones)
+- Fórmula: `base × (1 + iva/100) / cantidad_total`
+- Implementado en: pago_alto_landon, borboton
+
+**CATEGORÍA centralizada (Opción C — híbrido):**
+- Extractor propone con `categoria_fija` → main.py completa con DiccionarioProveedoresCategoria
+- 15 extractores: añadido `'categoria': self.categoria_fija` al dict de salida
+- Correcciones: pilar_rodriguez→DESPENSA
+- Nuevos categoria_fija: carlos_navas/la_lleidiria/quesos_felix→QUESOS, isifar→DULCES, porvaz→CONSERVAS MAR
+- 7 multi-producto delegados a diccionario: arganza, ceres, montbrione, virgen_de_la_sierra, serrin_no_chan, francisco_guerra, molienda_verde
+- main.py ya tenía lookup automático en diccionario para líneas sin categoría (línea 1500)
+
+**Fallbacks en main.py (ya existían):**
+- TOTAL: extractor → `extraer_total()` genérico de nucleo/parser.py
+- FECHA: extractor → `extraer_fecha()` genérico
+- REF: extractor → `extraer_referencia()` genérico
+- Cuadre: `validar_cuadre_con_retencion()` con tolerancia 0.02€ + detección IRPF
+
+### v5.8 (10/04/2026) — PÁGINA EJECUTAR SCRIPTS REESCRITA
+- **ejecutar.py reescrita:** 4 tarjetas principales (Gmail, Ventas, Cuadre, Mov Banco) con último resultado, file upload, log en tiempo real
+- **Scripts secundarios:** Gmail test, Dashboard, Dashboard+Email, Tickets DIA en expander
+- **runner.py:** añadido `mov_banco` (scripts/mov_banco.py --consolidado)
+- **Último resultado:** lee gmail_resumen.json, fecha Excel ventas, último CUADRE_*.xlsx, fecha consolidado mov banco
+- Total: 9 scripts registrados en runner
+
+### v5.7 (10/04/2026) — DESPLIEGUE CONTROL-BAREA + CLOUDFLARE TUNNEL
+- **Control Barea desplegado** en VPS Contabo: Docker (API + PostgreSQL + Caddy) en `/opt/control-barea`
+- **Cloudflare Tunnel** instalado en VPS: `gestion.tascabarea.com → localhost:8501` via tunnel barea-api
+- **DNS migrado:** registro `gestion` de A record → CNAME tunnel (proxied)
+- **Streamlit asegurado:** bind `127.0.0.1` (no accesible por IP directa), puerto 8501 cerrado en firewall
+- **controlhorario.tascabarea.com** activo con HTTPS (Caddy + Let's Encrypt)
+- **Firewall:** solo 22, 80, 443 abiertos. Puertos internos (8080, 8501, 5432) bloqueados
+- **Backup cron:** diario 3:00 AM para PostgreSQL control-barea
+- **Sección 18 SPEC:** infraestructura cloud completa documentada
+
+### v5.6 (09/04/2026) — FILTRO MESES CERRADOS + BUGS DASHBOARDS
+- **Filtro meses cerrados triple barrera:** Python (generar_dashboard.py) + JS (closedMonths en templates HTML) + Streamlit (meses_completos en ventas.py)
+- **Fix template Comestibles:** placeholders `{{D_DATA}}` etc. restaurados (estaban hardcodeados, generar_html no actualizaba datos)
+- **Fix días semana Tasca:** `exportar_json_streamlit` usaba DIAS de Comestibles para Tasca. Nuevo `DIAS_TASCA` calculado con datos correctos. Martes: 11€→6.272€
+- **Fix delta interanual:** usaba `meses_act` (incluía mes parcial) → ahora usa `meses_completos`. Q1 2025: 34.007€→25.576€
+- **`calcular_DIAS`** parametrizado con `year_list` (antes hardcoded `YEAR_LIST`)
+- **`.gitignore`** ampliado: datos/backups/, datos/dia_tickets/, datos/snapshots/, outputs/*.log|html|png, cuadre/banco/clasificaciones_historicas.json
 
 ### v5.5 (08/04/2026) — WOOCOMMERCE DEVENGO + DESPLIEGUE DOCUMENTADO
 - WooCommerce integrado en Ventas Netas con criterio de devengo (fecha de celebración)

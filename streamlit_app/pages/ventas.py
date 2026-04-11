@@ -123,12 +123,13 @@ total_tickets = sum(mensual.get(str(m), {}).get("tickets", 0) for m in meses_act
 total_unidades = sum(mensual.get(str(m), {}).get("unidades", 0) for m in meses_act)
 ticket_medio = total_euros / total_tickets if total_tickets > 0 else 0
 
-# Delta interanual (solo meses comparables)
+# Delta interanual (solo meses completos comparables — excluir mes en curso)
 variacion = None
-if tiene_ant:
-    euros_ant = sum(mensual_ant.get(str(m), {}).get("euros", 0) for m in meses_act)
+if tiene_ant and meses_completos:
+    euros_completos = sum(mensual.get(str(m), {}).get("euros", 0) for m in meses_completos)
+    euros_ant = sum(mensual_ant.get(str(m), {}).get("euros", 0) for m in meses_completos)
     if euros_ant > 0:
-        variacion = (total_euros - euros_ant) / euros_ant * 100
+        variacion = (euros_completos - euros_ant) / euros_ant * 100
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Facturación", fmt_eur(total_euros),
