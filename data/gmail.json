@@ -1,45 +1,15 @@
 {
-  "fecha_ejecucion": "2026-04-10T03:22:39",
-  "total_procesados": 22,
-  "exitosos": 15,
-  "requieren_revision": 3,
-  "errores": 18,
+  "fecha_ejecucion": "2026-04-11T17:11:51",
+  "total_procesados": 4,
+  "exitosos": 4,
+  "requieren_revision": 0,
+  "errores": 0,
   "proveedores_ok": [
     "AGRICOLA DE MONTBRIO DEL CAMP SCCL",
-    "BORBOTON FINCA Y BODEGA SLU",
-    "CERES CERVEZA SL",
-    "COOPERATIVA DEL VINO DE YECLA LA PURISIMA SCL",
-    "DISTRIBUCIONES LAVAPIES S.COOP.MAD.",
-    "GRUPO TERRITORIO CAMPERO, S.L.",
-    "HERNANDEZ SUMINISTROS HOSTELEROS SL",
-    "INDUSTRIAS CARNICAS MRM",
-    "LA LLILDIRIA SL",
-    "MARTINEZ RODRIGUEZ MARIA LINAREJOS",
-    "QUESOS NAVAS SL",
-    "SEGURMA S.A."
+    "PESCADOS DON FELIX SL",
+    "SABORES DE PATERNA SCA",
+    "WEBEMPRESA EUROPA SL"
   ],
-  "revision": [
-    "\"Milagros Alpénderez\" <embutidos_alpenderez@hotmail.com>",
-    "Contabo <no-reply@contabo.com>"
-  ],
-  "errores_detalle": [
-    "Factura Bodega Borbotón: [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "¡Sus datos de inicio de sesión!: [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "ID de Pedido de Contabo 14840465: Confirmación de pedido: [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "ADJUNTO FACTURAS ULTIMOS PEDIDOS: [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "FACTURA MES DE MARZO 2026: [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "Factura: F26 / 2609: [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "Factura 06406_2623749_TASCA BAREA. CERES CERVEZA S L                  : [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "Factura: [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "FACTURA PEDIDO 07042026: [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "Factura 25/00/000268: [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "Factura Gaditaun: [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "Factura 06406_2623398_TASCA BAREA. CERES CERVEZA S L                  : [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "19598 - A la atención de : Tasca Barea : Documentación de su interes.: [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "19598 - A la atención de : Tasca Barea : Documentación de su interes.: [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "19598 - A la atención de : Tasca Barea : Documentación de su interes.: [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "La Lleldiría | Adjuntamos factura LL2026-00107.: [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "LA CAMPERA ANDALUZA MARZO: [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'",
-    "Segurma SA Factura (Ref C/2026/04/015693): [Errno 13] Permission denied: 'C:\\\\_ARCHIVOS\\\\TRABAJO\\\\Facturas\\\\gestion-facturas\\\\outputs\\\\PAGOS_Gmail_2T26.xlsx'"
-  ]
+  "revision": [],
+  "errores_detalle": []
 }
