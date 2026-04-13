@@ -7,10 +7,17 @@ Migrado de Netlify a GitHub Pages (27/03/2026).
 
 import json
 import os
+import sys
 import shutil
 import subprocess
 import tempfile
 from datetime import datetime
+from pathlib import Path
+
+# Asegurar directorio raíz en sys.path (para nucleo/)
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
 import numpy as np
 

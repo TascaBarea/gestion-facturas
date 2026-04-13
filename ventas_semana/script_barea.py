@@ -22,6 +22,13 @@ from datetime import datetime, timedelta
 # Cargar configuración (relativo al script, no al cwd)
 _script_dir = os.path.dirname(os.path.abspath(__file__))
 
+# Asegurar que el directorio raíz del proyecto está en sys.path (para nucleo/)
+import sys
+from pathlib import Path
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
 # --- Logging (centralizado via nucleo) ------------------------------------
 from nucleo.logging_config import setup_logging
 from nucleo.utils import fmt_eur as _fmt_eur, fmt_num as _fmt_num, to_float as _to_float

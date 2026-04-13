@@ -28,8 +28,40 @@ def _obtener_trimestre(fecha: datetime) -> str:
 
 
 def _es_atrasada(fecha_factura: datetime, fecha_ejecucion: datetime) -> bool:
-    """Compara trimestre factura vs ejecución."""
+    """Compara trimestre factura vs ejecución (legacy)."""
     return _obtener_trimestre(fecha_factura) != _obtener_trimestre(fecha_ejecucion)
+
+
+# Constantes ventana de gracia (mismas que en gmail.py)
+_GRACIA_HASTA_DIA = 11
+_PENDIENTE_HASTA_DIA = 20
+_MESES_INICIO_TRIMESTRE = {1, 4, 7, 10}
+
+
+def _determinar_destino(fecha_factura: datetime, fecha_proceso: datetime) -> str:
+    """Versión local de determinar_destino_factura (evita import circular)."""
+    trim_fac = (fecha_factura.month - 1) // 3 + 1
+    year_fac = fecha_factura.year
+    trim_hoy = (fecha_proceso.month - 1) // 3 + 1
+    year_hoy = fecha_proceso.year
+
+    if trim_fac == trim_hoy and year_fac == year_hoy:
+        return 'NORMAL'
+
+    # Trimestre inmediatamente anterior
+    es_anterior = (trim_hoy == 1 and trim_fac == 4 and year_fac == year_hoy - 1) or \
+                  (trim_hoy > 1 and trim_fac == trim_hoy - 1 and year_fac == year_hoy)
+
+    if es_anterior and fecha_proceso.month in _MESES_INICIO_TRIMESTRE:
+        dia = fecha_proceso.day
+        if dia <= _GRACIA_HASTA_DIA:
+            return 'GRACIA'
+        elif dia <= _PENDIENTE_HASTA_DIA:
+            return 'PENDIENTE_UBICACION'
+
+    if trim_fac != trim_hoy or year_fac != year_hoy:
+        return 'ATRASADA'
+    return 'NORMAL'
 
 
 class DropboxAPIClient:
@@ -70,21 +102,27 @@ class DropboxAPIClient:
             raise ConnectionError(f"Error conectando a Dropbox API: {e}")
 
     def subir_archivo(self, contenido: bytes, nombre_archivo: str, fecha_factura: datetime,
-                      fecha_ejecucion: datetime) -> Tuple[str, bool]:
+                      fecha_ejecucion: datetime, destino: str = None) -> Tuple[str, bool]:
         """
         Sube archivo a Dropbox vía API con deduplicación.
         Misma interfaz que LocalDropboxClient.subir_archivo().
+        v1.18: Ventana de gracia — destino controla carpeta.
 
         Returns:
             Tuple (ruta_dropbox, ya_existia)
         """
-        # Determinar carpeta destino
-        carpeta_trimestre = self.obtener_ruta_trimestre(fecha_ejecucion)
-        atrasada = _es_atrasada(fecha_factura, fecha_ejecucion)
+        # v1.18: Usar destino si se proporciona
+        if destino is None:
+            destino = _determinar_destino(fecha_factura, fecha_ejecucion)
 
-        if atrasada:
+        if destino == 'GRACIA':
+            carpeta_trimestre = self.obtener_ruta_trimestre(fecha_factura)
+            ruta_remota = f"{self.base_path}/{carpeta_trimestre}/{nombre_archivo}"
+        elif destino == 'ATRASADA':
+            carpeta_trimestre = self.obtener_ruta_trimestre(fecha_ejecucion)
             ruta_remota = f"{self.base_path}/{carpeta_trimestre}/ATRASADAS/{nombre_archivo}"
-        else:
+        else:  # NORMAL
+            carpeta_trimestre = self.obtener_ruta_trimestre(fecha_ejecucion)
             ruta_remota = f"{self.base_path}/{carpeta_trimestre}/{nombre_archivo}"
 
         # Dedup: buscar contenido idéntico en la carpeta destino

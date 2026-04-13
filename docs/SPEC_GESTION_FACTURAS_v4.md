@@ -44,7 +44,7 @@ gestion-facturas/
 │   └── .env                   # Credenciales API (gitignored)
 │
 ├── compras/                   # Todo lo que SALE (gastos proveedores)
-│   ├── gmail.py               # Descarga PDFs + genera SEPA (v1.14, ~2.200 líneas)
+│   ├── gmail.py               # Descarga PDFs + genera SEPA (v1.17, ~2.200 líneas)
 │   ├── auth.py, descargar.py, identificar.py, renombrar.py, guardar.py
 │   ├── generar_sepa.py        # Generador XML SEPA
 │   ├── config.py, config_local.py  # Configuración (rutas, trimestres, overrides locales)
@@ -133,7 +133,7 @@ gestion-facturas/
 | # | Archivo | Generado por | Ubicación | Frecuencia |
 |---|---------|-------------|-----------|------------|
 | ① | `COMPRAS_XTxx.xlsx` (Lineas + Facturas) | main.py (PARSEO) | compras/XTxx/ | Mensual/trimestral |
-| ② | `PAGOS_Gmail_XTxx.xlsx` (FACTURAS 15 cols + SEPA) | gmail.py | outputs/ | Semanal |
+| ② | `PAGOS_Gmail_XTxx.xlsx` (FACTURAS 15 cols + SEPA) | gmail.py v1.17 | outputs/ | Semanal |
 | ②b | `Facturas XTxx Provisional.xlsx` (6+1 cols) | gmail.py | outputs/ | Semanal |
 | ③ | `Ventas Barea YYYY.xlsx` (5 pestañas) | script_barea.py | ventas/ | Semanal (lunes 03:00) |
 | ④ | `CUADRE_XTxx_YYYYMMDD.xlsx` (3 pestañas) | cuadre.py | compras/XTxx/ | Bajo demanda |
@@ -247,11 +247,11 @@ Cuadre_011025-020126.xlsx  → Cuadre del 01/10/25 al 02/01/26
 
 ## 6. MÓDULO COMPRAS
 
-### 6.1 GMAIL (v1.14) — ✅ 99%
+### 6.1 GMAIL (v1.18) — ✅ 99%
 
-**Script:** `compras/gmail.py` (~2.200 líneas, Google API)
-**Módulos:** auth.py, descargar.py, identificar.py, renombrar.py, guardar.py, generar_sepa.py
-**Automatización:** Cada viernes 03:00
+**Script:** `gmail/gmail.py` (~2.500 líneas, Google API)
+**Módulos:** auth.py, descargar.py, identificar.py, renombrar.py, guardar.py, generar_sepa.py, dropbox_api.py, dropbox_selector.py
+**Automatización:** Cada viernes 03:00 (VPS Contabo, cron)
 
 #### Flujo semanal
 
@@ -270,18 +270,43 @@ MOVER A PROCESADAS (antes de procesar, retry backoff)
      ▼
 Identificar proveedor ◄──► MAESTRO (3 puntos + fuzzy ≥85%)
      │
-     ├── IDENTIFICADO → Descargar PDF → Renombrar → Dropbox → Excel
-     ├── ATRASADA → Subcarpeta ATRASADAS/
+     ├── IDENTIFICADO → Descargar PDF → Renombrar
+     │      │
+     │      ▼
+     │   determinar_destino_factura(fecha_factura, fecha_proceso)
+     │      │
+     │      ├── NORMAL   → Carpeta trimestre actual → Dropbox → Excel
+     │      ├── GRACIA   → Carpeta trimestre ANTERIOR (días 1-11) → Dropbox → Excel
+     │      ├── PENDIENTE → Cola JSON + PDF temporal (días 12-20, --produccion)
+     │      │               o pregunta terminal (modo manual)
+     │      └── ATRASADA  → Subcarpeta ATRASADAS/ (día 21+ o mes 2/3)
+     │
      └── DESCONOCIDO → PROVEEDORES_NUEVOS_*.txt
 ```
 
+#### Ventana de gracia trimestral (v1.18)
+
+Kinema acepta facturas del trimestre anterior durante los primeros días del nuevo trimestre.
+
+| Día del 1er mes | Destino | Acción |
+|-----------------|---------|--------|
+| 1-11 | GRACIA | Subir a carpeta del trimestre de la factura, sin prefijo ATRASADA |
+| 12-20 | PENDIENTE_UBICACION | Automático: cola JSON + PDF temporal. Manual: pregunta terminal |
+| 21+ | ATRASADA | Comportamiento original |
+| Mes 2/3 del trimestre | ATRASADA | Sin ventana de gracia |
+
+Solo aplica al trimestre **inmediatamente anterior**. Facturas más antiguas siempre ATRASADA.
+
+**Cola pendientes:** `datos/facturas_pendientes.json` + PDFs en `datos/pendientes/`
+**Resolución:** Streamlit (`Log Gmail` → sección pendientes) o gmail.py en modo manual.
+
 **Sistema de identificación:** 3 puntos (PDF + Asunto + Remitente). Si 2+ coinciden → confianza ALTA (automático). Si 0-1 → confianza BAJA (preguntar). Usa MAESTRO + alias + fuzzy ≥85%.
 
-**Extractores en Gmail:** Si existe extractor dedicado → usa ese. Fallback parcial v1.14: si dedicado obtiene fecha pero no total, complementa con genérico.
+**Extractores en Gmail:** Si existe extractor dedicado → usa ese. Fallback parcial v1.17: si dedicado obtiene fecha pero no total, complementa con genérico. Errores de extractores dedicados logean a WARNING (v1.17). Validación REF anti-basura: min 3 chars, requiere dígito en genérico.
 
 **Output:**
 - PDFs descargados y renombrados en Dropbox
-- `PAGOS_Gmail_XTxx.xlsx` (FACTURAS 15 cols + SEPA)
+- `PAGOS_Gmail_XTxx.xlsx` (FACTURAS 15 cols + SEPA) — verificado 2T26: #, ARCHIVO, PROVEEDOR, CIF, FECHA_FACTURA, REF, TOTAL, IBAN, FORMA_PAGO, ESTADO_PAGO, MOV#, OBS, REMITENTE, FECHA_PROCESO, CUENTA
 - `Facturas XTxx Provisional.xlsx` (6+1 cols: NOMBRE, PROVEEDOR, Fec.Fac., Factura, Total, Origen, OBS)
 - `PROVEEDORES_NUEVOS_*.txt`
 - `⚠️_IBANS_SUGERIDOS_*.xlsx`
@@ -664,7 +689,9 @@ Path traversal (basename + realpath), CORS explícito, API key obligatoria, RBAC
 
 ### Tareas pendientes sueltas
 
-- ⚠️ Revisar Excel output de `gmail.py` (PAGOS_Gmail). Pendiente desde 13/02/2026.
+- ✅ ~~Revisar Excel output de `gmail.py` (PAGOS_Gmail)~~. Completada 12/04/2026 — revisión v1.16→v1.17, 4 fixes aplicados, 15 columnas verificadas en 2T26.
+- ⚠️ P5: Pasar texto PDF cacheado a extractores para evitar re-extracciones (rendimiento)
+- ⚠️ P6: Decidir política multi-PDF por email (actualmente solo procesa el primer PDF)
 - ⚠️ Limpiar WooCommerce: 69 → 10 columnas en pestaña WOOCOMMERCE
 - ⚠️ Mover PARSEO a gestion-facturas (integración completa, futuro)
 
@@ -773,7 +800,52 @@ Datos en `config/datos_sensibles.py`. Incluye: IBAN_TASCA, IBAN_COMESTIBLES, BIC
 
 ## CHANGELOG
 
+### v5.12 (13/04/2026) — VENTANA DE GRACIA TRIMESTRAL
+
+**gmail.py v1.18 — Ventana de gracia:**
+- `determinar_destino_factura()`: 4 destinos (NORMAL, GRACIA, PENDIENTE_UBICACION, ATRASADA)
+- Días 1-11 del 1er mes del trimestre: GRACIA → carpeta trimestre anterior sin prefijo ATRASADA
+- Días 12-20: PENDIENTE_UBICACION → cola JSON (automático) o pregunta terminal (manual)
+- Día 21+ o mes 2/3: ATRASADA (comportamiento original)
+- Solo aplica al trimestre inmediatamente anterior
+
+**Cola de pendientes:**
+- `datos/facturas_pendientes.json` + PDFs temporales en `datos/pendientes/`
+- Anti-duplicación por `archivo_renombrado`
+- Resolución: Streamlit (Log Gmail) o terminal manual
+
+**Integración Dropbox:**
+- `LocalDropboxClient.subir_archivo()` y `DropboxAPIClient.subir_archivo()`: nuevo parámetro `destino`
+- GRACIA → carpeta del trimestre de la factura (no ejecución)
+- `generar_nombre_archivo()`: parámetro `destino` controla prefijo ATRASADA
+
+**Streamlit (Log Gmail):**
+- Sección "Facturas pendientes de ubicación" con botones por factura
+- KPIs: ventana gracia + pendientes ubicación
+- `gmail_resumen.json`: nuevos campos `facturas_gracia`, `facturas_pendientes`
+
+**Tests:** `tests/unit/test_ventana_gracia.py` — 27 tests (NORMAL, GRACIA, PENDIENTE, ATRASADA, cambio de año)
+
+### v5.11 (13/04/2026) — RUTAS OS-AWARE + SYS.PATH VENTAS
+
+**Rutas multiplataforma (Windows/Linux):**
+- `core/config.py`: fallbacks por `platform.system()` — Windows → `C:\_ARCHIVOS\...`, Linux → `/opt/...`
+- `gmail/gmail.py`: Config interno con detección automática para BASE_PATH, DROPBOX_BASE, EXTRACTORES_PATH
+- `gmail/gmail_config.py`: PROYECTO_BASE y DROPBOX_BASE ahora leen env var + fallback por OS
+- Corrige FileNotFoundError de MAESTRO_PATH al ejecutar gmail.py en VPS
+
+**sys.path fix para nucleo/ en ventas_semana/:**
+- `script_barea.py`: añadido sys.path insert antes de `from nucleo` (corrige ModuleNotFoundError desde bat)
+- `pdf_generator.py`, `email_sender.py`, `netlify_publisher.py`: mismo fix por robustez
+- `generar_dashboard.py` ya lo tenía
+
 ### v5.10 (12/04/2026) — MIGRACIÓN GMAIL AL VPS + EXTRACTORES NUEVOS
+
+**gmail.py v1.17 — Revisión completa + Dropbox API:**
+- FIX: Errores de extractores dedicados ahora logean a WARNING (antes DEBUG invisible)
+- FIX: Validación REF anti-basura reforzada (min 3 chars, requiere dígito en genérico)
+- FIX: `factura.total` ya no se sobreescribe a 0.00 cuando falta (queda None → celda vacía)
+- Constante `VERSION` centralizada (elimina hardcoded en `ejecutar()`)
 
 **gmail.py v1.16 — Dropbox API:**
 - Selector automático Local/API según entorno (Windows → carpeta local, Linux → API REST)

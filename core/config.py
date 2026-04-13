@@ -3,14 +3,22 @@ core/config.py — Configuración centralizada del proyecto.
 
 FUENTE ÚNICA de rutas. Todos los módulos deben importar de aquí.
 En Windows (Jaime): usa los fallback hardcoded.
-En VPS (Contabo): lee de variables de entorno o .env
+En VPS (Contabo): lee de variables de entorno o .env, fallback a /opt/
 """
 import os
+import platform
 from pathlib import Path
 from dataclasses import dataclass, field
 
 
 VERSION = "5.17"
+
+_ES_WINDOWS = platform.system() == "Windows"
+
+# Fallbacks por OS (solo se usan si no hay env var)
+_DEFAULT_BASE = r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas" if _ES_WINDOWS else "/opt/gestion-facturas"
+_DEFAULT_PARSEO = r"C:\_ARCHIVOS\TRABAJO\Facturas\Parseo" if _ES_WINDOWS else "/opt/Parseo"
+_DEFAULT_DROPBOX = r"C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD" if _ES_WINDOWS else ""
 
 
 @dataclass
@@ -18,25 +26,16 @@ class Config:
     """Configuración del proyecto. Lee de env vars con fallback a rutas locales."""
 
     base_dir: Path = field(default_factory=lambda: Path(
-        os.environ.get(
-            "GESTION_FACTURAS_DIR",
-            r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas"
-        )
+        os.environ.get("GESTION_FACTURAS_DIR", _DEFAULT_BASE)
     ))
 
     parseo_dir: Path = field(default_factory=lambda: Path(
-        os.environ.get(
-            "PARSEO_DIR",
-            r"C:\_ARCHIVOS\TRABAJO\Facturas\Parseo"
-        )
+        os.environ.get("PARSEO_DIR", _DEFAULT_PARSEO)
     ))
 
     dropbox_base: Path = field(default_factory=lambda: Path(
-        os.environ.get(
-            "DROPBOX_BASE",
-            r"C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD"
-        )
-    ))
+        os.environ.get("DROPBOX_BASE", _DEFAULT_DROPBOX)
+    ) if os.environ.get("DROPBOX_BASE", _DEFAULT_DROPBOX) else Path())
 
     @property
     def datos_dir(self) -> Path:

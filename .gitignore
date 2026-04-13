@@ -21,6 +21,8 @@ datos/Articulos*.xlsx
 datos/Compras*.xlsx
 datos/backups/
 datos/dia_tickets/
+datos/pendientes/
+datos/facturas_pendientes.json
 datos/dia_session.json
 datos/snapshots/
 datos/correcciones.json

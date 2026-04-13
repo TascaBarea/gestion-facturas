@@ -7,10 +7,17 @@ tablas de KPIs, categorías y acumulados YTD.
 """
 
 import os
+import sys
 import tempfile
 import shutil
 from datetime import datetime
 from collections import defaultdict
+from pathlib import Path
+
+# Asegurar directorio raíz en sys.path (para nucleo/)
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
 import pandas as pd
 

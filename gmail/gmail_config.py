@@ -5,14 +5,20 @@ Gestión de facturas - TASCA BAREA S.L.L.
 """
 
 import os
+import platform
 from datetime import datetime
 
 # =============================================================================
 # RUTAS DEL SISTEMA
 # =============================================================================
 
-# Base del proyecto
-PROYECTO_BASE = r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas"
+_ES_WINDOWS = platform.system() == "Windows"
+
+# Base del proyecto — detección automática Windows/Linux
+PROYECTO_BASE = os.environ.get(
+    "GESTION_FACTURAS_DIR",
+    r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas" if _ES_WINDOWS else "/opt/gestion-facturas"
+)
 
 # Carpetas del proyecto
 GMAIL_DIR = os.path.join(PROYECTO_BASE, "gmail")
@@ -32,7 +38,10 @@ TEMP_BACKUP_DIR = os.path.join(OUTPUTS_DIR, "temp_backup")
 # DROPBOX
 # =============================================================================
 
-DROPBOX_BASE = r"C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD"
+DROPBOX_BASE = os.environ.get(
+    "DROPBOX_BASE",
+    r"C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD" if _ES_WINDOWS else ""
+)
 
 # Subcarpetas (se construyen dinámicamente según año/trimestre)
 # Ejemplo: FACTURAS 2026/FACTURAS RECIBIDAS/1 TRIMESTRE 2026/

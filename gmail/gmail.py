@@ -1,9 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GMAIL MODULE v1.16
+GMAIL MODULE v1.18
 Sistema Automatizado de Procesamiento de Facturas
 TASCA BAREA S.L.L. - Abril 2026
+
+MEJORAS v1.18:
+- VENTANA DE GRACIA TRIMESTRAL: determinar_destino_factura() con 4 destinos
+  Días 1-11 → GRACIA (carpeta trimestre anterior), 12-20 → PENDIENTE, 21+ → ATRASADA
+- Cola JSON datos/facturas_pendientes.json para pendientes en modo automático
+- Pregunta interactiva en terminal en modo manual
+- Sección Streamlit en Log Gmail para resolver pendientes
+- LocalDropboxClient y DropboxAPIClient: parámetro destino en subir_archivo()
+
+MEJORAS v1.17:
+- FIX: Errores de extractores dedicados ahora logean a WARNING (antes DEBUG invisible)
+- FIX: Validación REF anti-basura reforzada (min 3 chars, requiere dígito en genérico)
+- FIX: factura.total ya no se sobreescribe a 0.00 cuando falta (queda None → celda vacía)
+- Constante VERSION centralizada
 
 MEJORAS v1.15:
 - DEDUP DROPBOX: Escanea carpeta destino por hash antes de subir; si contenido
@@ -23,6 +37,8 @@ Ejecuta: python gmail.py --produccion
          python gmail.py --test (modo prueba sin modificar archivos)
 """
 
+VERSION = "1.18"
+
 import os
 import sys
 import io
@@ -30,6 +46,7 @@ import json
 import hashlib
 import logging
 import argparse
+import platform
 import re
 import time
 import tempfile
@@ -69,17 +86,24 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
 # ============================================================================
-# CONFIGURACIÓN v1.14
+# CONFIGURACIÓN
 # ============================================================================
 
 @dataclass
 class Config:
-    """Configuración del sistema v1.16"""
-    # Rutas base (env var GESTION_FACTURAS_DIR para VPS)
+    """Configuración del sistema v1.17"""
+    # Rutas base — detección automática Windows/Linux
+    _ES_WINDOWS: bool = field(default_factory=lambda: platform.system() == "Windows", repr=False)
+
     BASE_PATH: str = field(default_factory=lambda: os.environ.get(
-        "GESTION_FACTURAS_DIR", r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas"))
+        "GESTION_FACTURAS_DIR",
+        r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas" if platform.system() == "Windows"
+        else "/opt/gestion-facturas"))
     GMAIL_PATH: str = field(default="")
-    DROPBOX_BASE: str = r"C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD"
+    DROPBOX_BASE: str = field(default_factory=lambda: os.environ.get(
+        "DROPBOX_BASE",
+        r"C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD" if platform.system() == "Windows"
+        else ""))
 
     # Dropbox API (para VPS — refresh token no expira)
     DROPBOX_REFRESH_TOKEN: str = ""
@@ -88,9 +112,12 @@ class Config:
     DROPBOX_TOKEN: str = ""  # legacy, fallback
     DROPBOX_API_BASE: str = "/File inviati/TASCA BAREA S.L.L/CONTABILIDAD"
 
-    # RUTA EXTRACTORES v1.4 (env var PARSEO_DIR para VPS)
+    # RUTA EXTRACTORES v1.4 — detección automática Windows/Linux
     EXTRACTORES_PATH: str = field(default_factory=lambda: os.path.join(
-        os.environ.get("PARSEO_DIR", r"C:\_ARCHIVOS\TRABAJO\Facturas\Parseo"), "extractores"))
+        os.environ.get("PARSEO_DIR",
+                       r"C:\_ARCHIVOS\TRABAJO\Facturas\Parseo" if platform.system() == "Windows"
+                       else "/opt/Parseo"),
+        "extractores"))
     
     # IBANs propios (cargados de config/datos_sensibles.py)
     IBAN_TASCA: str = ""
@@ -250,35 +277,91 @@ def obtener_trimestre(fecha: datetime) -> str:
 
 def es_atrasada(fecha_factura: datetime, fecha_ejecucion: datetime) -> bool:
     """
-    Determina si una factura es ATRASADA.
-    
-    LÓGICA v1.4 (CORREGIDA):
-    - Compara trimestre de la FACTURA vs trimestre de EJECUCIÓN
-    - Si son diferentes → es ATRASADA
-    - Se guarda en subcarpeta ATRASADAS del trimestre de EJECUCIÓN
-    
-    Ejemplos:
-    - Ejecución 02/02/2026 (1T26), Factura 15/01/2026 (1T26) → NO atrasada
-    - Ejecución 02/02/2026 (1T26), Factura 25/11/2025 (4T25) → SÍ atrasada
-    - Ejecución 15/04/2026 (2T26), Factura 15/03/2026 (1T26) → SÍ atrasada
+    Determina si una factura es ATRASADA (legacy, mantener para compatibilidad).
+    Usa determinar_destino_factura() para lógica completa con ventana de gracia.
     """
     return obtener_trimestre(fecha_factura) != obtener_trimestre(fecha_ejecucion)
+
+
+# Constantes ventana de gracia (NO configurables)
+GRACIA_HASTA_DIA = 11      # Días 1-11: ventana de gracia
+PENDIENTE_HASTA_DIA = 20   # Días 12-20: zona gris / pendiente
+MESES_INICIO_TRIMESTRE = {1, 4, 7, 10}  # enero, abril, julio, octubre
+
+
+def trimestre_de_fecha(fecha: datetime) -> Tuple[int, int]:
+    """Devuelve (trimestre, año). Ej: date(2026,3,28) → (1, 2026)"""
+    trimestre = (fecha.month - 1) // 3 + 1
+    return trimestre, fecha.year
+
+
+def es_trimestre_inmediatamente_anterior(trim_fac: int, year_fac: int,
+                                          trim_hoy: int, year_hoy: int) -> bool:
+    """True si el trimestre de la factura es exactamente el anterior al actual."""
+    if trim_hoy == 1:
+        return trim_fac == 4 and year_fac == year_hoy - 1
+    else:
+        return trim_fac == trim_hoy - 1 and year_fac == year_hoy
+
+
+def determinar_destino_factura(fecha_factura: datetime, fecha_proceso: datetime = None) -> str:
+    """
+    Determina dónde debe ir una factura según la ventana de gracia trimestral.
+
+    Kinema acepta facturas del trimestre anterior durante los primeros días
+    del nuevo trimestre. Esta función implementa 3 zonas:
+
+    Returns:
+        'NORMAL'              → factura del trimestre actual, carpeta normal
+        'GRACIA'              → trimestre anterior, dentro de ventana (días 1-11)
+        'PENDIENTE_UBICACION' → zona gris (días 12-20), requiere decisión manual
+        'ATRASADA'            → fuera de ventana, carpeta ATRASADAS/
+    """
+    if fecha_proceso is None:
+        fecha_proceso = datetime.now()
+
+    trim_fac, year_fac = trimestre_de_fecha(fecha_factura)
+    trim_hoy, year_hoy = trimestre_de_fecha(fecha_proceso)
+
+    # Caso 1: La factura es del trimestre actual → NORMAL
+    if trim_fac == trim_hoy and year_fac == year_hoy:
+        return 'NORMAL'
+
+    # Caso 2: La factura es del trimestre inmediatamente anterior
+    if es_trimestre_inmediatamente_anterior(trim_fac, year_fac, trim_hoy, year_hoy):
+        # ¿Estamos en el primer mes del trimestre?
+        if fecha_proceso.month in MESES_INICIO_TRIMESTRE:
+            dia = fecha_proceso.day
+            if dia <= GRACIA_HASTA_DIA:
+                return 'GRACIA'
+            elif dia <= PENDIENTE_HASTA_DIA:
+                return 'PENDIENTE_UBICACION'
+            else:
+                return 'ATRASADA'
+        else:
+            # 2º o 3er mes del trimestre → siempre ATRASADA
+            return 'ATRASADA'
+
+    # Caso 3: Trimestre más antiguo → siempre ATRASADA
+    return 'ATRASADA'
 
 
 def generar_nombre_archivo(
     proveedor: Optional[Proveedor],
     factura: FacturaExtraida,
     fecha_proceso: datetime,
-    remitente: str = ""
+    remitente: str = "",
+    destino: str = None
 ) -> str:
     """
     Genera el nombre del archivo PDF según nomenclatura.
     v1.6: Sanitización de caracteres inválidos en Windows
+    v1.18: Ventana de gracia — destino controla si se añade prefijo ATRASADA
     """
     fecha_factura = factura.fecha if factura.fecha else fecha_proceso
     trimestre = obtener_trimestre(fecha_factura)
     mmdd = fecha_factura.strftime("%m%d")
-    
+
     if proveedor and proveedor.nombre:
         nombre_norm = normalizar_nombre_proveedor(proveedor.nombre)
         forma_pago = proveedor.forma_pago if proveedor.forma_pago else ""
@@ -291,33 +374,169 @@ def generar_nombre_archivo(
         email_limpio = re.sub(r'[\"*:<>?|/\\]', '', email_limpio)
         nombre_norm = f"({email_limpio})"
         forma_pago = ""
-    
+
     partes = []
-    
-    if factura.fecha and es_atrasada(fecha_factura, fecha_proceso):
+
+    # v1.18: Usar destino si se proporciona, si no calcular con lógica legacy
+    if destino is None:
+        destino = determinar_destino_factura(fecha_factura, fecha_proceso) if factura.fecha else 'NORMAL'
+
+    if destino == 'ATRASADA':
         partes.append("ATRASADA")
-    
+    # GRACIA y NORMAL: sin prefijo ATRASADA
+
     if not proveedor or not proveedor.nombre:
         partes.insert(0, "REVISAR")
-    
+
     partes.append(trimestre)
     partes.append(mmdd)
     partes.append(nombre_norm)
-    
+
     if forma_pago:
         partes.append(forma_pago)
-    
+
     nombre = " ".join(partes) + ".pdf"
-    
+
     # v1.6: Limpieza final - quitar caracteres Windows prohibidos que hayan sobrevivido
     nombre = re.sub(r'[\"*:<>?|]', '', nombre)
-    
+
     return nombre
 
 
 def calcular_hash_archivo(contenido: bytes) -> str:
     """Calcula SHA-256 del contenido"""
     return hashlib.sha256(contenido).hexdigest()
+
+
+# ============================================================================
+# VENTANA DE GRACIA — Cola de pendientes y pregunta manual (v1.18)
+# ============================================================================
+
+COLA_PENDIENTES_PATH = os.path.join(
+    os.environ.get("GESTION_FACTURAS_DIR",
+                   r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas" if platform.system() == "Windows"
+                   else "/opt/gestion-facturas"),
+    "datos", "facturas_pendientes.json"
+)
+PENDIENTES_DIR = os.path.join(os.path.dirname(COLA_PENDIENTES_PATH), "pendientes")
+
+
+def guardar_en_cola_pendientes(factura_info: dict, pdf_bytes: bytes, logger: logging.Logger):
+    """Guarda factura en cola JSON + PDF en carpeta temporal (modo automático)."""
+    import uuid
+
+    os.makedirs(PENDIENTES_DIR, exist_ok=True)
+
+    # Anti-duplicado: no añadir si ya existe por archivo_renombrado
+    cola = []
+    if os.path.exists(COLA_PENDIENTES_PATH):
+        with open(COLA_PENDIENTES_PATH, 'r', encoding='utf-8') as f:
+            cola = json.load(f)
+    for entrada in cola:
+        if entrada.get('archivo_renombrado') == factura_info.get('archivo_renombrado') \
+                and entrada.get('estado') == 'pendiente':
+            logger.info(f"  ↳ Ya está en cola de pendientes, no duplicar")
+            return
+
+    # Guardar PDF temporal
+    nombre_temp = factura_info['archivo_renombrado'].replace(' ', '_')
+    ruta_pdf = os.path.join(PENDIENTES_DIR, nombre_temp)
+    with open(ruta_pdf, 'wb') as f:
+        f.write(pdf_bytes)
+
+    entrada = {
+        "id": str(uuid.uuid4()),
+        **factura_info,
+        "ruta_pdf_temporal": ruta_pdf,
+        "estado": "pendiente",
+        "resuelto_por": None,
+        "fecha_resolucion": None,
+    }
+
+    cola.append(entrada)
+
+    # Escribir atómicamente
+    tmp_path = COLA_PENDIENTES_PATH + ".tmp"
+    with open(tmp_path, 'w', encoding='utf-8') as f:
+        json.dump(cola, f, ensure_ascii=False, indent=2)
+    os.replace(tmp_path, COLA_PENDIENTES_PATH)
+
+    logger.warning(
+        f"⚠️ PENDIENTE: {factura_info['archivo_renombrado']} "
+        f"— zona gris día {factura_info['dia_proceso']}, guardada en cola"
+    )
+
+
+def preguntar_destino_manual(factura_info: dict) -> str:
+    """Pausa el proceso y pregunta al usuario en terminal (modo manual)."""
+    print("\n" + "=" * 60)
+    print("⚠️  FACTURA EN ZONA GRIS — REQUIERE DECISIÓN")
+    print("=" * 60)
+    print(f"  Archivo:    {factura_info['archivo_renombrado']}")
+    print(f"  Proveedor:  {factura_info['proveedor']}")
+    print(f"  Fecha fac.: {factura_info['fecha_factura']}")
+    print(f"  Total:      {factura_info['total']}€")
+    print(f"  Trimestre:  {factura_info['trimestre_factura']} "
+          f"(procesada día {factura_info['dia_proceso']} de {factura_info['trimestre_actual']})")
+    print()
+    print(f"  [1] → Subir a {factura_info['opciones']['trimestre_anterior']['carpeta']}")
+    print(f"        (como factura normal del trimestre anterior)")
+    print(f"  [2] → Subir a {factura_info['opciones']['atrasada']['carpeta']}")
+    print(f"        (como ATRASADA del trimestre actual)")
+    print()
+
+    while True:
+        respuesta = input("  Elige [1/2]: ").strip()
+        if respuesta == '1':
+            return 'GRACIA'
+        elif respuesta == '2':
+            return 'ATRASADA'
+        else:
+            print("  → Respuesta no válida. Escribe 1 o 2.")
+
+
+def construir_info_pendiente(
+    resultado: 'ResultadoProcesamiento',
+    factura: 'FacturaExtraida',
+    nombre_generado: str,
+    fecha_proceso: datetime
+) -> dict:
+    """Construye el dict de info para cola pendientes / pregunta manual."""
+    fecha_factura = factura.fecha if factura.fecha else fecha_proceso
+    trim_fac = obtener_trimestre(fecha_factura)
+    trim_actual = obtener_trimestre(fecha_proceso)
+    año_fac = fecha_factura.year
+    num_trim_fac = (fecha_factura.month - 1) // 3 + 1
+    año_actual = fecha_proceso.year
+    num_trim_actual = (fecha_proceso.month - 1) // 3 + 1
+
+    carpeta_anterior = f"{num_trim_fac} TRIMESTRE {año_fac}"
+    carpeta_atrasada = f"{num_trim_actual} TRIMESTRE {año_actual}/ATRASADAS"
+
+    # Nombre sin ATRASADA (para opción gracia)
+    nombre_gracia = nombre_generado.replace("ATRASADA ", "")
+
+    return {
+        "archivo_original": resultado.archivo_generado or nombre_generado,
+        "archivo_renombrado": nombre_gracia,
+        "proveedor": resultado.proveedor.nombre if resultado.proveedor else resultado.remitente,
+        "fecha_factura": fecha_factura.strftime("%Y-%m-%d"),
+        "fecha_proceso": fecha_proceso.strftime("%Y-%m-%d"),
+        "total": factura.total,
+        "trimestre_factura": trim_fac,
+        "trimestre_actual": trim_actual,
+        "dia_proceso": fecha_proceso.day,
+        "opciones": {
+            "trimestre_anterior": {
+                "carpeta": carpeta_anterior,
+                "nombre": nombre_gracia,
+            },
+            "atrasada": {
+                "carpeta": carpeta_atrasada,
+                "nombre": f"ATRASADA {nombre_gracia}",
+            },
+        },
+    }
 
 
 def formatear_iban(iban: str) -> str:
@@ -563,8 +782,21 @@ class ExtractorPDF:
         # Total
         resultado.total = extraer_total(self.texto)
 
-        # Referencia
-        resultado.referencia = extraer_referencia(self.texto) or ""
+        # Referencia — con validación anti-basura (v1.17)
+        ref_candidata = extraer_referencia(self.texto) or ""
+        if ref_candidata:
+            ref_upper = ref_candidata.strip().upper()
+            tiene_digito = any(c.isdigit() for c in ref_candidata)
+            # Rechazar: palabras del diccionario REF_INVALIDAS, < 3 chars,
+            # o solo letras sin dígitos (probablemente fragmento de nombre/dirección)
+            if (ref_upper in self.REF_INVALIDAS
+                    or len(ref_candidata.strip()) < 3
+                    or not tiene_digito):
+                resultado.referencia = ""
+            else:
+                resultado.referencia = ref_candidata.strip()
+        else:
+            resultado.referencia = ""
 
         # IBAN
         iban = extraer_iban(self.texto)
@@ -846,25 +1078,32 @@ class LocalDropboxClient:
         if not os.path.exists(base_path):
             raise Exception(f"Carpeta Dropbox no encontrada: {base_path}")
     
-    def subir_archivo(self, contenido: bytes, nombre_archivo: str, fecha_factura: datetime, 
-                      fecha_ejecucion: datetime) -> Tuple[str, bool]:
+    def subir_archivo(self, contenido: bytes, nombre_archivo: str, fecha_factura: datetime,
+                      fecha_ejecucion: datetime, destino: str = None) -> Tuple[str, bool]:
         """
         Copia un archivo a la carpeta local de Dropbox con deduplicación inteligente.
-        
+
         v1.5: Deduplicación multi-señal.
-        
+        v1.18: Ventana de gracia — destino controla carpeta.
+
         Returns:
             Tuple (ruta_archivo, ya_existia) — ya_existia=True si se saltó por duplicado
         """
-        # Determinar carpeta destino según trimestre de EJECUCIÓN
-        carpeta_trimestre = self.obtener_ruta_trimestre(fecha_ejecucion)
-        
-        # Verificar si es atrasada
-        atrasada = es_atrasada(fecha_factura, fecha_ejecucion)
-        
-        if atrasada:
+        # v1.18: Usar destino si se proporciona
+        if destino is None:
+            destino = determinar_destino_factura(fecha_factura, fecha_ejecucion)
+
+        # GRACIA → carpeta del trimestre de la FACTURA (no ejecución)
+        # NORMAL → carpeta del trimestre de la factura (= ejecución)
+        # ATRASADA → carpeta del trimestre de EJECUCIÓN + ATRASADAS/
+        if destino == 'GRACIA':
+            carpeta_trimestre = self.obtener_ruta_trimestre(fecha_factura)
+            ruta_completa = os.path.join(self.base_path, carpeta_trimestre, nombre_archivo)
+        elif destino == 'ATRASADA':
+            carpeta_trimestre = self.obtener_ruta_trimestre(fecha_ejecucion)
             ruta_completa = os.path.join(self.base_path, carpeta_trimestre, "ATRASADAS", nombre_archivo)
-        else:
+        else:  # NORMAL
+            carpeta_trimestre = self.obtener_ruta_trimestre(fecha_ejecucion)
             ruta_completa = os.path.join(self.base_path, carpeta_trimestre, nombre_archivo)
         
         # Crear carpeta si no existe
@@ -1418,7 +1657,7 @@ class Notificador:
         </head>
         <body>
             <div class="header">
-                <h2>📧 Gmail Module v1.14 - Resumen de Procesamiento</h2>
+                <h2>📧 Gmail Module v{VERSION} - Resumen de Procesamiento</h2>
                 <p>{datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
             </div>
         """
@@ -1494,7 +1733,7 @@ class Notificador:
         </html>
         """
         
-        asunto = f"Gmail Module v1.14 - {datetime.now().strftime('%d/%m/%Y')} - {total} facturas"
+        asunto = f"Gmail Module v{VERSION} - {datetime.now().strftime('%d/%m/%Y')} - {total} facturas"
         if alertas_rojas > 0:
             asunto = f"🔴 ALERTAS ROJAS - {asunto}"
         
@@ -1560,26 +1799,31 @@ class BackupManager:
 # ============================================================================
 
 class GmailProcessor:
-    """Procesador principal del módulo v1.14"""
+    """Procesador principal del módulo Gmail"""
     
-    def __init__(self, modo_test: bool = False):
+    def __init__(self, modo_test: bool = False, modo_produccion: bool = False):
         self.modo_test = modo_test
+        self._modo_produccion = modo_produccion
         self.logger = configurar_logging(modo_test)
-        
+
         self.maestro = MaestroProveedores(CONFIG.MAESTRO_PATH)
         self.control = ControlDuplicados(CONFIG.JSON_PATH)
         self.backup = BackupManager(CONFIG.BACKUPS_PATH)
-        
+
         self.gmail = None
         self.dropbox = None
-        
+
         self.resultados: List[ResultadoProcesamiento] = []
         self.errores: List[str] = []
+
+        # v1.18: Contadores ventana de gracia
+        self._contadores_gracia = 0
+        self._contadores_pendientes = 0
     
     def ejecutar(self) -> bool:
         """Ejecuta el procesamiento completo"""
         self.logger.info("=" * 60)
-        self.logger.info(f"GMAIL MODULE v1.14 - {'MODO TEST' if self.modo_test else 'PRODUCCIÓN'}")
+        self.logger.info(f"GMAIL MODULE v{VERSION} - {'MODO TEST' if self.modo_test else 'PRODUCCIÓN'}")
         self.logger.info("=" * 60)
         
         try:
@@ -1757,18 +2001,45 @@ class GmailProcessor:
                     self.control.guardar()
                 return
             
-            # ── PASO 4: Procesar PDF (prioridad) o imagen ──
-            for nombre_archivo, contenido in adjuntos:
-                if nombre_archivo.lower().endswith('.pdf'):
-                    self._procesar_pdf(resultado, nombre_archivo, contenido, fecha_proceso)
-                    break
+            # ── PASO 4: Procesar TODOS los PDFs adjuntos (v1.18.1) ──
+            pdfs = [(n, c) for n, c in adjuntos if n.lower().endswith('.pdf')]
+            imagenes = [(n, c) for n, c in adjuntos if n.lower().endswith(('.jpg', '.jpeg', '.png'))]
 
-            # v1.8: Si el PDF era duplicado (hash o CIF+REF), NO intentar imágenes
-            if not resultado.archivo_generado and not resultado.es_duplicado:
-                for nombre_archivo, contenido in adjuntos:
-                    if nombre_archivo.lower().endswith(('.jpg', '.jpeg', '.png')):
-                        self._procesar_imagen(resultado, nombre_archivo, contenido, fecha_proceso)
-                        break
+            if pdfs:
+                # Primer PDF → usa el resultado principal
+                self._procesar_pdf(resultado, pdfs[0][0], pdfs[0][1], fecha_proceso)
+
+                # PDFs adicionales → cada uno crea su propio resultado
+                for i, (nombre_pdf, contenido_pdf) in enumerate(pdfs[1:], start=2):
+                    self.logger.info(f"  ↳ PDF adicional #{i}: {nombre_pdf}")
+                    resultado_extra = ResultadoProcesamiento(
+                        email_id=f"{email_id}__pdf{i}",
+                        message_id=email_data.get('message_id', ''),
+                        remitente=remitente,
+                        asunto=asunto,
+                    )
+                    self._procesar_pdf(resultado_extra, nombre_pdf, contenido_pdf, fecha_proceso)
+                    self.resultados.append(resultado_extra)
+                    # Registrar en JSON inmediatamente
+                    if not self.modo_test:
+                        if resultado_extra.es_duplicado:
+                            self.control.registrar_email_visto(
+                                f"{email_id}__pdf{i}",
+                                resultado_extra.motivo_revision or "duplicado"
+                            )
+                        else:
+                            self.control.registrar_y_guardar(resultado_extra)
+
+                if len(pdfs) > 1:
+                    self.logger.warning(
+                        f"  ↳ ⚠️ {len(pdfs)} PDFs procesados en este email"
+                    )
+
+            # Imágenes solo si NO hubo ningún PDF y no es duplicado
+            if not pdfs and not resultado.archivo_generado and not resultado.es_duplicado:
+                for nombre_img, contenido_img in imagenes:
+                    self._procesar_imagen(resultado, nombre_img, contenido_img, fecha_proceso)
+                    break  # Solo una imagen (no procesar múltiples capturas)
 
             self.resultados.append(resultado)
 
@@ -1815,6 +2086,7 @@ class GmailProcessor:
         fecha_proceso: datetime
     ):
         """Procesa un archivo PDF"""
+        ya_en_dropbox = False  # v1.18 fix: inicializar antes de cualquier uso
         hash_pdf = calcular_hash_archivo(contenido)
         if self.control.hash_existe(hash_pdf):
             self.logger.info(f"  ↳ PDF duplicado (hash), saltando")
@@ -1924,7 +2196,7 @@ class GmailProcessor:
                 resultado.motivo_revision = resultado.motivo_revision + " | " + alerta
             else:
                 resultado.motivo_revision = alerta
-            factura.total = 0.00
+            # v1.17: No asignar 0.00 — dejar None para que Excel muestre celda vacía
             self.logger.error(f"  ↳ 🔴 ALERTA ROJA: No se pudo extraer total del PDF")
         
         if factura.referencia:
@@ -1951,25 +2223,79 @@ class GmailProcessor:
                 resultado.requiere_revision = True
                 resultado.motivo_revision = "Duplicado (CIF+REF) — descartado"
 
+        # v1.18: Ventana de gracia — determinar destino antes de generar nombre
+        fecha_factura_dt = factura.fecha if factura.fecha else fecha_proceso
+        destino = determinar_destino_factura(fecha_factura_dt, fecha_proceso)
+
         nombre_generado = generar_nombre_archivo(
-            proveedor, factura, fecha_proceso, resultado.remitente
+            proveedor, factura, fecha_proceso, resultado.remitente, destino=destino
         )
         resultado.archivo_generado = nombre_generado
         self.logger.info(f"  ↳ Archivo: {nombre_generado}")
 
+        if destino == 'GRACIA':
+            self.logger.info(
+                f"  ↳ ✅ GRACIA: {obtener_trimestre(fecha_factura_dt)} subida a carpeta trimestre anterior "
+                f"(día {fecha_proceso.day} de {fecha_proceso.strftime('%B')})"
+            )
+            self._contadores_gracia += 1
+        elif destino == 'ATRASADA':
+            self.logger.info(f"  ↳ ATRASADA: irá a subcarpeta ATRASADAS/")
+
+        # v1.18: PENDIENTE_UBICACION — zona gris, requiere decisión
+        if destino == 'PENDIENTE_UBICACION' and not es_duplicado_cif_ref:
+            info_pendiente = construir_info_pendiente(resultado, factura, nombre_generado, fecha_proceso)
+
+            if self.modo_test:
+                self.logger.warning(f"  ↳ ⚠️ PENDIENTE_UBICACION (test, no se guarda en cola)")
+            elif not self._modo_produccion:
+                # Modo manual → preguntar en terminal
+                decision = preguntar_destino_manual(info_pendiente)
+                destino = decision
+                # Regenerar nombre con el destino decidido
+                nombre_generado = generar_nombre_archivo(
+                    proveedor, factura, fecha_proceso, resultado.remitente, destino=destino
+                )
+                resultado.archivo_generado = nombre_generado
+                self.logger.info(f"  ↳ Decisión manual: {destino} → {nombre_generado}")
+            else:
+                # Modo automático (--produccion) → guardar en cola
+                guardar_en_cola_pendientes(info_pendiente, contenido, self.logger)
+                self._contadores_pendientes += 1
+                # Registrar en Excel con OBS PENDIENTE
+                if not ya_en_dropbox:
+                    resultado.motivo_revision = (
+                        (resultado.motivo_revision + " | " if resultado.motivo_revision else "")
+                        + "PENDIENTE_UBICACION"
+                    )
+                    trimestre = obtener_trimestre(fecha_proceso)
+                    excel_path = os.path.join(CONFIG.OUTPUT_PATH, f"PAGOS_Gmail_{trimestre}.xlsx")
+                    excel = ExcelGenerator(excel_path)
+                    excel.abrir_o_crear()
+                    excel.añadir_fila(resultado)
+                    excel.guardar()
+
+                    facturas_path = os.path.join(CONFIG.OUTPUT_PATH, f"Facturas {trimestre} Provisional.xlsx")
+                    facturas_excel = ExcelFacturas(facturas_path)
+                    facturas_excel.abrir_o_crear()
+                    facturas_excel.añadir_fila(resultado)
+                    facturas_excel.guardar()
+
+                    self.logger.info(f"  ↳ Registrado en Excel con OBS=PENDIENTE_UBICACION")
+                return  # No subir a Dropbox, PDF guardado en cola
+
         if es_duplicado_cif_ref:
             self.logger.info(f"  ↳ Duplicado CIF+REF: se omite Dropbox y Excel")
         else:
-            # Subir a Dropbox Local (v1.4, dedup v1.5)
+            # Subir a Dropbox (v1.4 local, v1.16 API, v1.18 ventana gracia)
             ya_en_dropbox = False
             if self.dropbox and not self.modo_test:
-                fecha_factura = factura.fecha if factura.fecha else fecha_proceso
-
                 ruta_dropbox, ya_en_dropbox = self.dropbox.subir_archivo(
                     contenido,
                     nombre_generado,
-                    fecha_factura,
-                    fecha_proceso
+                    fecha_factura_dt,
+                    fecha_proceso,
+                    destino=destino
                 )
                 resultado.dropbox_path = ruta_dropbox
                 if ya_en_dropbox:
@@ -1980,7 +2306,7 @@ class GmailProcessor:
                     if nombre_real != nombre_generado:
                         resultado.archivo_generado = nombre_real
                         self.logger.info(f"  ↳ Renombrado a: {nombre_real} (colisión)")
-                    self.logger.info(f"  ↳ Copiado a Dropbox Local")
+                    self.logger.info(f"  ↳ Copiado a Dropbox")
 
             # Añadir al Excel PAGOS_Gmail (solo si no era duplicado en Dropbox)
             if not self.modo_test and not ya_en_dropbox:
@@ -2000,7 +2326,7 @@ class GmailProcessor:
                 facturas_excel.guardar()
 
                 self.logger.info(f"  ↳ Añadido a Excel")
-        
+
         # NOTA: El registro en JSON se hace en _procesar_email() con registrar_y_guardar()
     
     def _usar_extractor_dedicado(self, proveedor: Proveedor, contenido: bytes) -> Optional[FacturaExtraida]:
@@ -2084,7 +2410,7 @@ class GmailProcessor:
                                     if texto_pagina:
                                         texto_pdf += texto_pagina + "\n"
                         except Exception as e:
-                            self.logger.debug(f"  ↳ Error extrayendo texto: {e}")
+                            self.logger.warning(f"  ↳ ⚠️ Error extrayendo texto en {proveedor.archivo_extractor}: {e}")
                         
                         # v1.6: Si pdfplumber no extrajo texto, intentar OCR
                         # (necesario para PDFs que son imágenes, como La Llildiria)
@@ -2102,7 +2428,7 @@ class GmailProcessor:
                                             texto_pdf += ocr_text + "\n"
                                             os.unlink(img_tmp.name)
                             except Exception as e:
-                                self.logger.debug(f"  ↳ Error OCR: {e}")
+                                self.logger.warning(f"  ↳ ⚠️ Error OCR en {proveedor.archivo_extractor}: {e}")
                         
                         if texto_pdf:
                             datos = {}
@@ -2112,26 +2438,26 @@ class GmailProcessor:
                                 try:
                                     datos['fecha'] = instancia.extraer_fecha(texto_pdf)
                                 except Exception as e:
-                                    self.logger.debug(f"  ↳ Error extraer_fecha: {e}")
+                                    self.logger.warning(f"  ↳ ⚠️ extraer_fecha falló en {proveedor.archivo_extractor}: {e}")
                             
                             if hasattr(instancia, 'extraer_total'):
                                 try:
                                     datos['total'] = instancia.extraer_total(texto_pdf)
                                 except Exception as e:
-                                    self.logger.debug(f"  ↳ Error extraer_total: {e}")
+                                    self.logger.warning(f"  ↳ ⚠️ extraer_total falló en {proveedor.archivo_extractor}: {e}")
                             
                             if hasattr(instancia, 'extraer_referencia'):
                                 try:
                                     datos['referencia'] = instancia.extraer_referencia(texto_pdf)
                                 except Exception as e:
-                                    self.logger.debug(f"  ↳ Error extraer_referencia: {e}")
+                                    self.logger.warning(f"  ↳ ⚠️ extraer_referencia falló en {proveedor.archivo_extractor}: {e}")
 
                             # Detectar proforma
                             if hasattr(instancia, 'es_proforma'):
                                 try:
                                     datos['es_proforma'] = instancia.es_proforma(texto_pdf)
                                 except Exception as e:
-                                    self.logger.debug(f"  ↳ Error es_proforma: {e}")
+                                    self.logger.warning(f"  ↳ ⚠️ es_proforma falló en {proveedor.archivo_extractor}: {e}")
 
                 # Fallback: funciones a nivel módulo
                 if not datos:
@@ -2176,9 +2502,9 @@ class GmailProcessor:
                     for campo in ['referencia', 'numero', 'ref', 'numero_factura']:
                         if campo in datos and datos[campo]:
                             ref_candidata = str(datos[campo]).strip()
-                            # v1.7: misma validación que extractor genérico
+                            # v1.17: validación anti-basura reforzada
                             if (ref_candidata.upper() not in ExtractorPDF.REF_INVALIDAS
-                                    and len(ref_candidata) >= 2
+                                    and len(ref_candidata) >= 3
                                     and sum(c.isdigit() for c in ref_candidata) >= 1):
                                 resultado.referencia = ref_candidata
                             break
@@ -2194,7 +2520,7 @@ class GmailProcessor:
                     os.unlink(tmp_path)
         
         except Exception as e:
-            self.logger.debug(f"  ↳ Error en extractor {proveedor.archivo_extractor}: {e}")
+            self.logger.warning(f"  ↳ ⚠️ Extractor {proveedor.archivo_extractor} FALLÓ: {e}")
             self.logger.debug(f"  ↳ Traceback: {traceback.format_exc()}")
             return None
     
@@ -2272,6 +2598,11 @@ class GmailProcessor:
         self.logger.info(f"  Exitosos: {exitosos}")
         self.logger.info(f"  Requieren revisión: {revision}")
         self.logger.info(f"  Errores: {len(self.errores)}")
+        if self._contadores_gracia > 0:
+            self.logger.info(f"  ✅ Ventana gracia: {self._contadores_gracia}")
+        if self._contadores_pendientes > 0:
+            self.logger.warning(f"  ⚠️ Pendientes ubicación: {self._contadores_pendientes}")
+            self.logger.warning(f"     → Resolver en Streamlit o ejecutando gmail.py en modo manual")
         self.logger.info("=" * 60)
 
         # Exportar resumen como JSON para Streamlit
@@ -2301,6 +2632,8 @@ class GmailProcessor:
                 "exitosos": exitosos,
                 "requieren_revision": revision,
                 "errores": len(self.errores),
+                "facturas_gracia": self._contadores_gracia,
+                "facturas_pendientes": self._contadores_pendientes,
                 "proveedores_ok": sorted(proveedores_ok),
                 "revision": sorted(revision_list),
                 "errores_detalle": self.errores[:20]
@@ -2323,7 +2656,7 @@ class GmailProcessor:
 # ============================================================================
 
 def main():
-    parser = argparse.ArgumentParser(description="Gmail Module v1.15 - Procesador de Facturas")
+    parser = argparse.ArgumentParser(description=f"Gmail Module v{VERSION} - Procesador de Facturas")
     parser.add_argument("--produccion", action="store_true", help="Ejecutar en modo producción")
     parser.add_argument("--test", action="store_true", help="Ejecutar en modo test")
     
@@ -2335,7 +2668,7 @@ def main():
         return
     
     modo_test = args.test
-    processor = GmailProcessor(modo_test=modo_test)
+    processor = GmailProcessor(modo_test=modo_test, modo_produccion=args.produccion)
     
     exito = processor.ejecutar()
     sys.exit(0 if exito else 1)
