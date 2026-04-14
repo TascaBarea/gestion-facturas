@@ -304,6 +304,12 @@ Solo aplica al trimestre **inmediatamente anterior**. Facturas más antiguas sie
 
 **Extractores en Gmail:** Si existe extractor dedicado → usa ese. Fallback parcial v1.17: si dedicado obtiene fecha pero no total, complementa con genérico. Errores de extractores dedicados logean a WARNING (v1.17). Validación REF anti-basura: min 3 chars, requiere dígito en genérico.
 
+**Validaciones de negocio (v1.18.2):**
+- Total sospechoso: alerta si < 0,50€ o > 50.000€
+- Detección abonos: total negativo → marca POSIBLE ABONO
+- Fecha antigua: alerta si > 2 años
+- Multi-PDF: procesa TODOS los PDFs adjuntos (antes solo el primero)
+
 **Output:**
 - PDFs descargados y renombrados en Dropbox
 - `PAGOS_Gmail_XTxx.xlsx` (FACTURAS 15 cols + SEPA) — verificado 2T26: #, ARCHIVO, PROVEEDOR, CIF, FECHA_FACTURA, REF, TOTAL, IBAN, FORMA_PAGO, ESTADO_PAGO, MOV#, OBS, REMITENTE, FECHA_PROCESO, CUENTA
@@ -799,6 +805,30 @@ Datos en `config/datos_sensibles.py`. Incluye: IBAN_TASCA, IBAN_COMESTIBLES, BIC
 ---
 
 ## CHANGELOG
+
+### v5.13 (14/04/2026) — VALIDACIONES NEGOCIO + MULTI-PDF + VENTANA GRACIA
+
+**gmail.py v1.18.2 — Validaciones de negocio:**
+- Total sospechoso: alerta si < 0,50€ o > 50.000€ (TOTAL_MIN_SOSPECHOSO, TOTAL_MAX_SOSPECHOSO)
+- Detección abonos: alerta si total negativo (POSIBLE ABONO, no bloquea)
+- Fecha antigua: alerta si factura > 2 años (FECHA_MAX_ANTIGUEDAD_DIAS = 730)
+- 23 tests unitarios en test_validaciones_negocio.py
+
+**gmail.py v1.18.1 — Fix multi-PDF:**
+- Procesamiento de TODOS los PDFs adjuntos en un email (antes solo el primero)
+- Cada PDF adicional crea su propio ResultadoProcesamiento con email_id__pdfN
+- Registro inmediato en JSON por cada PDF extra
+- 7 tests unitarios en test_multi_pdf.py
+
+**gmail.py v1.18 — Ventana de gracia trimestral:**
+- determinar_destino_factura() con 4 destinos: NORMAL, GRACIA, PENDIENTE_UBICACION, ATRASADA
+- Días 1-11 del primer mes del trimestre → GRACIA (carpeta trimestre anterior sin ATRASADA)
+- Días 12-20 → PENDIENTE_UBICACION (cola JSON en modo automático, pregunta en terminal en modo manual)
+- Día 21+ → ATRASADA (comportamiento existente)
+- Cola facturas_pendientes.json + carpeta datos/pendientes/ para PDFs temporales
+- Contadores gracia/pendientes en gmail_resumen.json
+- LocalDropboxClient: parámetro destino controla carpeta (GRACIA → trimestre factura)
+- 29 tests unitarios en test_ventana_gracia.py
 
 ### v5.12 (13/04/2026) — VENTANA DE GRACIA TRIMESTRAL
 
