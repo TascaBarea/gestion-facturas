@@ -288,6 +288,11 @@ GRACIA_HASTA_DIA = 11      # Días 1-11: ventana de gracia
 PENDIENTE_HASTA_DIA = 20   # Días 12-20: zona gris / pendiente
 MESES_INICIO_TRIMESTRE = {1, 4, 7, 10}  # enero, abril, julio, octubre
 
+# Validaciones de negocio (v1.18.2)
+TOTAL_MIN_SOSPECHOSO = 0.50      # Facturas < 0.50€ → revisar
+TOTAL_MAX_SOSPECHOSO = 50_000    # Facturas > 50.000€ → revisar
+FECHA_MAX_ANTIGUEDAD_DIAS = 730  # Facturas de hace > 2 años → revisar
+
 
 def trimestre_de_fecha(fecha: datetime) -> Tuple[int, int]:
     """Devuelve (trimestre, año). Ej: date(2026,3,28) → (1, 2026)"""
@@ -2176,6 +2181,16 @@ class GmailProcessor:
                 resultado.requiere_revision = True
                 resultado.motivo_revision = f"Fecha futura: {factura.fecha.strftime('%d/%m/%Y')}"
                 self.logger.warning(f"  ↳ ⚠️ Fecha futura detectada")
+
+            # v1.18.2: Fecha demasiado antigua
+            dias_antiguedad = (fecha_proceso - factura.fecha).days
+            if dias_antiguedad > FECHA_MAX_ANTIGUEDAD_DIAS:
+                resultado.requiere_revision = True
+                msg = f"Fecha muy antigua: {factura.fecha.strftime('%d/%m/%Y')} ({dias_antiguedad} días)"
+                resultado.motivo_revision = (
+                    (resultado.motivo_revision + " | " if resultado.motivo_revision else "") + msg
+                )
+                self.logger.warning(f"  ↳ ⚠️ {msg}")
         else:
             # v1.7: Sin fecha → no podemos saber si es ATRASADA → avisar
             resultado.requiere_revision = True
@@ -2198,7 +2213,34 @@ class GmailProcessor:
                 resultado.motivo_revision = alerta
             # v1.17: No asignar 0.00 — dejar None para que Excel muestre celda vacía
             self.logger.error(f"  ↳ 🔴 ALERTA ROJA: No se pudo extraer total del PDF")
-        
+
+        # v1.18.2: Validación rango de total
+        if factura.total is not None:
+            if 0 < abs(factura.total) < TOTAL_MIN_SOSPECHOSO:
+                resultado.requiere_revision = True
+                msg = f"Total sospechosamente bajo: {factura.total:.2f}€"
+                resultado.motivo_revision = (
+                    (resultado.motivo_revision + " | " if resultado.motivo_revision else "") + msg
+                )
+                self.logger.warning(f"  ↳ ⚠️ {msg}")
+
+            elif abs(factura.total) > TOTAL_MAX_SOSPECHOSO:
+                resultado.requiere_revision = True
+                msg = f"Total sospechosamente alto: {factura.total:.2f}€"
+                resultado.motivo_revision = (
+                    (resultado.motivo_revision + " | " if resultado.motivo_revision else "") + msg
+                )
+                self.logger.warning(f"  ↳ ⚠️ {msg}")
+
+            # v1.18.2: Detección de abonos (total negativo)
+            if factura.total < 0:
+                resultado.requiere_revision = True
+                msg = f"POSIBLE ABONO (total negativo: {factura.total:.2f}€)"
+                resultado.motivo_revision = (
+                    (resultado.motivo_revision + " | " if resultado.motivo_revision else "") + msg
+                )
+                self.logger.warning(f"  ↳ ⚠️ {msg}")
+
         if factura.referencia:
             self.logger.info(f"  ↳ Ref: {factura.referencia}")
         
