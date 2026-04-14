@@ -1452,9 +1452,11 @@ def _parse_gbp_email(html, subject):
 
 def recoger_google_business(target_year):
     """
-    Lee emails de Google Business Profile del último año, parsea métricas
-    y guarda en pestaña GoogleBusiness del Excel de ventas.
+    Lee emails de Google Business Profile de Tasca y Comestibles,
+    parsea métricas y guarda en pestaña GoogleBusiness del Excel de ventas.
     Se ejecuta el 1er lunes del mes (junto con dashboard mensual).
+
+    v1.1: Añadido Comestibles Barea como segunda ficha.
     """
     import base64 as _b64
 
@@ -1474,30 +1476,44 @@ def recoger_google_business(target_year):
                 return r
         return None
 
-    # Buscar emails de informe GBP
-    results = service.users().messages().list(
-        userId='me',
-        q='subject:"informe de rendimiento" Tasca Barea newer_than:2y',
-        maxResults=30
-    ).execute()
+    # v1.1: Buscar emails de AMBAS fichas
+    FICHAS_GBP = [
+        ("Tasca Barea", 'subject:"informe de rendimiento" "Tasca Barea" newer_than:2y'),
+        ("Comestibles Barea", 'subject:"informe de rendimiento" "Comestibles Barea" newer_than:2y'),
+    ]
 
     all_data = []
     seen = set()
-    for m in results.get('messages', []):
-        msg = service.users().messages().get(userId='me', id=m['id'], format='full').execute()
-        headers = {h['name']: h['value'] for h in msg['payload']['headers']}
-        subject = headers.get('Subject', '')
 
-        html = _find_html(msg['payload'])
-        if not html:
-            continue
+    for nombre_local, query in FICHAS_GBP:
+        log.info("  Buscando emails GBP: %s", nombre_local)
 
-        data = _parse_gbp_email(html, subject)
-        if data:
-            key = (data['Mes'], data['Anio'])
-            if key not in seen:
-                seen.add(key)
-                all_data.append(data)
+        results = service.users().messages().list(
+            userId='me',
+            q=query,
+            maxResults=30
+        ).execute()
+
+        count = 0
+        for m in results.get('messages', []):
+            msg = service.users().messages().get(userId='me', id=m['id'], format='full').execute()
+            headers = {h['name']: h['value'] for h in msg['payload']['headers']}
+            subject = headers.get('Subject', '')
+
+            html = _find_html(msg['payload'])
+            if not html:
+                continue
+
+            data = _parse_gbp_email(html, subject)
+            if data:
+                key = (nombre_local, data['Mes'], data['Anio'])
+                if key not in seen:
+                    seen.add(key)
+                    data['Local'] = nombre_local
+                    all_data.append(data)
+                    count += 1
+
+        log.info("    %d meses encontrados para %s", count, nombre_local)
 
     if not all_data:
         log.info("  No se encontraron emails de Google Business Profile")
@@ -1512,10 +1528,10 @@ def recoger_google_business(target_year):
 
     # Crear DataFrame y guardar
     df = pd.DataFrame(datos_anio)
-    df = df.sort_values(['Anio', 'Mes'])
+    df = df.sort_values(['Local', 'Anio', 'Mes'])
 
-    # Columnas en orden
-    col_order = ['Mes', 'Anio', 'Interacciones', 'Llamadas', 'Chat',
+    # Columnas en orden — Local al principio
+    col_order = ['Local', 'Mes', 'Anio', 'Interacciones', 'Llamadas', 'Chat',
                  'Indicaciones', 'Indicaciones_Var',
                  'Visitas_Web', 'Visitas_Web_Var',
                  'Vistas_Perfil', 'Vistas_Perfil_Var',
@@ -1526,11 +1542,195 @@ def recoger_google_business(target_year):
                  'Top3_Busqueda', 'Top3_Volumen']
     df = df[[c for c in col_order if c in df.columns]]
 
-    save_to_excel(df, PATH_VENTAS, "GoogleBusiness", unique_col="Mes")
-    log.info("  %d meses guardados en GoogleBusiness", len(datos_anio))
-    for d in sorted(datos_anio, key=lambda x: x['Mes']):
-        log.info("    %02d/%d: %s interacciones, %s indicaciones, %s búsquedas",
-                 d['Mes'], d['Anio'], d['Interacciones'], d['Indicaciones'], d['Busquedas'])
+    # v1.1: Reemplazar pestaña completa (unique_col="Mes" no soporta 2 locales)
+    # Los datos se recogen de nuevo cada ejecución, así que es seguro reescribir
+    save_to_excel(df, PATH_VENTAS, "GoogleBusiness", unique_col=None)
+    log.info("  %d registros guardados en GoogleBusiness (%d locales)",
+             len(datos_anio), df['Local'].nunique())
+    for d in sorted(datos_anio, key=lambda x: (x['Local'], x['Mes'])):
+        log.info("    %s %02d/%d: %s interacciones, %s indicaciones, %s búsquedas",
+                 d['Local'], d['Mes'], d['Anio'], d['Interacciones'],
+                 d['Indicaciones'], d['Busquedas'])
+
+
+# Constante: scope adicional para Search Console
+SEARCH_CONSOLE_SCOPE = 'https://www.googleapis.com/auth/webmasters.readonly'
+
+
+def recoger_search_console(target_year):
+    """
+    Recoge datos de Google Search Console para tascabarea.com.
+    Guarda en pestaña SearchConsole del Excel de ventas.
+    Se ejecuta el 1er lunes del mes.
+
+    Métricas: impresiones, clics, CTR, posición media — agrupados por mes.
+    También: top 20 consultas del último mes completo.
+    """
+    from google.oauth2.credentials import Credentials
+    from google.auth.transport.requests import Request
+    from googleapiclient.discovery import build
+    from calendar import monthrange
+    import json
+
+    log.info("Recogiendo datos de Search Console...")
+
+    # Verificar token con scope adecuado
+    token_path = _GMAIL_TOKEN
+    if not os.path.exists(token_path):
+        log.warning("  Token OAuth no encontrado, saltando Search Console")
+        return
+
+    try:
+        creds = Credentials.from_authorized_user_file(token_path)
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                log.warning("  Token OAuth expirado sin refresh, saltando Search Console")
+                return
+    except Exception as e:
+        log.warning("  Error cargando token OAuth: %s", e)
+        return
+
+    # Verificar que tenemos el scope
+    token_scopes = []
+    try:
+        with open(token_path, 'r') as f:
+            token_scopes = json.load(f).get('scopes', [])
+    except Exception:
+        pass
+
+    if SEARCH_CONSOLE_SCOPE not in token_scopes:
+        log.warning(
+            "  ⚠️ Token OAuth no incluye scope de Search Console.\n"
+            "  Para habilitarlo:\n"
+            "  1. Borrar %s\n"
+            "  2. Añadir '%s' a GMAIL_SCOPES en gmail/gmail.py\n"
+            "  3. Ejecutar gmail.py manualmente para re-autorizar\n"
+            "  Saltando Search Console por ahora.",
+            token_path, SEARCH_CONSOLE_SCOPE
+        )
+        return
+
+    try:
+        service = build('searchconsole', 'v1', credentials=creds)
+    except Exception as e:
+        log.error("  Error conectando con Search Console API: %s", e)
+        return
+
+    # Auto-detectar site URL
+    try:
+        sites = service.sites().list().execute()
+        site_url = None
+        for site in sites.get('siteEntry', []):
+            if 'tascabarea' in site.get('siteUrl', '').lower():
+                site_url = site['siteUrl']
+                log.info("  Site URL detectado: %s", site_url)
+                break
+        if not site_url:
+            log.warning("  tascabarea.com no encontrado en Search Console. Sites disponibles: %s",
+                        [s['siteUrl'] for s in sites.get('siteEntry', [])])
+            return
+    except Exception as e:
+        log.warning("  Error listando sites de Search Console: %s", e)
+        return
+
+    # ── Datos mensuales del año objetivo ──
+    datos_mensuales = []
+    hoy = datetime.now().date()
+
+    for mes in range(1, 13):
+        primer_dia = f"{target_year}-{mes:02d}-01"
+        ultimo_dia_num = monthrange(target_year, mes)[1]
+        ultimo_dia = f"{target_year}-{mes:02d}-{ultimo_dia_num:02d}"
+
+        # No pedir datos del futuro
+        if datetime.strptime(primer_dia, "%Y-%m-%d").date() > hoy:
+            break
+        # Si el mes no ha terminado, usar hasta ayer (SC tiene ~3 días de delay)
+        fecha_limite = (hoy - timedelta(days=3)).strftime("%Y-%m-%d")
+        if ultimo_dia > fecha_limite:
+            ultimo_dia = fecha_limite
+        if primer_dia > ultimo_dia:
+            break
+
+        try:
+            response = service.searchanalytics().query(
+                siteUrl=site_url,
+                body={
+                    'startDate': primer_dia,
+                    'endDate': ultimo_dia,
+                    'dimensions': [],
+                    'rowLimit': 1,
+                }
+            ).execute()
+
+            rows = response.get('rows', [])
+            if rows:
+                r = rows[0]
+                datos_mensuales.append({
+                    'Mes': mes,
+                    'Anio': target_year,
+                    'Impresiones': r.get('impressions', 0),
+                    'Clics': r.get('clicks', 0),
+                    'CTR': round(r.get('ctr', 0) * 100, 2),
+                    'Posicion_Media': round(r.get('position', 0), 1),
+                })
+            else:
+                log.debug("  Mes %d/%d: sin datos en Search Console", mes, target_year)
+
+        except Exception as e:
+            log.warning("  Error consultando SC mes %d: %s", mes, e)
+
+    # ── Top 20 consultas del último mes completo ──
+    top_queries = []
+    if datos_mensuales:
+        ultimo_mes = datos_mensuales[-1]['Mes']
+        ultimo_anio = datos_mensuales[-1]['Anio']
+        primer_dia = f"{ultimo_anio}-{ultimo_mes:02d}-01"
+        ultimo_dia_num = monthrange(ultimo_anio, ultimo_mes)[1]
+        ultimo_dia = f"{ultimo_anio}-{ultimo_mes:02d}-{ultimo_dia_num:02d}"
+        fecha_limite = (hoy - timedelta(days=3)).strftime("%Y-%m-%d")
+        if ultimo_dia > fecha_limite:
+            ultimo_dia = fecha_limite
+
+        try:
+            response = service.searchanalytics().query(
+                siteUrl=site_url,
+                body={
+                    'startDate': primer_dia,
+                    'endDate': ultimo_dia,
+                    'dimensions': ['query'],
+                    'rowLimit': 20,
+                    'orderBy': [{'fieldName': 'clicks', 'sortOrder': 'DESCENDING'}],
+                }
+            ).execute()
+
+            for row in response.get('rows', []):
+                top_queries.append({
+                    'Consulta': row['keys'][0],
+                    'Clics': row.get('clicks', 0),
+                    'Impresiones': row.get('impressions', 0),
+                    'CTR': round(row.get('ctr', 0) * 100, 2),
+                    'Posicion': round(row.get('position', 0), 1),
+                })
+
+        except Exception as e:
+            log.warning("  Error consultando top queries SC: %s", e)
+
+    # ── Guardar en Excel ──
+    if datos_mensuales:
+        df_mensual = pd.DataFrame(datos_mensuales)
+        save_to_excel(df_mensual, PATH_VENTAS, "SearchConsole", unique_col="Mes")
+        log.info("  %d meses guardados en SearchConsole", len(datos_mensuales))
+
+    if top_queries:
+        df_queries = pd.DataFrame(top_queries)
+        save_to_excel(df_queries, PATH_VENTAS, "SC_TopQueries", unique_col="Consulta")
+        log.info("  %d consultas top guardadas en SC_TopQueries", len(top_queries))
+
+    if not datos_mensuales:
+        log.info("  Sin datos de Search Console para %d", target_year)
 
 
 def _limpiar_nombre_taller(nombre_raw, fecha_str):
@@ -1795,6 +1995,13 @@ def main():
             recoger_google_business(domingo.year)
         except Exception as e:
             log.error("Error recogiendo Google Business: %s", e)
+
+    # 5b. SEARCH CONSOLE (1er lunes del mes, junto con GBP)
+    if dashboard_mensual:
+        try:
+            recoger_search_console(domingo.year)
+        except Exception as e:
+            log.error("Error recogiendo Search Console: %s", e)
 
     # 6. INVENTARIO TALLERES — antes del email para que el email use datos frescos
     try:
