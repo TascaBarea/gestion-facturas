@@ -66,15 +66,40 @@ def detectar_cuenta(ws):
     return None
 
 
-def leer_xls_sabadell(filepath):
+def leer_xls_sabadell(filepath, año_esperado=None):
     """Lee un .xls de Sabadell y devuelve (cuenta, [filas]).
-    Cada fila es un dict con las claves de COLS (sin #)."""
+    Cada fila es un dict con las claves de COLS (sin #).
+
+    Args:
+        filepath: ruta al .xls
+        año_esperado: si se proporciona, valida que los datos sean de ese año
+
+    Raises:
+        ValueError: si la cuenta no se reconoce o el año no coincide
+    """
     wb = xlrd.open_workbook(filepath)
     ws = wb.sheet_by_index(0)
 
     cuenta = detectar_cuenta(ws)
     if not cuenta:
         raise ValueError(f"No se reconoce la cuenta en {filepath}")
+
+    # Validar año del rango de fechas (fila 6: "Desde DD / MM / YYYY hasta DD / MM / YYYY.")
+    if año_esperado:
+        try:
+            seleccion = str(ws.cell_value(6, 1)).strip()
+            años_encontrados = re.findall(r'(\d{4})', seleccion)
+            if años_encontrados:
+                año_archivo = int(años_encontrados[0])
+                if año_archivo != año_esperado:
+                    raise ValueError(
+                        f"AÑO INCORRECTO: {os.path.basename(filepath)} "
+                        f"contiene datos de {año_archivo} pero el consolidado es de {año_esperado}. "
+                        f"Fila 'Selección': {seleccion}. "
+                        f"¿Descargaste el rango correcto en Sabadell?"
+                    )
+        except (IndexError, TypeError):
+            pass  # Si no se puede leer fila 6, continuar sin validar
 
     filas = []
     for r in range(HEADER_ROW_XLS + 1, ws.nrows):
@@ -222,13 +247,28 @@ def actualizar(archivos_xls, consolidado_path, dry_run=False):
         "total_comestibles": 0,
     }
 
-    # Leer todos los .xls nuevos
+    # Detectar año del consolidado
+    año_consolidado = None
+    match = re.search(r"_(\d{2})\.", os.path.basename(consolidado_path))
+    if match:
+        año_consolidado = 2000 + int(match.group(1))
+
+    # Leer todos los .xls nuevos (con validación de año)
     nuevos = {"Tasca": [], "Comestibles": []}
     for f in archivos_xls:
         try:
-            cuenta, filas = leer_xls_sabadell(f)
+            cuenta, filas = leer_xls_sabadell(f, año_esperado=año_consolidado)
             nuevos[cuenta].extend(filas)
-            resultado["archivos_procesados"].append({"archivo": os.path.basename(f), "cuenta": cuenta, "movimientos": len(filas)})
+            resultado["archivos_procesados"].append({
+                "archivo": os.path.basename(f), "cuenta": cuenta,
+                "movimientos": len(filas),
+            })
+        except ValueError as e:
+            resultado["archivos_procesados"].append({
+                "archivo": os.path.basename(f), "cuenta": None,
+                "movimientos": 0, "error": str(e), "rechazado": True,
+            })
+            resultado["avisos"].append(f"❌ {os.path.basename(f)}: {e}")
         except Exception as e:
             resultado["avisos"].append(f"Error leyendo {f}: {e}")
 
@@ -236,24 +276,17 @@ def actualizar(archivos_xls, consolidado_path, dry_run=False):
         resultado["avisos"].append("No se encontraron movimientos nuevos en los archivos proporcionados.")
         return resultado
 
-    # Detectar movimientos de año diferente
-    año_consolidado = None
-    match = re.search(r"_(\d{2})\.", os.path.basename(consolidado_path))
-    if match:
-        año_consolidado = 2000 + int(match.group(1))
-
+    # Filtrar movimientos de año incorrecto (resumen compacto)
     if año_consolidado:
-        for cuenta, filas in nuevos.items():
-            for fila in filas:
-                año_mov = fila["F. Operativa"].year
-                if año_mov != año_consolidado:
-                    resultado["avisos"].append(
-                        f"⚠️ Movimiento de {año_mov} detectado en {cuenta}: "
-                        f"{fila['Concepto'][:40]}... ({fila['F. Operativa'].strftime('%d/%m/%Y')}). "
-                        f"El consolidado es de {año_consolidado}. Este movimiento NO se incorporará."
-                    )
-        # Filtrar solo movimientos del año correcto
         for cuenta in nuevos:
+            descartados = [f for f in nuevos[cuenta] if f["F. Operativa"].year != año_consolidado]
+            if descartados:
+                años_malos = set(f["F. Operativa"].year for f in descartados)
+                resultado["avisos"].append(
+                    f"❌ {cuenta}: {len(descartados)} movimientos de "
+                    f"{', '.join(str(a) for a in sorted(años_malos))} descartados "
+                    f"(consolidado es de {año_consolidado})"
+                )
             nuevos[cuenta] = [f for f in nuevos[cuenta] if f["F. Operativa"].year == año_consolidado]
 
     # Backup

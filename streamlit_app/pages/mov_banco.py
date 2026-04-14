@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'scripts'
 from actualizar_movimientos import actualizar, leer_xls_sabadell, mostrar_info, detectar_cuenta  # type: ignore
 
 CONSOLIDADO = Path(os.path.join(os.path.dirname(__file__), '..', '..', 'datos', 'Movimientos_Cuenta_26.xlsx'))
+AÑO_CONSOLIDADO = 2026  # Extraído del nombre del archivo (_26)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -113,6 +114,7 @@ if uploaded_files:
     # Guardar temporalmente y analizar
     tmp_paths = []
     analisis = []
+    hay_errores = False
     for uf in uploaded_files:
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.xls')
         tmp.write(uf.read())
@@ -120,7 +122,7 @@ if uploaded_files:
         tmp_paths.append(tmp.name)
 
         try:
-            cuenta, filas = leer_xls_sabadell(tmp.name)
+            cuenta, filas = leer_xls_sabadell(tmp.name, año_esperado=AÑO_CONSOLIDADO)
             primera = filas[0]["F. Operativa"] if filas else None
             ultima = filas[-1]["F. Operativa"] if filas else None
             analisis.append({
@@ -131,7 +133,19 @@ if uploaded_files:
                 "ultima": ultima,
                 "tmp": tmp.name,
             })
+        except ValueError as e:
+            hay_errores = True
+            analisis.append({
+                "archivo": uf.name,
+                "cuenta": "ERROR",
+                "movimientos": 0,
+                "primera": None,
+                "ultima": None,
+                "tmp": tmp.name,
+                "error": str(e),
+            })
         except Exception as e:
+            hay_errores = True
             analisis.append({
                 "archivo": uf.name,
                 "cuenta": "ERROR",
@@ -153,12 +167,18 @@ if uploaded_files:
                 fecha_rango = f" | {a['primera']:%d/%m/%Y} → {a['ultima']:%d/%m/%Y}"
             st.success(f"✅ {a['archivo']} → **{a['cuenta']}** ({a['movimientos']} movimientos{fecha_rango})")
 
+    if hay_errores:
+        st.error("Corrige los archivos con errores antes de actualizar.")
+        st.button("Actualizar consolidado", disabled=True, use_container_width=True)
+
     # Dry-run
-    st.markdown("---")
-    st.subheader("Simulación (dry-run)")
+    if not hay_errores:
+        st.markdown("---")
+        st.subheader("Simulación (dry-run)")
+
     archivos_validos = [a["tmp"] for a in analisis if a["cuenta"] != "ERROR"]
 
-    if archivos_validos:
+    if archivos_validos and not hay_errores:
         res_dry = actualizar(archivos_validos, str(CONSOLIDADO), dry_run=True)
 
         c1, c2, c3 = st.columns(3)
