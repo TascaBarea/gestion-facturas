@@ -216,6 +216,11 @@ if seleccion:
                         st.error(f"Error: {result.get('detail', 'desconocido')}")
                     else:
                         st.success("Proveedor actualizado correctamente.")
+                        try:
+                            from nucleo.sync_drive import sync_datos
+                            sync_datos()
+                        except Exception:
+                            pass
                         _cargar_maestro.clear()
                         st.rerun()
 
@@ -268,5 +273,10 @@ with st.expander("Crear nuevo proveedor"):
                     st.error(f"Error: {result.get('detail', 'desconocido')}")
                 else:
                     st.success(f"Proveedor '{np_nombre}' creado correctamente.")
+                    try:
+                        from nucleo.sync_drive import sync_datos
+                        sync_datos()
+                    except Exception:
+                        pass
                     _cargar_maestro.clear()
                     st.rerun()

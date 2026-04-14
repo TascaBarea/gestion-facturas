@@ -181,6 +181,47 @@ def sync_archivos(archivos, carpeta=None):
     return resultados
 
 
+def sync_datos(base_path=None):
+    """
+    Sincroniza archivos de datos de referencia con Google Drive.
+    Carpeta destino: Barea - Datos Compartidos/Datos
+    """
+    import platform
+
+    if base_path is None:
+        if platform.system() == "Windows":
+            base_path = r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas"
+        else:
+            base_path = "/opt/gestion-facturas"
+
+    archivos = []
+    datos_dir = os.path.join(base_path, "datos")
+
+    # Archivos de datos a sincronizar
+    nombres = [
+        "Movimientos_Cuenta_26.xlsx",
+        "MAESTRO_PROVEEDORES.xlsx",
+        "DiccionarioProveedoresCategoria.xlsx",
+    ]
+
+    # Buscar archivo de artículos (nombre puede variar)
+    if os.path.isdir(datos_dir):
+        for f in os.listdir(datos_dir):
+            if f.lower().startswith("articulos") and f.endswith(".xlsx"):
+                nombres.append(f)
+                break
+
+    for nombre in nombres:
+        ruta = os.path.join(datos_dir, nombre)
+        if os.path.exists(ruta):
+            archivos.append(ruta)
+
+    if archivos:
+        sync_archivos(archivos, carpeta="Datos")
+
+    return archivos
+
+
 def listar_carpeta(carpeta=None):
     """Lista archivos en la carpeta compartida (para Streamlit).
 

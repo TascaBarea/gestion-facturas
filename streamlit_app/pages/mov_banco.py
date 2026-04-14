@@ -192,6 +192,14 @@ if uploaded_files:
                 for aviso in res["avisos"]:
                     st.warning(aviso)
 
+                # Sync a Drive
+                try:
+                    from nucleo.sync_drive import sync_datos
+                    synced = sync_datos()
+                    st.success(f"{len(synced)} archivos sincronizados con Drive")
+                except Exception as e:
+                    st.warning(f"Sync Drive falló: {e}")
+
                 # Verificar continuidad de saldos
                 st.markdown("---")
                 st.subheader("Verificación de integridad")
