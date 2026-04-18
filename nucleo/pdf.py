@@ -22,7 +22,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 try:
     from config.settings import TESSERACT_CMD, OCR_DPI, OCR_CONTRASTE, OCR_IDIOMA
 except ImportError:
-    TESSERACT_CMD = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    import platform
+    if platform.system() == 'Windows':
+        TESSERACT_CMD = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+    else:
+        TESSERACT_CMD = '/usr/bin/tesseract'
     OCR_DPI = 300
     OCR_CONTRASTE = 2.0
     OCR_IDIOMA = 'spa'

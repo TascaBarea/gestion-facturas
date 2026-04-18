@@ -11,7 +11,16 @@ from email.message import Message
 from typing import Optional
 import ssl
 
-from gmail_config import (
+try:
+    from gmail.gmail_config import (
+    GMAIL_EMAIL,
+    GMAIL_IMAP_SERVER,
+    GMAIL_IMAP_PORT,
+    ETIQUETA_ENTRADA,
+    ETIQUETA_PROCESADO
+)
+except ImportError:
+    from gmail_config import (
     GMAIL_EMAIL,
     GMAIL_IMAP_SERVER,
     GMAIL_IMAP_PORT,

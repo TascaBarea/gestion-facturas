@@ -62,3 +62,4 @@ ventas_semana/dashboards/*.pdf
 # Notas y archivos temporales de investigación
 docs/investigacion-fuentes-temp.txt
 docs/youtube-research-notes.md
+gmail/token_nuevo.json

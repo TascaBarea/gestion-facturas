@@ -17,7 +17,15 @@ from datetime import datetime
 from typing import Optional
 import pdfplumber
 
-from gmail_config import (
+try:
+    from gmail.gmail_config import (
+    calcular_trimestre,
+    PREFIJO_ATRASADA,
+    PREFIJO_PROFORMA,
+    TIPOS_PAGO
+)
+except ImportError:
+    from gmail_config import (
     calcular_trimestre,
     PREFIJO_ATRASADA,
     PREFIJO_PROFORMA,

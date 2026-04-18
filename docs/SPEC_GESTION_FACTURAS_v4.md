@@ -804,7 +804,99 @@ Datos en `config/datos_sensibles.py`. Incluye: IBAN_TASCA, IBAN_COMESTIBLES, BIC
 
 ---
 
+## 19. WOOCOMMERCE — ESTADO Y CONFIGURACIÓN (actualizado 16/04/2026)
+
+### Problema Redsys resuelto
+- Error 0104: anti-fraude de Sabadell bloqueó operaciones por >3 intentos desde misma IP
+- Causa raíz: múltiples pruebas de pago la noche del 14/04/2026
+- Solución: whitelist de IPs en Sabadell (pendiente envío IP de Cristina Lautre)
+- IP Jaime (Digi, dinámica): 79.116.239.140 — pendiente pedir IP fija al 1200
+- Cloudflare: Browser Integrity Check OFF, Bot Fight Mode OFF, Always Use HTTPS ON
+- Terminal TPV Virtual: 6304473868 (Sabadell Comestibles)
+- FUC: 354272759
+- Plugin: Pasarela Unificada de Redsys 1.2.1 (pendiente actualizar a 2.0 o migrar a José Conti Lite)
+
+### Migración de productos (16/04/2026)
+Se ejecutó migrar_productos.py sobre 6 eventos activos (IDs: 3350, 3347, 3278, 3276, 3274, 3272):
+- virtual: True (todos)
+- tax_class: "IVA 21" (servicios recreativos, antes estaban en Estándar=10%)
+- low_stock_amount: 3
+- HTML limpiado de nombres (<br><small> eliminados en 4 productos)
+- short_description generada para productos que no la tenían
+- 4 eventos pasados cerrados (status→private) con cerrar_eventos_pasados.py
+
+### Configuración de impuestos verificada
+- Tarifa estándar: 10% (productos alimentarios) — NO TOCAR
+- IVA 21: clase separada para experiencias/eventos
+- IVA 10: para productos alimentarios
+- IVA 4: superreducido
+- Cheque regalo (Regalismo mágico ID:2810): Estado impuesto = "Ninguno" (bonos polivalentes tributan al canje)
+
+### Scripts WooCommerce (ventas_semana/)
+| Script | Versión | Función |
+|--------|---------|---------|
+| alta_evento.py | v2 (16/04/2026) | Alta interactiva de eventos. 8 pasos, virtual+IVA21+SEO+imagen+categoría obligatoria |
+| alta_evento_v1_backup.py | v1 backup | Backup de la versión anterior |
+| migrar_productos.py | v1 (16/04/2026) | Corrección masiva de productos existentes. Soporta --dry-run, --auto, --ids |
+| cerrar_eventos_pasados.py | v1 (16/04/2026) | Archiva eventos con fecha pasada (status→private). Soporta --ejecutar, --dias-gracia |
+| imagenes_eventos.json | plantilla | Catálogo de imágenes por tipo de taller. Pendiente rellenar con IDs de Medios de WP |
+| asistentes_taller.py | v1 | Envía lista de asistentes por email el día del taller |
+| script_barea.py | v4.7 | Ventas Loyverse + WooCommerce (ejecución automática lunes) |
+
+### Convención de nombres v2 para eventos
+- Formato: "{Nombre del taller} — {DD de MES YYYY}"
+- Ejemplo: "Cata de vinos naturales — 18 de abril 2026"
+- Máximo 80 caracteres
+- Sin MAYÚSCULAS completas, sin "CERRADO-" como prefijo
+- SKU automático: evento-YYYYMMDD
+- Slug: slugify sin acentos
+
+### Decisión YITH Event Tickets
+- Licencia caducada, NUNCA se usó (todos los productos son "Producto simple")
+- Decisión: DESINSTALAR tras verificar que no hay productos tipo ticket-event
+- Alternativa: Producto simple + Virtual cubre el 100% del caso de uso
+
+### Emails WooCommerce
+- WP Mail SMTP: funciona con PHP mail de Webempresa
+- Remitente: hola@comestiblesbarea.com
+- Email al cliente: "Gracias por tu reserva en Comestibles Barea" (fondo Soft Sage)
+- Email a la tienda: "[Tasca Barea] Nuevo pedido #XXXX" (fondo Dorado) → tascabarea@gmail.com
+
+### Pendientes WooCommerce
+- [ ] Enviar IPs a Sabadell para whitelist
+- [ ] Pedir IP fija a Digi
+- [ ] Subir fotos a Medios y rellenar imagenes_eventos.json
+- [ ] Arreglar wp-cron (cron real en Webempresa)
+- [ ] Probar alta_evento.py v2 con evento de prueba
+- [ ] Cambiar categoría "Bodega" → "catas" en producto 3347
+- [ ] Limpiar HTML de producto "Prueba correos" (ID:3364)
+- [ ] Activar Bizum (verificar con Sabadell primero)
+- [ ] Actualizar plugin Redsys (hacer en día de baja venta: lunes/martes)
+- [ ] Crear subdominio IPN sin Cloudflare para evitar bloqueos LaLiga
+- [ ] Crear child theme de Hello Elementor
+- [ ] Resolver WP Rocket (renovar o migrar a LiteSpeed Cache)
+- [ ] Desinstalar YITH Event Tickets (tras verificar todo)
+
+### Documentos de referencia
+- PLAN_MEJORAS_WOOCOMMERCE_BAREA_v1.md
+- ANALISIS_WOOCOMMERCE_ALTA_EVENTO_v2.md
+- PROMPT_CLAUDE_CODE_ALTA_EVENTO_v2.md
+- RESUMEN_SESION_14ABR_WOOCOMMERCE.md
+- AUDITORIA_WOOCOMMERCE_BAREA.md
+
+---
+
 ## CHANGELOG
+
+### v5.14 (16/04/2026) — SESIÓN WOOCOMMERCE
+- Diagnóstico y resolución error Redsys 0104 (anti-fraude IP)
+- Migración 6 eventos: virtual=True, tax_class="IVA 21", HTML limpiado
+- 4 eventos pasados archivados (cerrar_eventos_pasados.py)
+- alta_evento.py v2 creado (8 pasos, SEO, imagen, categoría obligatoria)
+- migrar_productos.py creado (corrección masiva con --dry-run/--auto/--ids)
+- Cheque regalo: IVA cambiado a "No sujeto a impuestos"
+- Cloudflare: Always Use HTTPS activado, Browser Integrity Check OFF confirmado
+- 7 emails de disculpa redactados para clientes afectados por caída del sistema
 
 ### v5.13 (14/04/2026) — VALIDACIONES NEGOCIO + MULTI-PDF + VENTANA GRACIA
 

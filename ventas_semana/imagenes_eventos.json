@@ -1,0 +1,23 @@
+{
+  "_comentario": "IDs de imágenes de la Biblioteca de Medios de WordPress. Obtener IDs en wp-admin → Medios → clic en imagen → ver URL con attachment_id=XXXX",
+  "catalogo": {
+    "cata_vinos": null,
+    "quesos": null,
+    "vermut": null,
+    "fermentados": null,
+    "encurtidos": null,
+    "default": null
+  },
+  "keywords": {
+    "vino": "cata_vinos",
+    "queso": "quesos",
+    "vermú": "vermut",
+    "vermut": "vermut",
+    "fermentado": "fermentados",
+    "kombucha": "fermentados",
+    "kimchi": "fermentados",
+    "encurtido": "encurtidos",
+    "gilda": "encurtidos",
+    "banderilla": "encurtidos"
+  }
+}

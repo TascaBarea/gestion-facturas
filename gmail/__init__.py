@@ -7,4 +7,9 @@ Versión: 1.1
 """
 
 from .gmail_config import *
-from .auth import GmailConnection, test_conexion
+try:
+    from .auth import GmailConnection, test_conexion
+except ImportError:
+    # auth.py requiere config_local (credenciales IMAP) — no disponible en producción VPS (usa OAuth2)
+    GmailConnection = None
+    test_conexion = None

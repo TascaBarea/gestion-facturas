@@ -14,7 +14,10 @@ import shutil
 from datetime import datetime
 from typing import Optional
 
-from gmail_config import DROPBOX_FACTURAS_BASE
+try:
+    from gmail.gmail_config import DROPBOX_FACTURAS_BASE
+except ImportError:
+    from gmail_config import DROPBOX_FACTURAS_BASE
 
 
 # =============================================================================

@@ -31,8 +31,12 @@ BASE_DIR = Path(__file__).parent.parent
 # Métodos de extracción disponibles: 'pypdf', 'pdfplumber', 'ocr'
 METODO_PDF_DEFAULT = 'pypdf'
 
-# Configuración OCR (Tesseract)
-TESSERACT_CMD = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# Configuración OCR (Tesseract) - detección automática Windows/Linux
+import platform as _platform
+if _platform.system() == 'Windows':
+    TESSERACT_CMD = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+else:
+    TESSERACT_CMD = '/usr/bin/tesseract'
 OCR_DPI = 300
 OCR_CONTRASTE = 1.5
 OCR_IDIOMA = 'spa'

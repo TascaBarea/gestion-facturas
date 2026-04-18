@@ -10,7 +10,16 @@ from datetime import datetime
 from typing import Optional
 from email.message import Message
 
-from gmail_config import (
+try:
+    from gmail.gmail_config import (
+    EXTENSIONES_VALIDAS,
+    EXTENSIONES_IGNORAR,
+    PALABRAS_FACTURA_NOMBRE,
+    TEMP_BACKUP_DIR,
+    OUTPUTS_DIR
+)
+except ImportError:
+    from gmail_config import (
     EXTENSIONES_VALIDAS,
     EXTENSIONES_IGNORAR,
     PALABRAS_FACTURA_NOMBRE,
