@@ -912,6 +912,16 @@ Se ejecutó migrar_productos.py sobre 6 eventos activos (IDs: 3350, 3347, 3278, 
 
 ## CHANGELOG
 
+### 19/04/2026 — Bloque 2 VPS
+- Código sincronizado PC→VPS (git pull)
+- Dependencias verificadas (117 extractores, 0 errores)
+- pago_alto_landon.py corregido
+- PYTHONPATH/PARSEO_DIR permanente (.bashrc + runner.py + systemd)
+- API keys ventas copiadas (.env + python-dotenv)
+- Streamlit migrado a servicio systemd (auto-restart tras reboot)
+- Cron gmail.py restaurado (viernes 03:00)
+- Documentado crontab y servicios systemd en SPEC
+
 ### v5.14 (16/04/2026) — SESIÓN WOOCOMMERCE
 - Diagnóstico y resolución error Redsys 0104 (anti-fraude IP)
 - Migración 6 eventos: virtual=True, tax_class="IVA 21", HTML limpiado
