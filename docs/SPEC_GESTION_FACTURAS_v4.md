@@ -800,7 +800,31 @@ Datos en `config/datos_sensibles.py`. Incluye: IBAN_TASCA, IBAN_COMESTIBLES, BIC
 - **Local:** http://localhost:8501 (desarrollo)
 - **Producción:** https://gestion.tascabarea.com (Cloudflare Tunnel)
 - **Auth:** Login 4 roles (admin, socio, comes, tienda)
-- **Seguridad:** Streamlit bind 127.0.0.1 (no accesible por IP directa), puerto 8501 cerrado en firewall
+- **Seguridad:** Streamlit bind 0.0.0.0 en VPS; puerto 8501 cerrado en firewall → solo accesible vía Cloudflare Tunnel (`gestion.tascabarea.com`)
+
+### Servicios systemd (VPS Contabo)
+
+| Servicio | Archivo | Estado | Descripción |
+|----------|---------|--------|-------------|
+| streamlit | `/etc/systemd/system/streamlit.service` | enabled | Streamlit app puerto 8501, `Restart=on-failure`, env vars `GESTION_FACTURAS_DIR` / `PYTHONPATH` / `PARSEO_DIR` |
+| cloudflared | `/etc/systemd/system/cloudflared.service` | enabled | Tunnel `54062b38-...`, ruta `gestion.tascabarea.com` → `localhost:8501` |
+
+**Comandos útiles:**
+- `systemctl status streamlit` / `systemctl restart streamlit`
+- `journalctl -u streamlit -f` (logs en tiempo real)
+- `systemctl status cloudflared` / `journalctl -u cloudflared --since "1 hour ago"`
+
+### Crontab root (VPS)
+
+```cron
+# Backup PostgreSQL control-barea — diario 03:00
+0 3 * * * cd /opt/control-barea && BACKUP_DIR=/root/backups COMPOSE_FILE=docker-compose.prod.yml ./scripts/backup.sh >> /var/log/control_barea_backup.log 2>&1
+
+# Gmail facturas — viernes 03:00
+0 3 * * 5 cd /opt/gestion-facturas && PARSEO_DIR=/opt/Parseo /opt/gestion-facturas/.venv/bin/python3 gmail/gmail.py --produccion >> /opt/gestion-facturas/outputs/logs_gmail/cron_$(date +\%Y\%m\%d).log 2>&1 || /opt/gestion-facturas/.venv/bin/python3 /opt/gestion-facturas/alerta_fallo.py gmail
+```
+
+El crontab **no se versiona en git** — documentado aquí como fuente canónica. Si se pierde, restaurar con `crontab -e` pegando el bloque anterior. Pendiente: cron semanal para `ventas_semana/script_barea.py` (lunes 03:00) una vez se añadan `LOYVERSE_API_TOKEN` y credenciales WooCommerce a `config/datos_sensibles.py` del VPS.
 
 ---
 
