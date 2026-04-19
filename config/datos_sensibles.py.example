@@ -51,3 +51,10 @@ PROVEEDORES_CONOCIDOS = {
 CIF_A_PROVEEDOR = {
     # 'X12345678': 'NOMBRE_PROVEEDOR',
 }
+
+# =============================================================================
+# DROPBOX API (para VPS — no necesario en PC local)
+# =============================================================================
+
+DROPBOX_TOKEN = ""          # Token OAuth2 offline — generar en sesión presencial
+DROPBOX_API_BASE = "/TASCA BAREA S.L.L/CONTABILIDAD"
