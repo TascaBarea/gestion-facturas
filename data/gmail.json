@@ -1,15 +1,18 @@
 {
-  "fecha_ejecucion": "2026-04-11T17:11:51",
+  "fecha_ejecucion": "2026-04-14T19:08:59",
   "total_procesados": 4,
-  "exitosos": 4,
-  "requieren_revision": 0,
+  "exitosos": 3,
+  "requieren_revision": 1,
   "errores": 0,
+  "facturas_gracia": 0,
+  "facturas_pendientes": 0,
   "proveedores_ok": [
-    "AGRICOLA DE MONTBRIO DEL CAMP SCCL",
-    "PESCADOS DON FELIX SL",
-    "SABORES DE PATERNA SCA",
-    "WEBEMPRESA EUROPA SL"
+    "CERES CERVEZA SL",
+    "GARDA IMPORT SLU",
+    "GARUA INTERVENCION EDUCATIVA S.COOP.MAD"
   ],
-  "revision": [],
+  "revision": [
+    "DUE SERVICIOS INTEGRALES LABORALES SL"
+  ],
   "errores_detalle": []
 }
