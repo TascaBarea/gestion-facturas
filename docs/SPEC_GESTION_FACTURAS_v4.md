@@ -705,7 +705,7 @@ Path traversal (basename + realpath), CORS explícito, API key obligatoria, RBAC
 
 | ID | Pendiente | Impacto | Acción |
 |----|-----------|---------|--------|
-| 20A | Google Drive sync HTTP 403 "insufficient authentication scopes" (PC+VPS) | `sync_datos()` no puede listar carpetas | Cambiar scope a `drive` (no `drive.readonly`) en `nucleo/sync_drive.py`, regenerar `token.json`, propagar al VPS |
+| 20A | ~~Google Drive sync HTTP 403~~ | — | ✅ **Cerrado 21/04/2026** (commit `bd3d3d7`). Scope `drive.file` → `drive` en `renovar_token_business.py`; bug de `auth_manager.get_credentials()` arreglado (pasar `scopes=` filtraba y, al refresh, serializaba un subconjunto — así se perdió el scope drive entre 18/04 y 20/04). Token regenerado y propagado al VPS. Verificado: `listar_carpeta()` devuelve la raíz "Barea - Datos Compartidos" en PC y VPS |
 | 20B | Ruta Windows hardcoded `C:\...\datos\Articulos 26.xlsx` falla en VPS | Script rompe en Linux | `grep` para localizar la lectura + migrar a `pathlib.Path` usando `GESTION_FACTURAS_DIR` |
 | 20C | `datos/Ventas Barea Historico.xlsx` ausente en VPS | Cálculos de ventas históricas incompletos en VPS | Copiar con `scp` en próximo despliegue; decidir si va al repo, a Drive o a sync manual |
 | 20D | Deploy key del VPS sin write access en GitHub | `git push origin gh-pages` falla desde VPS | Regenerar deploy key con write, o condicionar el push a que solo se ejecute desde PC (decidir y documentar) |
@@ -950,6 +950,13 @@ Se ejecutó migrar_productos.py sobre 6 eventos activos (IDs: 3350, 3347, 3278, 
 - `cargar_historico_wc.py:89` escribe la columna total como strings `"60,00 €"`. El fix dtype actual tolera ese formato, pero la solución de raíz es escribir floats nativos al Excel. Cuando se aborde, mantener el lector compatible con el formato antiguo para históricos persistidos.
 
 **Grep de bugs gemelos:** 0 hits adicionales de `dtype == object` en el repo.
+
+---
+
+**21/04/2026 — cierre pendiente 20A (Drive 403) (commit `bd3d3d7`):**
+- `gmail/renovar_token_business.py`: scope `drive.file` → `drive` (full). `drive.file` solo ve archivos/carpetas creados por la app → `_buscar_carpeta("Barea - Datos Compartidos")` devolvía None y `_crear_carpeta()` habría duplicado carpetas.
+- `gmail/auth_manager.py`: eliminado parámetro `scopes` en `get_credentials()`, `get_gmail_service()`, `get_drive_service()`. Pasar `scopes` a `Credentials.from_authorized_user_file()` filtraba el objeto; al refrescar, `creds.to_json()` serializaba solo ese subconjunto y sobrescribía `token.json` perdiendo scopes autorizados (así desapareció `drive` entre 18/04 y 20/04).
+- Token regenerado con 4 scopes (`gmail.readonly`, `gmail.modify`, `business.manage`, `drive`) y propagado al VPS. `listar_carpeta()` y página Documentos Streamlit OK en ambos entornos.
 
 ### 19/04/2026 — Bloque 2 VPS
 - Código sincronizado PC→VPS (git pull)

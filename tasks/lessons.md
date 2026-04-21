@@ -26,6 +26,10 @@
   → REGLA: Si gmail.py falla con error de autenticación → ejecutar gmail/renovar_token_business.py
 - **MIME type con barra invertida** → text\html en vez de text/html
   → REGLA: Al parsear payloads Gmail API, verificar que el MIME type usa barra normal.
+- **Cambio de scope OAuth no se aplica con solo editar SCOPES** → la librería usa los scopes persistidos dentro de `token.json`, no los del código. Síntoma: 403 "insufficient authentication scopes" aunque el código declare el scope nuevo.
+  → REGLA: Al cambiar scope, borrar/renombrar `token.json` (`mv token.json token.json.bak.YYYYMMDD`), ejecutar `python gmail/renovar_token_business.py` (navegador OAuth), copiar el nuevo `token.json` al VPS con `scp`.
+- **Serialización de credenciales filtra scopes → se pierden al refresh** → Pasar `scopes=[...]` a `Credentials.from_authorized_user_file(token, scopes=X)` hace que, al refrescar y volcar con `creds.to_json()`, se persista SOLO el subconjunto `X`, destruyendo los scopes realmente autorizados. Caso real (21/04/2026): el scope `drive` desapareció de `token.json` entre el 18/04 y el 20/04 porque cada run de gmail.py pasaba solo `[gmail.readonly, gmail.modify]` y reescribía el token.
+  → REGLA: En `gmail/auth_manager.get_credentials()` cargar sin parámetro `scopes`; dejar que el token dicte qué está autorizado. Los callers (`get_gmail_service`, `get_drive_service`) tampoco deben pasar scopes.
 
 ### Formato de datos
 - **Coma decimal en datos 2024** → "3,51" en vez de "3.51"
@@ -74,6 +78,7 @@
 |-------|--------|----------------|---------------|
 | 2026-03-13 | General | — | Archivo creado con errores documentados del proyecto |
 | 2026-04-21 | ventas_semana/generar_dashboard | `if df["total"].dtype == object` saltaba el cleanup en VPS (pandas 3.x, dtype `str`) → `sum()` concatenaba strings y `float()` petaba | Usar `pd.api.types.is_numeric_dtype`; pinnear pandas 2.3.0 en VPS; añadidas reglas "Pandas y tipos de datos" |
+| 2026-04-21 | gmail/auth_manager | `get_credentials(scopes=[...])` filtraba el objeto Credentials; al refrescar, `creds.to_json()` volcaba el subconjunto y sobrescribía token.json perdiendo el scope `drive` | No pasar `scopes` a `from_authorized_user_file()`; el token dicta los scopes autorizados. Regla nueva en sección "Gmail API" |
 | 2026-03-13 | Parseo | ESQUEMA buscado en carpeta equivocada | ESQUEMA está en gestion-facturas/docs/, no en Parseo/ |
 | 2026-03-13 | Gmail | REF "86" de BERNAL rechazada por gmail.py | gmail.py exigía len>=3, extractor genérico len>=2. Alineado a >=2 |
 | 2026-03-13 | La Llildiria | Total 93.94 en vez de 172.75 | PyPDF no captura tabla totales en PDFs imagen. Añadido cálculo desde subtotales + cambio a OCR primario |
