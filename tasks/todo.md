@@ -7,6 +7,13 @@
 ## Próxima sesión
 **Objetivo:** CUADRE + pendientes menores
 
+### Backlog 20/04/2026 (detectado tras fix dashboard dtype — ver SPEC v4.5 §14)
+- [ ] 20A — Google Drive sync: HTTP 403 "insufficient authentication scopes" (PC+VPS). Cambiar scope `drive.readonly` → `drive` en `nucleo/sync_drive.py`, regenerar `token.json`, propagar al VPS.
+- [ ] 20B — Ruta Windows hardcoded `C:\...\datos\Articulos 26.xlsx` falla en VPS. `grep` para localizar + migrar a `pathlib.Path` con `GESTION_FACTURAS_DIR`.
+- [ ] 20C — `datos/Ventas Barea Historico.xlsx` ausente en VPS. Copiar con `scp` en próximo despliegue; decidir vía (repo / Drive / sync manual).
+- [ ] 20D — Deploy key VPS sin write access en GitHub → `git push origin gh-pages` desde VPS falla. Regenerar key con write o condicionar push a PC.
+- [ ] v4.6 refactor — `ventas_semana/cargar_historico_wc.py:89` escribe total como string `"60,00 €"`. Pasar a floats nativos manteniendo lectura compatible con el formato antiguo.
+
 ### Pendientes seguridad
 - [ ] Cambiar contraseñas Streamlit (las 4 son "2017") → decisión del usuario
 

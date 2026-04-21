@@ -1,6 +1,6 @@
-# SPEC GESTION-FACTURAS v4.4
+# SPEC GESTION-FACTURAS v4.5
 
-> Documento maestro unificado — 10/04/2026
+> Documento maestro unificado — actualizado 20/04/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
 
@@ -36,7 +36,7 @@ Tres áreas funcionales + scripts independientes + infraestructura web + migraci
 
 ```
 gestion-facturas/
-├── ventas/                    # Todo lo que ENTRA (ingresos)
+├── ventas_semana/             # Todo lo que ENTRA (ingresos)
 │   ├── script_barea.py        # Loyverse Tasca + Comestibles + WooCommerce (v4.7, 1.822 líneas)
 │   ├── generar_dashboard.py   # Generador dual: Comestibles + Tasca + PDF + email
 │   ├── dashboards/            # Templates HTML + dashboards generados + PDFs
@@ -135,10 +135,10 @@ gestion-facturas/
 | ① | `COMPRAS_XTxx.xlsx` (Lineas + Facturas) | main.py (PARSEO) | compras/XTxx/ | Mensual/trimestral |
 | ② | `PAGOS_Gmail_XTxx.xlsx` (FACTURAS 15 cols + SEPA) | gmail.py v1.17 | outputs/ | Semanal |
 | ②b | `Facturas XTxx Provisional.xlsx` (6+1 cols) | gmail.py | outputs/ | Semanal |
-| ③ | `Ventas Barea YYYY.xlsx` (5 pestañas) | script_barea.py | ventas/ | Semanal (lunes 03:00) |
+| ③ | `Ventas Barea YYYY.xlsx` (5 pestañas) | script_barea.py | ventas_semana/ | Semanal (lunes 03:00) |
 | ④ | `CUADRE_XTxx_YYYYMMDD.xlsx` (3 pestañas) | cuadre.py | compras/XTxx/ | Bajo demanda |
 | ⑤ | `MOV_BANCO_YYYY.xlsx` (tabs por trimestre) | Script MOV_BANCO | compras/ | Semanal |
-| ⑥ | Dashboards HTML + PDFs resumen | generar_dashboard.py | ventas/dashboards/ | Mensual |
+| ⑥ | Dashboards HTML + PDFs resumen | generar_dashboard.py | ventas_semana/dashboards/ | Mensual |
 
 ### 3.2 Archivos fuente (inputs manuales)
 
@@ -206,8 +206,8 @@ Cuadre_011025-020126.xlsx  → Cuadre del 01/10/25 al 02/01/26
 
 ## 5. MÓDULO VENTAS (v4.7) — ✅ 95%
 
-**Script:** `ventas/script_barea.py` (1.822 líneas)
-**Dashboard:** `ventas/generar_dashboard.py`
+**Script:** `ventas_semana/script_barea.py` (1.822 líneas)
+**Dashboard:** `ventas_semana/generar_dashboard.py`
 **Automatización:** Cada lunes (Programador de Tareas Windows → migración a cron/nube en Fase 2 cloud)
 
 ### 5.1 Flujo semanal (9 pasos automáticos)
@@ -701,6 +701,19 @@ Path traversal (basename + realpath), CORS explícito, API key obligatoria, RBAC
 - ⚠️ Limpiar WooCommerce: 69 → 10 columnas en pestaña WOOCOMMERCE
 - ⚠️ Mover PARSEO a gestion-facturas (integración completa, futuro)
 
+### Backlog detectado el 20/04/2026 (post fix dashboard)
+
+| ID | Pendiente | Impacto | Acción |
+|----|-----------|---------|--------|
+| 20A | Google Drive sync HTTP 403 "insufficient authentication scopes" (PC+VPS) | `sync_datos()` no puede listar carpetas | Cambiar scope a `drive` (no `drive.readonly`) en `nucleo/sync_drive.py`, regenerar `token.json`, propagar al VPS |
+| 20B | Ruta Windows hardcoded `C:\...\datos\Articulos 26.xlsx` falla en VPS | Script rompe en Linux | `grep` para localizar la lectura + migrar a `pathlib.Path` usando `GESTION_FACTURAS_DIR` |
+| 20C | `datos/Ventas Barea Historico.xlsx` ausente en VPS | Cálculos de ventas históricas incompletos en VPS | Copiar con `scp` en próximo despliegue; decidir si va al repo, a Drive o a sync manual |
+| 20D | Deploy key del VPS sin write access en GitHub | `git push origin gh-pages` falla desde VPS | Regenerar deploy key con write, o condicionar el push a que solo se ejecute desde PC (decidir y documentar) |
+
+### TODO refactor (backlog v4.6)
+
+- **`ventas_semana/cargar_historico_wc.py:89`** — escribe la columna total como strings `"60,00 €"`. El fix dtype de v4.5 tolera ese formato, pero la solución de raíz es escribir floats nativos al Excel, eliminando la clase entera de bugs de parseo moneda en lectores posteriores. Cuando se aborde, mantener compatibilidad de lectura con el formato antiguo para históricos ya persistidos.
+
 ---
 
 ## 15. PUNTOS ABIERTOS (a resolver empíricamente)
@@ -911,6 +924,32 @@ Se ejecutó migrar_productos.py sobre 6 eventos activos (IDs: 3350, 3347, 3278, 
 ---
 
 ## CHANGELOG
+
+### v4.5 (20/04/2026) — FIX DASHBOARD DTYPE + ALINEACIÓN PANDAS
+
+**Fix dashboard dtype pandas 2.x/3.x (commit e388536):**
+- Error en VPS: `could not convert string to float: '60,00 €40,00 €...'` al generar dashboards.
+- Causa raíz: pandas 3.x reporta columnas de strings como dtype `str` (no `object`), saltando el bloque de cleanup en `ventas_semana/generar_dashboard.py` (`_calcular_woo` ~L466-473 y `_calcular_woo_devengo` ~L613-619). Resultado: `.sum()` concatenaba strings en vez de sumar.
+- Fix: reemplazar `df["total"].dtype == object` por `pd.api.types.is_numeric_dtype(...)` con lógica invertida (rama fácil = numérico directo; rama costosa = no-numérico → cleanup + `pd.to_numeric(errors="coerce")`).
+- Cleanup ampliado: `.replace("\u00a0", "")` (non-breaking space) + `.replace(".", "")` (separador miles es-ES), todos con `regex=False`.
+
+**Alineación de pandas VPS (cierra ⚠️-3 de AUDITORIA_VPS_20260418):**
+- VPS bajado de pandas 3.0.2 → 2.3.0 para igualar PC (`requirements.txt` pinneado).
+- Regla nueva en `tasks/lessons.md` § "Pandas y tipos de datos": mantener `requirements.txt` pinneado y obligar al VPS a respetarlo con `pip install -r requirements.txt` tras cualquier upgrade.
+
+**Corrección de rutas en doc:**
+- SPEC v4.4 listaba `ventas/script_barea.py`; la ruta real es `ventas_semana/script_barea.py`. Corregido en §2 (árbol), §3.1 (tabla outputs) y §5 (módulo VENTAS).
+
+**Backlog de pendientes detectados el 20/04 (ver §14 — no se abordan en este commit):**
+- Google Drive sync HTTP 403 "insufficient authentication scopes" (PC y VPS) — scope `drive.readonly` no basta para listar carpetas.
+- Ruta Windows hardcoded `C:\...\datos\Articulos 26.xlsx` que falla en VPS → migrar a pathlib + `GESTION_FACTURAS_DIR`.
+- `datos/Ventas Barea Historico.xlsx` ausente en VPS → decidir vía (repo / Drive / scp manual).
+- Deploy key del VPS sin write access en GitHub → `git push origin gh-pages` desde VPS falla.
+
+**TODO refactor (backlog v4.6):**
+- `cargar_historico_wc.py:89` escribe la columna total como strings `"60,00 €"`. El fix dtype actual tolera ese formato, pero la solución de raíz es escribir floats nativos al Excel. Cuando se aborde, mantener el lector compatible con el formato antiguo para históricos persistidos.
+
+**Grep de bugs gemelos:** 0 hits adicionales de `dtype == object` en el repo.
 
 ### 19/04/2026 — Bloque 2 VPS
 - Código sincronizado PC→VPS (git pull)
