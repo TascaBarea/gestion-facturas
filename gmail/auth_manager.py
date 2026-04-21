@@ -28,11 +28,12 @@ TOKEN_PATH = os.path.join(_GMAIL_DIR, "token.json")
 CREDENTIALS_PATH = os.path.join(_GMAIL_DIR, "credentials.json")
 
 
-def get_credentials(scopes=None):
+def get_credentials():
     """Carga credenciales OAuth2, refresca si han expirado.
 
-    Args:
-        scopes: lista de scopes (opcional, se pasan a from_authorized_user_file)
+    NO se filtran scopes: el token.json dicta qué scopes están autorizados.
+    Filtrar aquí provocaba que `creds.to_json()` tras refresh sobrescribiese
+    el token con un subconjunto de scopes, perdiendo (p. ej.) `drive`.
 
     Returns:
         google.oauth2.credentials.Credentials válidas
@@ -47,14 +48,12 @@ def get_credentials(scopes=None):
             "Ejecutar: python gmail/renovar_token_business.py"
         )
 
-    kwargs = {"scopes": scopes} if scopes else {}
-    creds = Credentials.from_authorized_user_file(TOKEN_PATH, **kwargs)
+    creds = Credentials.from_authorized_user_file(TOKEN_PATH)
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             log.info("Refrescando token OAuth2...")
             creds.refresh(Request())
-            # Persistir token refrescado
             with open(TOKEN_PATH, "w") as f:
                 f.write(creds.to_json())
             log.info("Token refrescado y guardado")
@@ -67,22 +66,11 @@ def get_credentials(scopes=None):
     return creds
 
 
-def get_gmail_service(scopes=None):
-    """Devuelve servicio Gmail autenticado.
-
-    Args:
-        scopes: lista de scopes Gmail (por defecto readonly + modify)
-    """
-    if scopes is None:
-        scopes = [
-            "https://www.googleapis.com/auth/gmail.readonly",
-            "https://www.googleapis.com/auth/gmail.modify",
-        ]
-    creds = get_credentials(scopes)
-    return build("gmail", "v1", credentials=creds)
+def get_gmail_service():
+    """Devuelve servicio Gmail autenticado."""
+    return build("gmail", "v1", credentials=get_credentials())
 
 
 def get_drive_service():
-    """Devuelve servicio Drive autenticado (scope drive.file)."""
-    creds = get_credentials()
-    return build("drive", "v3", credentials=creds)
+    """Devuelve servicio Drive autenticado."""
+    return build("drive", "v3", credentials=get_credentials())

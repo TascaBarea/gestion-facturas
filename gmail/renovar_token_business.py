@@ -15,12 +15,14 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CREDENTIALS_PATH = os.path.join(SCRIPT_DIR, "credentials.json")
 TOKEN_PATH = os.path.join(SCRIPT_DIR, "token.json")
 
-# Todos los scopes que necesita el proyecto
+# Todos los scopes que necesita el proyecto.
+# drive (full) necesario porque la carpeta "Barea - Datos Compartidos" se crea
+# manualmente: drive.file solo vería archivos creados por la app y duplicaría carpetas.
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.modify",
     "https://www.googleapis.com/auth/business.manage",
-    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive",
 ]
 
 def main():
