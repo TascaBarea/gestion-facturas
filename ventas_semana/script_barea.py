@@ -2024,7 +2024,7 @@ def main():
             os.path.join(_dashboards_dir, "dashboard_comes.html"),
             os.path.join(_dashboards_dir, "dashboard_tasca.html"),
         ]
-        sync_archivos(archivos_drive, carpeta="Ventas")
+        sync_archivos(archivos_drive, carpeta=["Ventas", "Año en curso"])
         log.info("Sync Drive completado")
     except Exception as e:
         log.error("Error en sync Drive: %s", e)
