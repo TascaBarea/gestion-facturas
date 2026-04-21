@@ -2,12 +2,15 @@
 nucleo/sync_drive.py — Sincronización de archivos a Google Drive.
 
 Estrategia B: copiar resultados post-ejecución a carpeta compartida.
-Requiere scope drive.file en el token OAuth2.
+Requiere scope drive en el token OAuth2 (drive.file no basta: no ve
+carpetas creadas manualmente).
 
 Uso:
     from nucleo.sync_drive import sync_archivos
-    sync_archivos(archivos)  # lista de paths locales
-    sync_archivos(archivos, carpeta="Facturas")  # subcarpeta
+    sync_archivos(archivos)                               # raíz
+    sync_archivos(archivos, carpeta="Facturas")           # 1 nivel
+    sync_archivos(archivos, carpeta="Ventas/Año en curso")# anidado (str)
+    sync_archivos(archivos, carpeta=["Ventas", "Año en curso"])  # anidado (list)
 """
 
 import logging
@@ -86,6 +89,65 @@ def _obtener_carpeta(service, nombre, parent_id=None):
     return _crear_carpeta(service, nombre, parent_id)
 
 
+def _normalizar_carpeta(carpeta):
+    """Normaliza `carpeta` (None, str, list/tuple) a lista de segmentos.
+
+    Reglas:
+    - None o "" → [] (raíz)
+    - str con "/" → split y strip
+    - str sin "/" → [str.strip()]
+    - list/tuple → strip cada segmento
+
+    Rechaza segmentos vacíos tras strip (ej. "A//B", "/A", "A/").
+    """
+    if carpeta is None:
+        return []
+    if isinstance(carpeta, (list, tuple)):
+        segmentos = [str(s).strip() for s in carpeta]
+    elif isinstance(carpeta, str):
+        if carpeta.strip() == "":
+            return []
+        segmentos = [s.strip() for s in carpeta.split("/")]
+    else:
+        raise TypeError(
+            f"`carpeta` debe ser None, str o lista de str; recibido {type(carpeta).__name__}"
+        )
+
+    for s in segmentos:
+        if not s:
+            raise ValueError(
+                f"Segmento vacío en path de carpeta: {carpeta!r}. "
+                "No se permiten '//' ni slashes al inicio/final."
+            )
+    return segmentos
+
+
+def _resolver_o_crear_carpeta_anidada(service, segmentos, parent_id):
+    """Recorre la lista de segmentos desde parent_id, creando los que falten.
+
+    Idempotente. Devuelve el ID del último segmento. Si la lista está vacía,
+    devuelve parent_id sin tocar nada.
+    """
+    current = parent_id
+    for seg in segmentos:
+        current = _obtener_carpeta(service, seg, current)
+    return current
+
+
+def _resolver_carpeta_anidada(service, segmentos, parent_id):
+    """Recorre segmentos desde parent_id SIN CREAR. Devuelve ID o None.
+
+    Pensado para lectura: si cualquier segmento falta, devuelve None.
+    """
+    current = parent_id
+    for seg in segmentos:
+        found = _buscar_carpeta(service, seg, current)
+        if not found:
+            return None
+        current = found
+    return current
+
+
 def _buscar_archivo(service, nombre, parent_id):
     """Busca archivo por nombre en carpeta. Devuelve ID o None."""
     q = (
@@ -135,16 +197,18 @@ def _subir_o_actualizar(service, path_local, parent_id):
 # ── API pública ───────────────────────────────────────────────────────────────
 
 def sync_archivos(archivos, carpeta=None):
-    """Sube lista de archivos a Drive (carpeta raíz o subcarpeta).
+    """Sube lista de archivos a Drive (carpeta raíz o subcarpeta anidada).
 
     Args:
         archivos: lista de paths locales (ignora los que no existen)
-        carpeta: nombre de subcarpeta dentro de CARPETA_RAIZ (opcional)
+        carpeta: None | str | list[str]. Acepta "Ventas/Año en curso" o
+                 ["Ventas", "Año en curso"]. Los segmentos inexistentes se crean.
 
     Returns:
         dict con {nombre_archivo: file_id} de los subidos
     """
-    # Filtrar archivos que existen
+    segmentos = _normalizar_carpeta(carpeta)
+
     existentes = [a for a in archivos if os.path.exists(a)]
     if not existentes:
         log.warning("sync_drive: ningún archivo para subir")
@@ -156,15 +220,9 @@ def sync_archivos(archivos, carpeta=None):
         log.error("sync_drive: error de autenticación: %s", e)
         return {}
 
-    # Obtener/crear carpeta raíz
     raiz_id = _obtener_carpeta(service, CARPETA_RAIZ)
+    destino_id = _resolver_o_crear_carpeta_anidada(service, segmentos, raiz_id)
 
-    # Subcarpeta si se indica
-    destino_id = raiz_id
-    if carpeta:
-        destino_id = _obtener_carpeta(service, carpeta, raiz_id)
-
-    # Subir cada archivo
     resultados = {}
     for path in existentes:
         try:
@@ -173,10 +231,11 @@ def sync_archivos(archivos, carpeta=None):
         except Exception as e:
             log.error("sync_drive: error subiendo %s: %s", os.path.basename(path), e)
 
+    sub_legible = "/".join(segmentos)
     log.info(
         "sync_drive: %d/%d archivos sincronizados a Drive/%s%s",
         len(resultados), len(existentes),
-        CARPETA_RAIZ, f"/{carpeta}" if carpeta else ""
+        CARPETA_RAIZ, f"/{sub_legible}" if sub_legible else ""
     )
     return resultados
 
@@ -223,21 +282,32 @@ def sync_datos(base_path=None):
 
 
 def listar_carpeta(carpeta=None):
-    """Lista archivos en la carpeta compartida (para Streamlit).
+    """Lista archivos en una carpeta anidada de Drive (para Streamlit).
+
+    Args:
+        carpeta: None | str | list[str]. "Ventas/Año en curso" o
+                 ["Ventas", "Año en curso"] son equivalentes.
+
+    NO crea carpetas. Si cualquier segmento intermedio no existe,
+    devuelve [] y registra un warning.
 
     Returns:
-        lista de dicts con {name, id, modifiedTime, size, webViewLink}
+        lista de dicts con {name, id, modifiedTime, size, webViewLink, mimeType}
     """
+    segmentos = _normalizar_carpeta(carpeta)
+
     service = _get_service()
     raiz_id = _buscar_carpeta(service, CARPETA_RAIZ)
     if not raiz_id:
         return []
 
-    target_id = raiz_id
-    if carpeta:
-        target_id = _buscar_carpeta(service, carpeta, raiz_id)
-        if not target_id:
-            return []
+    target_id = _resolver_carpeta_anidada(service, segmentos, raiz_id)
+    if target_id is None:
+        log.warning(
+            "listar_carpeta: path no existe en Drive: %s/%s",
+            CARPETA_RAIZ, "/".join(segmentos),
+        )
+        return []
 
     resultado = service.files().list(
         q=f"'{target_id}' in parents and trashed = false",
