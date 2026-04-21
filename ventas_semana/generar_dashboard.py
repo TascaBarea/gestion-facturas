@@ -463,14 +463,20 @@ def _calcular_woo(df_woo):
     df = df[df["_fecha"].dt.year == int(YEAR_LIST[-1])]
     df["mes"] = df["_fecha"].dt.month
 
-    # Compatibilidad: total puede ser float (API) o string con coma (Excel limpio)
-    if df["total"].dtype == object:
+    # Compatibilidad: total puede ser float (API) o string con coma (Excel limpio).
+    # Nota: usar is_numeric_dtype — pandas 3.x reporta strings como dtype 'str', no 'object'.
+    if pd.api.types.is_numeric_dtype(df["total"]):
+        df["_total"] = df["total"].fillna(0)
+    else:
         df["_total"] = pd.to_numeric(
-            df["total"].astype(str).str.replace("€", "").str.replace(" ", "").str.replace(",", "."),
+            df["total"].astype(str)
+                       .str.replace("€", "", regex=False)
+                       .str.replace(" ", "", regex=False)
+                       .str.replace("\u00a0", "", regex=False)
+                       .str.replace(".", "", regex=False)
+                       .str.replace(",", ".", regex=False),
             errors="coerce"
         ).fillna(0)
-    else:
-        df["_total"] = df["total"].fillna(0)
 
     for m in range(1, 13):
         dm = df[df["mes"] == m]
@@ -609,14 +615,19 @@ def _calcular_woo_devengo(df_woo):
     col_fecha = "date_created" if "date_created" in df.columns else "fecha"
     df["_fecha_compra"] = pd.to_datetime(df[col_fecha], format="mixed", dayfirst=True, errors="coerce")
 
-    # Total numérico
-    if df["total"].dtype == object:
+    # Total numérico — usar is_numeric_dtype (pandas 3.x reporta strings como 'str', no 'object').
+    if pd.api.types.is_numeric_dtype(df["total"]):
+        df["_total"] = df["total"].fillna(0)
+    else:
         df["_total"] = pd.to_numeric(
-            df["total"].astype(str).str.replace("€", "").str.replace(" ", "").str.replace(",", "."),
+            df["total"].astype(str)
+                       .str.replace("€", "", regex=False)
+                       .str.replace(" ", "", regex=False)
+                       .str.replace("\u00a0", "", regex=False)
+                       .str.replace(".", "", regex=False)
+                       .str.replace(",", ".", regex=False),
             errors="coerce",
         ).fillna(0)
-    else:
-        df["_total"] = df["total"].fillna(0)
 
     for _, row in df.iterrows():
         nombre = str(row.get("items_resumen", "") or "")

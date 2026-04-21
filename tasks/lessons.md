@@ -54,6 +54,17 @@
   → REGLA: Al modificar un módulo, actualizar versión en 2 sitios: header del código + tabla en CLAUDE.md.
   → Actualizar ESQUEMA al cerrar sesión si hubo cambios significativos.
 
+### Pandas y tipos de datos
+- **`df["col"].dtype == object` es frágil entre pandas 2.x y 3.x** → pandas 3.x reporta columnas de strings como dtype `str`, no `object`, rompiendo ramas condicionales que dependen de esa igualdad.
+  → REGLA: Usar `pd.api.types.is_numeric_dtype(df["col"])` o `pd.api.types.is_object_dtype(...)` en lugar de comparar `.dtype == object`. Invertir la condición: rama fácil (es numérico) → usar directo; rama costosa (cualquier no-numérico, incluido string) → limpiar + `pd.to_numeric(errors="coerce")`.
+  → REGLA: En limpiezas sobre strings de moneda española, eliminar también `\u00a0` (non-breaking space) y pasar `regex=False` a `.str.replace()` por claridad y velocidad.
+- **VPS con versiones de paquetes divergentes de `requirements.txt`** → fallos reproducibles solo en producción (caso WC dashboard 20/04/2026: pandas 3.0.2 en VPS, 2.3.0 en PC).
+  → REGLA: Mantener `requirements.txt` pinneado y exigir al VPS respetar los pins; instalar SIEMPRE con `pip install -r requirements.txt` tras cualquier upgrade.
+  → REGLA: Tras detectar drift, alinear con `pip install "paquete==X.Y.Z"` y confirmar `pip show paquete` idéntico en ambos entornos.
+
+### TODO pendientes (para SPEC v4.5)
+- **Refactor `cargar_historico_wc.py`** → la línea 89 (`total_eur = f"{float(...):.2f}".replace(".", ",") + " €"`) escribe strings en el Excel. Esto fuerza que el dashboard tenga que limpiar "€" y coma en cada lectura. Decisión pendiente: escribir floats nativos y formatear solo al mostrar.
+
 ---
 
 ## REGISTRO DE CORRECCIONES
@@ -62,6 +73,7 @@
 | Fecha | Módulo | Error cometido | Regla añadida |
 |-------|--------|----------------|---------------|
 | 2026-03-13 | General | — | Archivo creado con errores documentados del proyecto |
+| 2026-04-21 | ventas_semana/generar_dashboard | `if df["total"].dtype == object` saltaba el cleanup en VPS (pandas 3.x, dtype `str`) → `sum()` concatenaba strings y `float()` petaba | Usar `pd.api.types.is_numeric_dtype`; pinnear pandas 2.3.0 en VPS; añadidas reglas "Pandas y tipos de datos" |
 | 2026-03-13 | Parseo | ESQUEMA buscado en carpeta equivocada | ESQUEMA está en gestion-facturas/docs/, no en Parseo/ |
 | 2026-03-13 | Gmail | REF "86" de BERNAL rechazada por gmail.py | gmail.py exigía len>=3, extractor genérico len>=2. Alineado a >=2 |
 | 2026-03-13 | La Llildiria | Total 93.94 en vez de 172.75 | PyPDF no captura tabla totales en PDFs imagen. Añadido cálculo desde subtotales + cambio a OCR primario |
