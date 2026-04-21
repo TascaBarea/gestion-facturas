@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GMAIL MODULE v1.17
+GMAIL MODULE v1.19
 Sistema Automatizado de Procesamiento de Facturas
 TASCA BAREA S.L.L. - Abril 2026
+
+MEJORAS v1.19:
+- DOBLE ESCRITURA DRIVE: cada PDF se sube también a Drive en Compras/Año en curso/T{1-4}/
+  usando trimestre_de_mmdd() para rutear. Si no hay fecha factura → T_pendiente/.
+- Excels de compras (PAGOS_Gmail, Facturas Provisional) → Compras/Año en curso/.
+- MAESTRO_PROVEEDORES.xlsx → carpeta Maestro/ (separado de Compras).
 
 MEJORAS v1.17:
 - FIX: Errores de extractores dedicados ahora logean a WARNING (antes DEBUG invisible)
@@ -29,7 +35,7 @@ Ejecuta: python gmail.py --produccion
          python gmail.py --test (modo prueba sin modificar archivos)
 """
 
-VERSION = "1.17"
+VERSION = "1.19"
 
 import os
 import sys
@@ -1651,17 +1657,17 @@ class GmailProcessor:
             self._enviar_notificacion()
             self._log_resumen()
 
-            # Sync Google Drive (Estrategia B)
+            # Sync Google Drive (Estrategia B) — excels de compras al año en curso, MAESTRO separado
             if not self.modo_test:
                 try:
                     from nucleo.sync_drive import sync_archivos
                     trimestre = obtener_trimestre(datetime.now())
-                    archivos_drive = [
+                    compras_excels = [
                         os.path.join(CONFIG.OUTPUT_PATH, f"PAGOS_Gmail_{trimestre}.xlsx"),
                         os.path.join(CONFIG.OUTPUT_PATH, f"Facturas {trimestre} Provisional.xlsx"),
-                        CONFIG.MAESTRO_PATH,
                     ]
-                    sync_archivos(archivos_drive, carpeta="Facturas")
+                    sync_archivos(compras_excels, carpeta=["Compras", "Año en curso"])
+                    sync_archivos([CONFIG.MAESTRO_PATH], carpeta=["Maestro"])
                     self.logger.info("Sync Drive completado")
                 except Exception as e:
                     self.logger.error("Error en sync Drive: %s", e)
@@ -2013,6 +2019,26 @@ class GmailProcessor:
                         resultado.archivo_generado = nombre_real
                         self.logger.info(f"  ↳ Renombrado a: {nombre_real} (colisión)")
                     self.logger.info(f"  ↳ Copiado a Dropbox Local")
+
+                # v1.19: Doble escritura — también a Google Drive (Compras/Año en curso/T{n})
+                drive_ok = False
+                if ruta_dropbox and os.path.exists(ruta_dropbox):
+                    try:
+                        from nucleo.sync_drive import sync_archivos
+                        from nucleo.utils import trimestre_de_mmdd
+                        mmdd = fecha_factura.strftime("%m%d")
+                        subcarpeta = trimestre_de_mmdd(mmdd) if factura.fecha else "T_pendiente"
+                        res_drive = sync_archivos(
+                            [ruta_dropbox],
+                            carpeta=["Compras", "Año en curso", subcarpeta],
+                        )
+                        drive_ok = bool(res_drive)
+                    except Exception as e:
+                        self.logger.warning(f"  ↳ [DRIVE FALLO] {e}")
+                self.logger.info(
+                    "  ↳ [DROPBOX OK] %s",
+                    "[DRIVE OK]" if drive_ok else "[DRIVE FALLO]",
+                )
 
             # Añadir al Excel PAGOS_Gmail (solo si no era duplicado en Dropbox)
             if not self.modo_test and not ya_en_dropbox:

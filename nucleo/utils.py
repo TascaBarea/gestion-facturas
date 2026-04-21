@@ -98,6 +98,22 @@ def obtener_trimestre(fecha: date | None = None) -> str:
     return f"{q}T{fecha.year % 100}"
 
 
+def trimestre_de_mmdd(mmdd: str) -> str:
+    """'0315' → 'T1', '0712' → 'T3'. Devuelve 'T_pendiente' si mmdd inválido.
+
+    Usado para rutear PDFs a Compras/Año en curso/T{1-4}/ en Drive.
+    """
+    try:
+        mes = int(str(mmdd)[:2])
+        if 1 <= mes <= 3: return "T1"
+        if 4 <= mes <= 6: return "T2"
+        if 7 <= mes <= 9: return "T3"
+        if 10 <= mes <= 12: return "T4"
+    except (ValueError, IndexError, TypeError):
+        pass
+    return "T_pendiente"
+
+
 FORMATOS_FECHA = ["%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d/%m/%y", "%Y%m%d"]
 
 
