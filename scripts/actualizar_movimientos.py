@@ -415,6 +415,16 @@ def main():
 
     if args.dry_run:
         print("\n[DRY-RUN] No se ha escrito nada.")
+    else:
+        # Sync a Google Drive (Movimientos Banco/Año en curso/) — best-effort
+        try:
+            import sys as _sys
+            _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            from nucleo.sync_drive import sync_archivos
+            sync_archivos([consolidado], carpeta=["Movimientos Banco", "Año en curso"])
+            print(f"[DRIVE OK] {consolidado} → Movimientos Banco/Año en curso/")
+        except Exception as e:
+            print(f"[DRIVE FALLO] {e}")
 
 
 if __name__ == "__main__":
