@@ -1,8 +1,69 @@
-# SPEC GESTION-FACTURAS v4.5
+# SPEC GESTION-FACTURAS v4.6
 
-> Documento maestro unificado — actualizado 20/04/2026
+> Documento maestro unificado — actualizado 23/04/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
+
+---
+
+## CHANGELOG v4.6 — 22–23/04/2026 (reforma destinos cloud)
+
+**Fase X.3** — Dropbox API en VPS.
+- App Dropbox `gestion-facturas-barea` creada (Scoped, Full Dropbox). Refresh token OAuth2 generado via `generar_refresh_token_dropbox.py` (one-shot, gitignored).
+- Credenciales (`DROPBOX_APP_KEY`, `DROPBOX_APP_SECRET`, `DROPBOX_REFRESH_TOKEN`) desplegadas a `/opt/gestion-facturas/config/datos_sensibles.py` en VPS via scp append.
+- Fix bug `gmail/dropbox_selector.py`: `from dropbox_api` → `from gmail.dropbox_api` (commit `0646ee9`). En PC no se notaba (rama API no se ejecutaba); en VPS sí.
+- Smoke test OK: `DropboxAPIClient` autentica `tascabarea@gmail.com`, `files_list_folder("/File inviati/TASCA BAREA S.L.L/CONTABILIDAD", limit=1)` devuelve `BANCOS`.
+
+**R.1 — gmail.py v1.21** (commit `ec83c8f`). MAESTRO **solo-lectura**.
+- Se elimina el sync MAESTRO→Drive del final del run (v1.19).
+- Fuente diferenciada por plataforma via nuevo `resolver_maestro_path(es_windows, base)`:
+  - Windows → `G:\Mi unidad\Barea - Datos Compartidos\Maestro\MAESTRO_PROVEEDORES.xlsx` (Drive Desktop).
+  - Linux → `/opt/gestion-facturas/datos/MAESTRO_PROVEEDORES.xlsx` (caché de Drive API).
+  - Env `MAESTRO_OVERRIDE` para tests/desarrollo.
+- Nuevo helper `load_maestro_from_drive()` + `MaestroDriveError`:
+  - Descarga OK → usa ruta.
+  - Descarga falla + caché existe → warning + usa caché.
+  - Descarga falla + sin caché → aborta el run.
+- **Política proveedor nuevo** (CIF detectado en PDF pero no en MAESTRO):
+  - Procesa con **nombre aproximado** (heurística primera línea PDF → fallback remitente → fallback email-user) sin prefijo REVISAR.
+  - Stub `Proveedor(nombre=nombre_aprox, cif=cif_pdf)` para que `generar_nombre_archivo` y Excels lo traten como conocido.
+  - Se registra en `proveedores_nuevos_detectados` y aparece en el email resumen en la sección "⚠️ Proveedores nuevos detectados (revisar MAESTRO)" con CIF / nombre / IBAN / nº factura / importe / fecha.
+  - El fichero `PROVEEDORES_NUEVOS_YYYYMMDD.txt` se elimina (reemplazado por sección email).
+  - Caso "PDF no parseable / sin CIF legible" sigue siendo REVISAR como antes.
+- Nuevo `nucleo.sync_drive.descargar_archivo(nombre, carpeta, destino)` con `MediaIoBaseDownload`.
+- Tests: `tests/unit/test_gmail_maestro_drive.py` (12 casos — resolver path, 6 caminos de load, heurística nombre aproximado).
+
+**R.2 — gmail.py v1.22** (commit `f72daf9`). Destinos cloud definitivos.
+- **PDFs de facturas**: solo Dropbox (destino primario permanente). Se elimina la rama Drive de `_procesar_pdf` + el helper `subir_pdf_a_drive_compras` + `tests/unit/test_gmail_drive_helper.py`.
+- **Facturas {trim} Provisional.xlsx**: doble escritura Dropbox + Drive.
+  - Dropbox: `FACTURAS {año}/FACTURAS RECIBIDAS/X TRIMESTRE {año}/` (Kinema revisa este Excel antes de validar el trimestre).
+  - Drive: `Compras/Año en curso/` (consulta del usuario).
+- **PAGOS_Gmail_{trim}.xlsx**: solo Drive en `Compras/Año en curso/`.
+- Nuevo método `subir_archivo_a_ruta(bytes, ruta_relativa)` en `LocalDropboxClient` y `DropboxAPIClient` (`WriteMode.overwrite`, semántica "última versión gana" apropiada para Excels).
+- **Guardia inicial**: si en producción `self.dropbox is None`, `ejecutar()` aborta con `RuntimeError`. Fase X.3 garantiza que VPS tiene `DropboxAPIClient`.
+- Fallos Dropbox/Drive best-effort (no abortan el run), excepto la guardia inicial. Logs `[DROPBOX OK/FALLO]` `[DRIVE OK/FALLO]`.
+
+**R.3 — cuadre.py** (commit `20105ac`). Sync a Drive.
+- Tras save exitoso del `Cuadre_DDMMYY-DDMMYY.xlsx`, best-effort upload a `Cuadres/` (raíz de Drive).
+- Bootstrap `sys.path` (3 niveles arriba) para import de `nucleo.sync_drive`. Log dual: `print` + `log()`.
+
+**R.4 — rutas PC → Drive Desktop** (commit `73d6d8e`). Las rutas hardcoded del PC apuntan a `G:\Mi unidad\Barea - Datos Compartidos\`:
+- `scripts/actualizar_movimientos.py`: auto-detect regex ahora escanea `G:\...\Movimientos Banco\Año en curso\` (no cwd); fallback hardcoded a ruta completa en G:.
+- `cuadre/banco/cuadre.py`: `MAESTRO_PATH = Path(r"G:\...\Maestro\MAESTRO_PROVEEDORES.xlsx")`.
+- `ventas_semana/script_barea.py`: `PATH_HISTORICO = os.getenv("PATH_VENTAS_HISTORICO", <fallback __file__>)`.
+- `ventas_semana/.env` (gitignored, no commit): `PATH_VENTAS`, `PATH_ARTICULOS`, `PATH_VENTAS_HISTORICO` a G:.
+- `Parseo/config/settings.py` (repo local-only sin remote): `DICCIONARIO_DEFAULT` y `MAESTRO_DEFAULT` a G:.
+- VPS no tocado — `CONFIG.MAESTRO_PATH` resuelve dinámicamente por plataforma.
+
+**R.5 — migración física Drive** (PARCIAL, snapshot hecho). Plan acordado pero pendiente de ejecutar los moves:
+- `Datos/MAESTRO_PROVEEDORES.xlsx` + `Datos/DiccionarioProveedoresCategoria.xlsx` + `Datos/Movimientos_Cuenta_26.xlsx` → mover a destinos finales (renombrando los duplicados existentes como `.OLD_20260422` y mandándolos a papelera).
+- Borrar `Datos/` y subcarpetas `Compras/Año en curso/T1..T4,T_pendiente/`.
+- Crear `Cuadres/`.
+- **Snapshot inicial confirmado el 22/04** (IDs registrados en historial de la sesión). Hallazgo añadido: `Movimientos Banco/Año en curso/` **sí** tiene `Movimientos_Cuenta_26.xlsx` previo (no previsto en plan original) — aplicar mismo patrón rename→move→trash.
+
+**R.6 y Bloque E** (pendientes): push VPS + smoke test + ejecución real `gmail.py --produccion` en VPS (manual, sin cron).
+
+**Estado intermedio importante**: entre R.4 y R.5 los scripts apuntan a G:\ pero los archivos aún viven en `datos/` local. **No ejecutar scripts** hasta completar R.5.
 
 ---
 
@@ -247,11 +308,17 @@ Cuadre_011025-020126.xlsx  → Cuadre del 01/10/25 al 02/01/26
 
 ## 6. MÓDULO COMPRAS
 
-### 6.1 GMAIL (v1.18) — ✅ 99%
+### 6.1 GMAIL (v1.22) — ✅ 99%
 
 **Script:** `gmail/gmail.py` (~2.500 líneas, Google API)
 **Módulos:** auth.py, descargar.py, identificar.py, renombrar.py, guardar.py, generar_sepa.py, dropbox_api.py, dropbox_selector.py
-**Automatización:** Cada viernes 03:00 (VPS Contabo, cron)
+**Automatización:** VPS Contabo, disparo **manual** los viernes (cron aún NO activado — decisión del usuario hasta tener 1–2 viernes empíricamente exitosos).
+
+**Destinos cloud (v1.22):**
+- PDFs de facturas → **solo Dropbox** (`FACTURAS {año}/FACTURAS RECIBIDAS/X TRIMESTRE {año}/`).
+- `Facturas {trim} Provisional.xlsx` → Dropbox + Drive/`Compras/Año en curso/` (doble escritura; Kinema revisa Dropbox).
+- `PAGOS_Gmail_{trim}.xlsx` → solo Drive/`Compras/Año en curso/`.
+- MAESTRO → **solo-lectura** (Windows: G:\...\Maestro\; Linux: cache via Drive API en `/opt/.../datos/`). gmail.py nunca modifica MAESTRO (solo `api/maestro.py` es writer, vía Streamlit).
 
 #### Flujo semanal
 
@@ -513,8 +580,33 @@ Afecta: evolución €, tickets/mes, ticket medio/mes, categorías, márgenes, W
 
 ### 9.3 Google Drive Sync
 
-Carpeta "Barea - Datos Compartidos" con subcarpetas Ventas y Facturas.
-`nucleo/sync_drive.py` integrado en script_barea.py (post-ventas) y gmail.py (post-facturas).
+Carpeta raíz: **`Barea - Datos Compartidos`** (id `1nYsbBT2oxmXAIgOdF60gqDlnuKV8X-y-`). Ruta PC via Drive Desktop: `G:\Mi unidad\Barea - Datos Compartidos\`.
+
+Estructura (tras R.5 — pendiente completar):
+```
+Barea - Datos Compartidos/
+├── Articulos/             Articulos_2026.xlsx
+├── Compras/
+│   ├── Año en curso/      PAGOS_Gmail_XTxx.xlsx, Facturas XTxx Provisional.xlsx
+│   └── Histórico/         Compras Historico.xlsx
+├── Cuadres/               Cuadre_DDMMYY-DDMMYY.xlsx (tras R.5.5)
+├── Maestro/               MAESTRO_PROVEEDORES.xlsx, DiccionarioProveedoresCategoria.xlsx
+├── Movimientos Banco/
+│   ├── Año en curso/      Movimientos_Cuenta_26.xlsx
+│   └── Histórico/
+└── Ventas/
+    ├── Año en curso/      Ventas Barea 2026.xlsx + dashboards HTML
+    └── Histórico/         Ventas Barea Historico.xlsx
+```
+
+`nucleo/sync_drive.py` (API pública): `sync_archivos(paths, carpeta)`, `descargar_archivo(nombre, carpeta, destino)`, `listar_carpeta(carpeta)`. Auth via token OAuth2 con scope `drive` (no `drive.file`) compartido con gmail.py. Clientes Dropbox en VPS: `DropboxAPIClient` con refresh token (Fase X.3).
+
+Scripts que sincronizan a Drive:
+- `ventas_semana/script_barea.py` → `["Ventas", "Año en curso"]` (Excel ventas + dashboards).
+- `scripts/actualizar_movimientos.py` → `["Movimientos Banco", "Año en curso"]`.
+- `Parseo/main.py` → `["Compras", "Año en curso"]` (Facturas_XTxx_*.xlsx).
+- `gmail/gmail.py` → `["Compras", "Año en curso"]` (ambos Excels) + Dropbox para Facturas Provisional + PDFs.
+- `cuadre/banco/cuadre.py` → `["Cuadres"]` (best-effort).
 
 ---
 
@@ -543,7 +635,7 @@ Carpeta "Barea - Datos Compartidos" con subcarpetas Ventas y Facturas.
 | Tarea | Cuándo | Cómo | Migración prevista |
 |-------|--------|------|-------------------|
 | Ventas (script_barea.py) | Lunes 03:00 | Task Scheduler Windows | CRON en VPS (Fase 2 cloud) |
-| Gmail (gmail.py) | Viernes 03:00 | **CRON en VPS Contabo** | ✅ Migrado (v5.10, 12/04/2026) |
+| Gmail (gmail.py) | Viernes (manual) | SSH al VPS, ejecución manual (cron **NO activado** hasta 1-2 viernes empíricamente OK) | Evaluar cron tras luna de miel |
 | PARSEO (main.py) | Manual (menú) | — | Se queda en PC local |
 | Validación Kinema | Manual (trimestral) | — | Se queda en PC local |
 | CUADRE | Manual (bajo demanda) | — | Se queda en PC local |
