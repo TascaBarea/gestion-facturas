@@ -1608,7 +1608,20 @@ def main():
     except Exception as e:
         print(f"   ❌ Error guardando: {e}")
         return
-    
+
+    # 8.bis (R.3) — Sincronización a Drive/Cuadres/ (best-effort, no aborta)
+    try:
+        _root = Path(__file__).resolve().parent.parent.parent
+        if str(_root) not in sys.path:
+            sys.path.insert(0, str(_root))
+        from nucleo.sync_drive import sync_archivos
+        sync_archivos([str(ruta_salida)], carpeta=["Cuadres"])
+        print(f"   [DRIVE OK] {ruta_salida.name} → Cuadres/")
+        log(f"[DRIVE OK] {ruta_salida.name} → Cuadres/")
+    except Exception as _e:
+        print(f"   [DRIVE FALLO] {_e}")
+        log(f"[DRIVE FALLO] {_e}")
+
     # 9. Guardar LOG
     guardar_log(ruta_salida)
     
