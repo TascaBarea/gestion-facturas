@@ -1,9 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GMAIL MODULE v1.21
+GMAIL MODULE v1.22
 Sistema Automatizado de Procesamiento de Facturas
 TASCA BAREA S.L.L. - Abril 2026
+
+MEJORAS v1.22 — DESTINOS CLOUD DEFINITIVOS:
+- PDFs de facturas: SOLO Dropbox (destino primario permanente).
+  Se elimina la rama Drive introducida en v1.19/v1.20.
+- Facturas {trim} Provisional.xlsx: doble escritura Dropbox + Drive.
+  · Dropbox: FACTURAS {año}/FACTURAS RECIBIDAS/X TRIMESTRE {año}/
+    (Kinema lee este Excel antes de validar el trimestre).
+  · Drive:   Compras/Año en curso/ (consulta del usuario).
+- PAGOS_Gmail_{trim}.xlsx: solo Drive (sin cambio desde v1.21).
+- Helper top-level subir_pdf_a_drive_compras ELIMINADO (obsoleto).
+- Se añade guardia inicial: si en modo producción no hay cliente Dropbox
+  disponible, el run aborta (los PDFs no pueden quedarse sin cloud).
+- Nuevo método subir_archivo_a_ruta(bytes, ruta_relativa) en
+  LocalDropboxClient y DropboxAPIClient — sube Excels/archivos
+  arbitrarios a una ruta calculada por el caller (sobrescribe).
 
 MEJORAS v1.21:
 - MAESTRO solo-lectura. gmail.py deja de modificar MAESTRO_PROVEEDORES.xlsx.
@@ -56,7 +71,7 @@ Ejecuta: python gmail.py --produccion
          python gmail.py --test (modo prueba sin modificar archivos)
 """
 
-VERSION = "1.21"
+VERSION = "1.22"
 
 import os
 import sys
@@ -983,11 +998,28 @@ class LocalDropboxClient:
 
         return ruta_completa, False
     
+    def subir_archivo_a_ruta(self, contenido: bytes, ruta_relativa: str) -> str:
+        """v1.22: sube `contenido` a `ruta_relativa` dentro de DROPBOX_BASE.
+
+        La ruta es relativa (la base la añade el cliente). Sobrescribe si existe
+        — semántica "última versión gana", pensada para Excels que crecen cada
+        run (no facturas donde sí queremos dedup). Crea directorios padre.
+
+        Returns:
+            Ruta absoluta donde quedó el archivo.
+        """
+        rel = ruta_relativa.lstrip('/\\').replace('/', os.sep)
+        destino = os.path.join(self.base_path, rel)
+        os.makedirs(os.path.dirname(destino), exist_ok=True)
+        with open(destino, 'wb') as f:
+            f.write(contenido)
+        return destino
+
     def archivo_existe(self, ruta_relativa: str) -> bool:
         """Verifica si un archivo existe en la carpeta local"""
         ruta_completa = os.path.join(self.base_path, ruta_relativa.lstrip('/\\'))
         return os.path.exists(ruta_completa)
-    
+
     def obtener_ruta_trimestre(self, fecha: datetime) -> str:
         """Genera la ruta relativa para un trimestre"""
         año = fecha.year
@@ -1754,50 +1786,6 @@ def load_maestro_from_drive(
 
 
 # ============================================================================
-# HELPER: SUBIDA DE PDF A DRIVE (desacoplado de Dropbox — v1.20)
-# ============================================================================
-
-def subir_pdf_a_drive_compras(
-    contenido: bytes,
-    nombre_archivo: str,
-    fecha_factura,
-    tiene_fecha: bool,
-    ruta_preexistente: Optional[str] = None,
-) -> bool:
-    """Sube un PDF a Drive en `Compras/Año en curso/T{n}/`.
-
-    Si `ruta_preexistente` apunta a un fichero válido (caso PC con Dropbox),
-    se reutiliza esa ruta como source. En caso contrario (VPS sin Dropbox),
-    se escribe `contenido` a un tmpdir con el nombre canónico para que Drive
-    reciba el nombre correcto, y el tmpdir se limpia al terminar.
-
-    Devuelve True si Drive aceptó la subida.
-    """
-    from nucleo.sync_drive import sync_archivos
-    from nucleo.utils import trimestre_de_mmdd
-
-    mmdd = fecha_factura.strftime("%m%d")
-    subcarpeta = trimestre_de_mmdd(mmdd) if tiene_fecha else "T_pendiente"
-    carpeta_drive = ["Compras", "Año en curso", subcarpeta]
-
-    if ruta_preexistente and os.path.exists(ruta_preexistente):
-        res = sync_archivos([ruta_preexistente], carpeta=carpeta_drive)
-        return bool(res)
-
-    import tempfile
-    import shutil as _shutil
-    tmpdir = tempfile.mkdtemp(prefix="gmail_drive_")
-    try:
-        source = os.path.join(tmpdir, nombre_archivo)
-        with open(source, "wb") as f:
-            f.write(contenido)
-        res = sync_archivos([source], carpeta=carpeta_drive)
-        return bool(res)
-    finally:
-        _shutil.rmtree(tmpdir, ignore_errors=True)
-
-
-# ============================================================================
 # PROCESADOR PRINCIPAL
 # ============================================================================
 
@@ -1831,6 +1819,16 @@ class GmailProcessor:
         
         try:
             self._conectar_servicios()
+
+            # v1.22: guardia Dropbox — en producción los PDFs deben tener destino cloud.
+            # Fase X.3 garantiza que VPS tiene DropboxAPIClient (refresh token + app key/secret).
+            # PC Windows usa LocalDropboxClient (carpeta sincronizada). Si nada → abortar.
+            if not self.modo_test and self.dropbox is None:
+                raise RuntimeError(
+                    "Dropbox no disponible en modo producción. Los PDFs de facturas "
+                    "deben tener destino cloud (Dropbox es el destino primario). "
+                    "Verifica credenciales (VPS) o ruta Dropbox Desktop (PC)."
+                )
 
             # v1.13: Filtro por fecha — solo emails posteriores a la última ejecución
             after_date = None
@@ -1866,20 +1864,39 @@ class GmailProcessor:
             self._enviar_notificacion()
             self._log_resumen()
 
-            # v1.21: sync Drive de Excels de compras. MAESTRO ya NO se sube
-            # (solo-lectura desde Drive; único writer es api/maestro.py).
+            # v1.22: destinos cloud de los Excels agregados.
+            #   - PAGOS_Gmail_{trim}.xlsx          → Drive (solo).
+            #   - Facturas {trim} Provisional.xlsx → Drive + Dropbox (Kinema lee Dropbox).
+            # Ambas rutas son best-effort: un fallo NO aborta el run.
             if not self.modo_test:
+                trimestre = obtener_trimestre(datetime.now())
+                pagos_path = os.path.join(CONFIG.OUTPUT_PATH, f"PAGOS_Gmail_{trimestre}.xlsx")
+                facturas_path = os.path.join(CONFIG.OUTPUT_PATH, f"Facturas {trimestre} Provisional.xlsx")
+
+                # Drive (ambos Excels)
                 try:
                     from nucleo.sync_drive import sync_archivos
-                    trimestre = obtener_trimestre(datetime.now())
-                    compras_excels = [
-                        os.path.join(CONFIG.OUTPUT_PATH, f"PAGOS_Gmail_{trimestre}.xlsx"),
-                        os.path.join(CONFIG.OUTPUT_PATH, f"Facturas {trimestre} Provisional.xlsx"),
-                    ]
-                    sync_archivos(compras_excels, carpeta=["Compras", "Año en curso"])
-                    self.logger.info("Sync Drive completado")
+                    sync_archivos(
+                        [pagos_path, facturas_path],
+                        carpeta=["Compras", "Año en curso"],
+                    )
+                    self.logger.info("[DRIVE OK] Excels de compras sincronizados")
                 except Exception as e:
-                    self.logger.error("Error en sync Drive: %s", e)
+                    self.logger.error("[DRIVE FALLO] %s", e)
+
+                # Dropbox (solo Facturas Provisional, en FACTURAS {año}/FACTURAS RECIBIDAS/X TRIMESTRE {año}/)
+                if self.dropbox and os.path.exists(facturas_path):
+                    try:
+                        with open(facturas_path, "rb") as f:
+                            facturas_bytes = f.read()
+                        carpeta_trim = self.dropbox.obtener_ruta_trimestre(datetime.now())
+                        ruta_rel = f"{carpeta_trim}/Facturas {trimestre} Provisional.xlsx"
+                        destino = self.dropbox.subir_archivo_a_ruta(
+                            facturas_bytes, ruta_rel
+                        )
+                        self.logger.info("[DROPBOX OK] Facturas Provisional → %s", destino)
+                    except Exception as e:
+                        self.logger.warning("[DROPBOX FALLO] Facturas Provisional: %s", e)
 
             return True
             
@@ -2244,18 +2261,17 @@ class GmailProcessor:
         self.logger.info(f"  ↳ Archivo: {nombre_generado}")
 
         if es_duplicado_cif_ref:
-            self.logger.info(f"  ↳ Duplicado CIF+REF: se omite Dropbox, Drive y Excel")
+            self.logger.info(f"  ↳ Duplicado CIF+REF: se omite Dropbox y Excel")
         else:
-            # v1.20: Dropbox y Drive desacoplados — Drive se intenta siempre (VPS no tiene Dropbox)
+            # v1.22: PDFs solo a Dropbox (destino primario permanente).
+            # La rama Drive se elimina — Drive recibe Excels agregados al final.
             ya_en_dropbox = False
             ruta_dropbox = None
             dropbox_ok = False
-            drive_ok = False
             fecha_factura = factura.fecha if factura.fecha else fecha_proceso
 
-            if not self.modo_test:
-                # ── Dropbox (solo si está disponible; omitido en VPS) ────────
-                if self.dropbox:
+            if not self.modo_test and self.dropbox:
+                try:
                     ruta_dropbox, ya_en_dropbox = self.dropbox.subir_archivo(
                         contenido,
                         nombre_generado,
@@ -2272,26 +2288,9 @@ class GmailProcessor:
                         if nombre_real != nombre_generado:
                             resultado.archivo_generado = nombre_real
                             self.logger.info(f"  ↳ Renombrado a: {nombre_real} (colisión)")
-                        self.logger.info(f"  ↳ Copiado a Dropbox Local")
-
-                # ── Drive (independiente de Dropbox) ─────────────────────────
-                try:
-                    drive_ok = subir_pdf_a_drive_compras(
-                        contenido=contenido,
-                        nombre_archivo=nombre_generado,
-                        fecha_factura=fecha_factura,
-                        tiene_fecha=bool(factura.fecha),
-                        ruta_preexistente=ruta_dropbox,
-                    )
+                        self.logger.info(f"  ↳ [DROPBOX OK] {ruta_dropbox}")
                 except Exception as e:
-                    self.logger.warning(f"  ↳ [DRIVE FALLO] {e}")
-
-                # ── Log combinado ────────────────────────────────────────────
-                tags = []
-                if self.dropbox:
-                    tags.append("[DROPBOX OK]" if dropbox_ok else "[DROPBOX FALLO]")
-                tags.append("[DRIVE OK]" if drive_ok else "[DRIVE FALLO]")
-                self.logger.info(f"  ↳ {' '.join(tags)}")
+                    self.logger.warning(f"  ↳ [DROPBOX FALLO] {e}")
 
             # Añadir al Excel PAGOS_Gmail (solo si no era duplicado en Dropbox)
             if not self.modo_test and not ya_en_dropbox:

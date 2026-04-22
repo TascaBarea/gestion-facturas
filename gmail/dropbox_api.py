@@ -155,6 +155,22 @@ class DropboxAPIClient:
             logger.error(f"  ↳ Error subiendo a Dropbox: {e}")
             raise
 
+    def subir_archivo_a_ruta(self, contenido: bytes, ruta_relativa: str) -> str:
+        """v1.22: sube `contenido` a `ruta_relativa` dentro de base_path remoto.
+
+        La ruta es relativa (la base la añade el cliente). Sobrescribe si existe
+        — semántica "última versión gana", pensada para Excels que crecen cada
+        run (no facturas donde sí queremos dedup).
+
+        Returns:
+            Ruta remota completa donde quedó el archivo.
+        """
+        rel = ruta_relativa.lstrip('/')
+        ruta_remota = f"{self.base_path}/{rel}"
+        meta = self.dbx.files_upload(contenido, ruta_remota, mode=WriteMode.overwrite)
+        logger.info("  ↳ Subido a Dropbox API (overwrite): %s", meta.path_display)
+        return meta.path_display
+
     def obtener_ruta_trimestre(self, fecha: datetime) -> str:
         """Genera ruta relativa: FACTURAS 2026/FACTURAS RECIBIDAS/2 TRIMESTRE 2026"""
         año = fecha.year
