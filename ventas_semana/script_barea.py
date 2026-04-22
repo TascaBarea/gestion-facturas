@@ -46,7 +46,11 @@ else:
 
 PATH_VENTAS = os.getenv("PATH_VENTAS")
 PATH_ARTICULOS = os.getenv("PATH_ARTICULOS")
-PATH_HISTORICO = os.path.join(os.path.dirname(_script_dir), "datos", "Ventas Barea Historico.xlsx")
+# R.4: histórico prefiere env var (Drive Desktop); fallback a datos/ local por compatibilidad
+PATH_HISTORICO = os.getenv(
+    "PATH_VENTAS_HISTORICO",
+    os.path.join(os.path.dirname(_script_dir), "datos", "Ventas Barea Historico.xlsx"),
+)
 
 # Nombres de tienda por token
 STORE_NAMES = {"LOY_TOKEN_TASCA": "Tasca", "LOY_TOKEN_COMES": "Comes"}

@@ -135,8 +135,8 @@ from cuadre.banco.reglas import (
 # CONFIGURACIÓN
 # ==============================================================================
 
-# Ruta al MAESTRO_PROVEEDORES (relativa al script o absoluta)
-MAESTRO_PATH = Path(r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\datos\MAESTRO_PROVEEDORES.xlsx")
+# Ruta al MAESTRO_PROVEEDORES (R.4: migrado a Google Drive Desktop)
+MAESTRO_PATH = Path(r"G:\Mi unidad\Barea - Datos Compartidos\Maestro\MAESTRO_PROVEEDORES.xlsx")
 
 # Directorio de salida
 OUTPUT_DIR = Path(r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\outputs")

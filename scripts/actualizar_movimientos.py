@@ -368,16 +368,20 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Simular sin escribir")
     args = parser.parse_args()
 
-    # Encontrar consolidado
+    # Encontrar consolidado (R.4: ahora vive en Drive Desktop)
+    DIR_MOV_BANCO = r"G:\Mi unidad\Barea - Datos Compartidos\Movimientos Banco\Año en curso"
     if args.consolidado:
         consolidado = args.consolidado
     else:
-        # Buscar en directorio actual
-        encontrados = detectar_archivo_consolidado(".")
+        # Buscar en la carpeta Drive del año en curso
+        try:
+            encontrados = detectar_archivo_consolidado(DIR_MOV_BANCO)
+        except (FileNotFoundError, OSError):
+            encontrados = []
         if encontrados:
-            consolidado = encontrados[0][0]
+            consolidado = os.path.join(DIR_MOV_BANCO, encontrados[0][0])
         else:
-            consolidado = "Movimientos_Cuenta_26.xlsx"
+            consolidado = os.path.join(DIR_MOV_BANCO, "Movimientos_Cuenta_26.xlsx")
 
     if args.info:
         print(f"Consolidado: {consolidado}")
