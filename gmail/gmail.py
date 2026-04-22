@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GMAIL MODULE v1.19
+GMAIL MODULE v1.20
 Sistema Automatizado de Procesamiento de Facturas
 TASCA BAREA S.L.L. - Abril 2026
+
+MEJORAS v1.20:
+- DESACOPLE DRIVE/DROPBOX: la subida a Drive ya no depende de que Dropbox esté activo.
+  En VPS (sin Dropbox) se escribe el PDF a un tmpdir con el nombre canónico y se sube
+  a Drive; se limpia al terminar. En PC con Dropbox se sigue reusando el archivo ya
+  escrito. Log adapta tags según qué destinos aplican.
 
 MEJORAS v1.19:
 - DOBLE ESCRITURA DRIVE: cada PDF se sube también a Drive en Compras/Año en curso/T{1-4}/
@@ -35,7 +41,7 @@ Ejecuta: python gmail.py --produccion
          python gmail.py --test (modo prueba sin modificar archivos)
 """
 
-VERSION = "1.19"
+VERSION = "1.20"
 
 import os
 import sys
@@ -1594,6 +1600,50 @@ class BackupManager:
 
 
 # ============================================================================
+# HELPER: SUBIDA DE PDF A DRIVE (desacoplado de Dropbox — v1.20)
+# ============================================================================
+
+def subir_pdf_a_drive_compras(
+    contenido: bytes,
+    nombre_archivo: str,
+    fecha_factura,
+    tiene_fecha: bool,
+    ruta_preexistente: Optional[str] = None,
+) -> bool:
+    """Sube un PDF a Drive en `Compras/Año en curso/T{n}/`.
+
+    Si `ruta_preexistente` apunta a un fichero válido (caso PC con Dropbox),
+    se reutiliza esa ruta como source. En caso contrario (VPS sin Dropbox),
+    se escribe `contenido` a un tmpdir con el nombre canónico para que Drive
+    reciba el nombre correcto, y el tmpdir se limpia al terminar.
+
+    Devuelve True si Drive aceptó la subida.
+    """
+    from nucleo.sync_drive import sync_archivos
+    from nucleo.utils import trimestre_de_mmdd
+
+    mmdd = fecha_factura.strftime("%m%d")
+    subcarpeta = trimestre_de_mmdd(mmdd) if tiene_fecha else "T_pendiente"
+    carpeta_drive = ["Compras", "Año en curso", subcarpeta]
+
+    if ruta_preexistente and os.path.exists(ruta_preexistente):
+        res = sync_archivos([ruta_preexistente], carpeta=carpeta_drive)
+        return bool(res)
+
+    import tempfile
+    import shutil as _shutil
+    tmpdir = tempfile.mkdtemp(prefix="gmail_drive_")
+    try:
+        source = os.path.join(tmpdir, nombre_archivo)
+        with open(source, "wb") as f:
+            f.write(contenido)
+        res = sync_archivos([source], carpeta=carpeta_drive)
+        return bool(res)
+    finally:
+        _shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+# ============================================================================
 # PROCESADOR PRINCIPAL
 # ============================================================================
 
@@ -1996,49 +2046,54 @@ class GmailProcessor:
         self.logger.info(f"  ↳ Archivo: {nombre_generado}")
 
         if es_duplicado_cif_ref:
-            self.logger.info(f"  ↳ Duplicado CIF+REF: se omite Dropbox y Excel")
+            self.logger.info(f"  ↳ Duplicado CIF+REF: se omite Dropbox, Drive y Excel")
         else:
-            # Subir a Dropbox Local (v1.4, dedup v1.5)
+            # v1.20: Dropbox y Drive desacoplados — Drive se intenta siempre (VPS no tiene Dropbox)
             ya_en_dropbox = False
-            if self.dropbox and not self.modo_test:
-                fecha_factura = factura.fecha if factura.fecha else fecha_proceso
+            ruta_dropbox = None
+            dropbox_ok = False
+            drive_ok = False
+            fecha_factura = factura.fecha if factura.fecha else fecha_proceso
 
-                ruta_dropbox, ya_en_dropbox = self.dropbox.subir_archivo(
-                    contenido,
-                    nombre_generado,
-                    fecha_factura,
-                    fecha_proceso
-                )
-                resultado.dropbox_path = ruta_dropbox
-                if ya_en_dropbox:
-                    self.logger.info(f"  ↳ Ya existe en Dropbox (contenido idéntico), saltando")
-                else:
-                    # Actualizar nombre si Dropbox añadió sufijo anti-colisión
-                    nombre_real = os.path.basename(ruta_dropbox)
-                    if nombre_real != nombre_generado:
-                        resultado.archivo_generado = nombre_real
-                        self.logger.info(f"  ↳ Renombrado a: {nombre_real} (colisión)")
-                    self.logger.info(f"  ↳ Copiado a Dropbox Local")
+            if not self.modo_test:
+                # ── Dropbox (solo si está disponible; omitido en VPS) ────────
+                if self.dropbox:
+                    ruta_dropbox, ya_en_dropbox = self.dropbox.subir_archivo(
+                        contenido,
+                        nombre_generado,
+                        fecha_factura,
+                        fecha_proceso,
+                    )
+                    resultado.dropbox_path = ruta_dropbox
+                    dropbox_ok = True
+                    if ya_en_dropbox:
+                        self.logger.info(f"  ↳ Ya existe en Dropbox (contenido idéntico), saltando")
+                    else:
+                        # Actualizar nombre si Dropbox añadió sufijo anti-colisión
+                        nombre_real = os.path.basename(ruta_dropbox)
+                        if nombre_real != nombre_generado:
+                            resultado.archivo_generado = nombre_real
+                            self.logger.info(f"  ↳ Renombrado a: {nombre_real} (colisión)")
+                        self.logger.info(f"  ↳ Copiado a Dropbox Local")
 
-                # v1.19: Doble escritura — también a Google Drive (Compras/Año en curso/T{n})
-                drive_ok = False
-                if ruta_dropbox and os.path.exists(ruta_dropbox):
-                    try:
-                        from nucleo.sync_drive import sync_archivos
-                        from nucleo.utils import trimestre_de_mmdd
-                        mmdd = fecha_factura.strftime("%m%d")
-                        subcarpeta = trimestre_de_mmdd(mmdd) if factura.fecha else "T_pendiente"
-                        res_drive = sync_archivos(
-                            [ruta_dropbox],
-                            carpeta=["Compras", "Año en curso", subcarpeta],
-                        )
-                        drive_ok = bool(res_drive)
-                    except Exception as e:
-                        self.logger.warning(f"  ↳ [DRIVE FALLO] {e}")
-                self.logger.info(
-                    "  ↳ [DROPBOX OK] %s",
-                    "[DRIVE OK]" if drive_ok else "[DRIVE FALLO]",
-                )
+                # ── Drive (independiente de Dropbox) ─────────────────────────
+                try:
+                    drive_ok = subir_pdf_a_drive_compras(
+                        contenido=contenido,
+                        nombre_archivo=nombre_generado,
+                        fecha_factura=fecha_factura,
+                        tiene_fecha=bool(factura.fecha),
+                        ruta_preexistente=ruta_dropbox,
+                    )
+                except Exception as e:
+                    self.logger.warning(f"  ↳ [DRIVE FALLO] {e}")
+
+                # ── Log combinado ────────────────────────────────────────────
+                tags = []
+                if self.dropbox:
+                    tags.append("[DROPBOX OK]" if dropbox_ok else "[DROPBOX FALLO]")
+                tags.append("[DRIVE OK]" if drive_ok else "[DRIVE FALLO]")
+                self.logger.info(f"  ↳ {' '.join(tags)}")
 
             # Añadir al Excel PAGOS_Gmail (solo si no era duplicado en Dropbox)
             if not self.modo_test and not ya_en_dropbox:
