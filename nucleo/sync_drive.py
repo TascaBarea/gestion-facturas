@@ -13,11 +13,12 @@ Uso:
     sync_archivos(archivos, carpeta=["Ventas", "Año en curso"])  # anidado (list)
 """
 
+import io
 import logging
 import os
 import sys
 
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 log = logging.getLogger("sync_drive")
 
@@ -279,6 +280,59 @@ def sync_datos(base_path=None):
         sync_archivos(archivos, carpeta="Datos")
 
     return archivos
+
+
+def descargar_archivo(nombre, carpeta, destino_local):
+    """Descarga un archivo de Drive a una ruta local.
+
+    Args:
+        nombre: nombre exacto del archivo en Drive (p.ej. "MAESTRO_PROVEEDORES.xlsx").
+        carpeta: None | str | list[str]. Ruta en Drive donde vive el archivo.
+                 Misma semántica que sync_archivos/listar_carpeta.
+        destino_local: path local donde escribir los bytes descargados.
+                       El directorio padre se crea si no existe.
+
+    Returns:
+        True si descargado, False si no encontrado en Drive.
+
+    Raises:
+        RuntimeError en fallo de autenticación o red.
+    """
+    segmentos = _normalizar_carpeta(carpeta)
+
+    service = _get_service()
+    raiz_id = _buscar_carpeta(service, CARPETA_RAIZ)
+    if not raiz_id:
+        log.warning("descargar_archivo: raíz %s no existe en Drive", CARPETA_RAIZ)
+        return False
+
+    target_id = _resolver_carpeta_anidada(service, segmentos, raiz_id)
+    if target_id is None:
+        log.warning(
+            "descargar_archivo: path no existe: %s/%s",
+            CARPETA_RAIZ, "/".join(segmentos),
+        )
+        return False
+
+    file_id = _buscar_archivo(service, nombre, target_id)
+    if not file_id:
+        log.warning("descargar_archivo: %s no encontrado en %s", nombre, "/".join(segmentos))
+        return False
+
+    os.makedirs(os.path.dirname(os.path.abspath(destino_local)), exist_ok=True)
+
+    request = service.files().get_media(fileId=file_id)
+    buf = io.BytesIO()
+    downloader = MediaIoBaseDownload(buf, request)
+    done = False
+    while not done:
+        _status, done = downloader.next_chunk()
+
+    with open(destino_local, "wb") as f:
+        f.write(buf.getvalue())
+
+    log.info("Descargado de Drive: %s → %s", nombre, destino_local)
+    return True
 
 
 def listar_carpeta(carpeta=None):

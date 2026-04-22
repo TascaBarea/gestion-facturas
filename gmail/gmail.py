@@ -1,9 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GMAIL MODULE v1.20
+GMAIL MODULE v1.21
 Sistema Automatizado de Procesamiento de Facturas
 TASCA BAREA S.L.L. - Abril 2026
+
+MEJORAS v1.21:
+- MAESTRO solo-lectura. gmail.py deja de modificar MAESTRO_PROVEEDORES.xlsx.
+  Se elimina el sync MAESTRO→Drive del final del run (v1.19).
+- FUENTE DIFERENCIADA: en Windows (PC) lee directamente de
+  G:\\Mi unidad\\Barea - Datos Compartidos\\Maestro\\ (Drive Desktop).
+  En Linux (VPS) descarga vía Drive API a /opt/gestion-facturas/datos/
+  como caché. MAESTRO_OVERRIDE env var fuerza ruta (tests/dev).
+- POLÍTICA PROVEEDOR NUEVO: si un PDF con CIF detectado NO está en MAESTRO
+  pero es parseable, se procesa con nombre aproximado (del PDF/remitente)
+  y se registra en el email resumen sección "Proveedores nuevos detectados".
+  YA NO se marca REVISAR por este motivo ni se rechaza el Excel.
+  Caso "PDF no parseable / sin CIF" sigue siendo REVISAR.
+- Se elimina el fichero PROVEEDORES_NUEVOS_YYYYMMDD.txt (reemplazado por
+  sección HTML en el email de resumen).
 
 MEJORAS v1.20:
 - DESACOPLE DRIVE/DROPBOX: la subida a Drive ya no depende de que Dropbox esté activo.
@@ -41,7 +56,7 @@ Ejecuta: python gmail.py --produccion
          python gmail.py --test (modo prueba sin modificar archivos)
 """
 
-VERSION = "1.20"
+VERSION = "1.21"
 
 import os
 import sys
@@ -81,7 +96,7 @@ except ImportError:
 
 # Maestro proveedores (centralizado en nucleo/)
 from nucleo.maestro import Proveedor, MaestroProveedores, normalizar_nombre_proveedor
-from nucleo.parser import extraer_fecha, extraer_total, extraer_referencia, extraer_iban
+from nucleo.parser import extraer_fecha, extraer_total, extraer_referencia, extraer_iban, extraer_cif
 
 # Excel
 from openpyxl import Workbook, load_workbook
@@ -92,6 +107,26 @@ from openpyxl.worksheet.datavalidation import DataValidation
 # ============================================================================
 # CONFIGURACIÓN v1.14
 # ============================================================================
+
+# Raíz Drive Desktop en PC (G: por defecto de Google Drive)
+_MAESTRO_PATH_WINDOWS = r"G:\Mi unidad\Barea - Datos Compartidos\Maestro\MAESTRO_PROVEEDORES.xlsx"
+
+
+def resolver_maestro_path(es_windows: bool, base_path: str) -> str:
+    """Resuelve la ruta al MAESTRO_PROVEEDORES.xlsx según plataforma.
+
+    Prioridad:
+      1) env MAESTRO_OVERRIDE (tests/desarrollo)
+      2) Windows → G:\\Mi unidad\\Barea - Datos Compartidos\\Maestro\\...
+      3) Linux   → <base_path>/datos/MAESTRO_PROVEEDORES.xlsx (caché de Drive API)
+    """
+    override = os.environ.get("MAESTRO_OVERRIDE")
+    if override:
+        return override
+    if es_windows:
+        return _MAESTRO_PATH_WINDOWS
+    return os.path.join(base_path, "datos", "MAESTRO_PROVEEDORES.xlsx")
+
 
 @dataclass
 class Config:
@@ -201,7 +236,7 @@ class Config:
             pass
         if not self.GMAIL_PATH:
             self.GMAIL_PATH = os.path.join(self.BASE_PATH, "gmail")
-        self.MAESTRO_PATH = os.path.join(self.BASE_PATH, "datos", "MAESTRO_PROVEEDORES.xlsx")
+        self.MAESTRO_PATH = resolver_maestro_path(self._ES_WINDOWS, self.BASE_PATH)
         self.JSON_PATH = os.path.join(self.BASE_PATH, "datos", "emails_procesados.json")
         self.OUTPUT_PATH = os.path.join(self.BASE_PATH, "outputs")
         self.LOGS_PATH = os.path.join(self.BASE_PATH, "outputs", "logs_gmail")
@@ -249,6 +284,8 @@ class ResultadoProcesamiento:
     iban_sugerido: str = ""
     alerta_roja: bool = False
     es_duplicado: bool = False
+    es_proveedor_nuevo: bool = False
+    cif_detectado: str = ""
 
 
 # ============================================================================
@@ -1430,7 +1467,8 @@ class Notificador:
         errores: List[str],
         excel_path: str,
         dropbox_folder: str,
-        log_path: str
+        log_path: str,
+        proveedores_nuevos: Optional[List[Dict[str, Any]]] = None,
     ):
         """Envía email de resumen HTML"""
         total = len(procesados)
@@ -1524,6 +1562,46 @@ class Notificador:
                 """
             html += "</table>"
         
+        # v1.21: Sección "Proveedores nuevos detectados"
+        if proveedores_nuevos:
+            html += """
+            <h3>⚠️ Proveedores nuevos detectados (revisar MAESTRO)</h3>
+            <p><small>Estos proveedores NO están en MAESTRO_PROVEEDORES.xlsx. Se han procesado con nombre aproximado. Dar de alta para próximas ejecuciones.</small></p>
+            <table>
+                <tr>
+                    <th>CIF</th>
+                    <th>Nombre aproximado</th>
+                    <th>IBAN</th>
+                    <th>Nº factura</th>
+                    <th>Importe</th>
+                    <th>Fecha</th>
+                </tr>
+            """
+            for pn in proveedores_nuevos:
+                importe = ""
+                if pn.get("total") is not None:
+                    try:
+                        importe = f"{pn['total']:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+                    except (TypeError, ValueError):
+                        importe = str(pn["total"])
+                fecha_str = ""
+                if pn.get("fecha"):
+                    try:
+                        fecha_str = pn["fecha"].strftime("%d/%m/%Y")
+                    except AttributeError:
+                        fecha_str = str(pn["fecha"])
+                html += f"""
+                <tr>
+                    <td>{pn.get("cif", "")}</td>
+                    <td>{pn.get("nombre_aproximado", "")}</td>
+                    <td>{pn.get("iban", "")}</td>
+                    <td>{pn.get("referencia", "")}</td>
+                    <td>{importe}</td>
+                    <td>{fecha_str}</td>
+                </tr>
+                """
+            html += "</table>"
+
         if errores:
             html += """
             <h3>❌ Errores</h3>
@@ -1600,6 +1678,82 @@ class BackupManager:
 
 
 # ============================================================================
+# HELPER: CARGA DE MAESTRO DESDE DRIVE (v1.21)
+# ============================================================================
+
+
+class MaestroDriveError(RuntimeError):
+    """Fallo fatal al cargar MAESTRO desde Drive sin caché disponible."""
+
+
+def load_maestro_from_drive(
+    ruta_local: str,
+    es_windows: Optional[bool] = None,
+    logger: Optional[logging.Logger] = None,
+) -> str:
+    """Garantiza que MAESTRO_PROVEEDORES.xlsx esté disponible en `ruta_local`.
+
+    Comportamiento diferenciado:
+      - Windows (PC): `ruta_local` apunta a G:\\Mi unidad\\... (Drive Desktop).
+        Si el fichero existe, OK. Si no, se lanza MaestroDriveError
+        (el usuario debe tener Drive Desktop sincronizado).
+      - Linux (VPS): descarga desde Drive API a `ruta_local` como caché.
+        Si la descarga falla y existe caché previa → warning, se usa caché.
+        Si falla sin caché → MaestroDriveError.
+
+    Si `es_windows` es None, se detecta con `platform.system()`.
+    """
+    log = logger or logging.getLogger("gmail_module")
+    if es_windows is None:
+        es_windows = platform.system() == "Windows"
+
+    if es_windows:
+        if os.path.exists(ruta_local):
+            return ruta_local
+        raise MaestroDriveError(
+            f"MAESTRO no encontrado en {ruta_local}. "
+            "¿Drive Desktop sincronizado? ¿Carpeta 'Maestro' existe en Drive?"
+        )
+
+    # Linux: descarga vía API
+    try:
+        from nucleo.sync_drive import descargar_archivo
+        ok = descargar_archivo(
+            nombre="MAESTRO_PROVEEDORES.xlsx",
+            carpeta=["Maestro"],
+            destino_local=ruta_local,
+        )
+        if ok:
+            log.info("MAESTRO descargado de Drive → %s", ruta_local)
+            return ruta_local
+        # No encontrado en Drive
+        if os.path.exists(ruta_local):
+            log.warning(
+                "MAESTRO no encontrado en Drive; usando caché local %s",
+                ruta_local,
+            )
+            return ruta_local
+        raise MaestroDriveError(
+            "MAESTRO no existe ni en Drive (Maestro/MAESTRO_PROVEEDORES.xlsx) "
+            f"ni en caché local {ruta_local}. Abortando run."
+        )
+    except MaestroDriveError:
+        raise
+    except Exception as e:
+        # Drive down / red / auth — caer a caché si la hay
+        if os.path.exists(ruta_local):
+            log.warning(
+                "Fallo descargando MAESTRO de Drive (%s); usando caché local %s",
+                e, ruta_local,
+            )
+            return ruta_local
+        raise MaestroDriveError(
+            f"Fallo al descargar MAESTRO de Drive ({e}) y no hay caché local "
+            f"en {ruta_local}. Abortando run."
+        ) from e
+
+
+# ============================================================================
 # HELPER: SUBIDA DE PDF A DRIVE (desacoplado de Dropbox — v1.20)
 # ============================================================================
 
@@ -1653,16 +1807,21 @@ class GmailProcessor:
     def __init__(self, modo_test: bool = False):
         self.modo_test = modo_test
         self.logger = configurar_logging(modo_test)
-        
+
+        # v1.21: garantizar MAESTRO disponible (PC=G: / VPS=descarga Drive)
+        load_maestro_from_drive(CONFIG.MAESTRO_PATH, logger=self.logger)
+
         self.maestro = MaestroProveedores(CONFIG.MAESTRO_PATH)
         self.control = ControlDuplicados(CONFIG.JSON_PATH)
         self.backup = BackupManager(CONFIG.BACKUPS_PATH)
-        
+
         self.gmail = None
         self.dropbox = None
-        
+
         self.resultados: List[ResultadoProcesamiento] = []
         self.errores: List[str] = []
+        # v1.21: tracking de proveedores nuevos para email resumen
+        self.proveedores_nuevos_detectados: List[Dict[str, Any]] = []
     
     def ejecutar(self) -> bool:
         """Ejecuta el procesamiento completo"""
@@ -1707,7 +1866,8 @@ class GmailProcessor:
             self._enviar_notificacion()
             self._log_resumen()
 
-            # Sync Google Drive (Estrategia B) — excels de compras al año en curso, MAESTRO separado
+            # v1.21: sync Drive de Excels de compras. MAESTRO ya NO se sube
+            # (solo-lectura desde Drive; único writer es api/maestro.py).
             if not self.modo_test:
                 try:
                     from nucleo.sync_drive import sync_archivos
@@ -1717,7 +1877,6 @@ class GmailProcessor:
                         os.path.join(CONFIG.OUTPUT_PATH, f"Facturas {trimestre} Provisional.xlsx"),
                     ]
                     sync_archivos(compras_excels, carpeta=["Compras", "Año en curso"])
-                    sync_archivos([CONFIG.MAESTRO_PATH], carpeta=["Maestro"])
                     self.logger.info("Sync Drive completado")
                 except Exception as e:
                     self.logger.error("Error en sync Drive: %s", e)
@@ -1937,9 +2096,36 @@ class GmailProcessor:
         resultado.proveedor_identificado = proveedor is not None
 
         if not proveedor:
-            resultado.requiere_revision = True
-            resultado.motivo_revision = "Proveedor no identificado"
-            self.logger.warning(f"  ↳ Proveedor no identificado")
+            # v1.21: si hay CIF legible en el PDF → proveedor nuevo (stub + tracking).
+            # Si no hay CIF → sigue siendo REVISAR (PDF no parseable / sin info).
+            cif_pdf = extraer_cif(texto_pdf_cache) if texto_pdf_cache else None
+            if cif_pdf:
+                nombre_aprox = self._nombre_aproximado(
+                    texto_pdf_cache, nombre_remitente, resultado.remitente
+                )
+                proveedor = Proveedor(
+                    nombre=nombre_aprox,
+                    cif=cif_pdf,
+                    iban="",
+                    forma_pago="",
+                    email="",
+                    alias=[],
+                    cuenta="",
+                    tiene_extractor=False,
+                    archivo_extractor="",
+                )
+                resultado.proveedor = proveedor
+                resultado.proveedor_identificado = True
+                resultado.es_proveedor_nuevo = True
+                resultado.cif_detectado = cif_pdf
+                self.logger.info(
+                    f"  ↳ Proveedor NUEVO (no en MAESTRO): {nombre_aprox} "
+                    f"(CIF {cif_pdf}) — procesando con nombre aproximado"
+                )
+            else:
+                resultado.requiere_revision = True
+                resultado.motivo_revision = "Proveedor no identificado"
+                self.logger.warning(f"  ↳ Proveedor no identificado")
         else:
             self.logger.info(f"  ↳ Proveedor: {proveedor.nombre}")
 
@@ -2029,6 +2215,18 @@ class GmailProcessor:
                 else:
                     self.logger.info(f"  ↳ 💡 IBAN detectado en PDF: {iban_pdf[:8]}... (no está en MAESTRO)")
         
+        # v1.21: registrar proveedor nuevo para la sección del email resumen.
+        # El IBAN del PDF (si difiere del MAESTRO) llega en factura.iban_detectado.
+        if resultado.es_proveedor_nuevo:
+            self.proveedores_nuevos_detectados.append({
+                "cif": resultado.cif_detectado,
+                "nombre_aproximado": proveedor.nombre if proveedor else "",
+                "iban": factura.iban_detectado or "",
+                "referencia": factura.referencia or "",
+                "total": factura.total,
+                "fecha": factura.fecha,
+            })
+
         # v1.8: Detectar duplicado CIF+REF (o NOMBRE+REF si CIF vacío)
         es_duplicado_cif_ref = False
         if proveedor and factura.referencia:
@@ -2329,26 +2527,41 @@ class GmailProcessor:
         
         self.logger.warning(f"  ↳ Imagen, requiere revisión manual")
     
+    def _nombre_aproximado(
+        self,
+        texto_pdf: str,
+        nombre_remitente: str,
+        remitente_email: str,
+    ) -> str:
+        """Heurística para asignar un nombre comercial a un proveedor nuevo.
+
+        Prioridad: primera línea 'razonable' del texto del PDF (3-80 chars,
+        con al menos 2 letras), fallback al nombre del remitente, fallback
+        al usuario antes del @ del email, fallback al email completo.
+        """
+        if texto_pdf:
+            for linea in texto_pdf.splitlines():
+                candidata = linea.strip()
+                if 3 <= len(candidata) <= 80 and sum(c.isalpha() for c in candidata) >= 2:
+                    # Evitar líneas que son claramente no-nombre
+                    bajo = candidata.lower()
+                    if any(p in bajo for p in ("factura", "invoice", "fecha", "nº ", "n.", "cif", "iva", "total")):
+                        continue
+                    return candidata
+        if nombre_remitente and nombre_remitente.strip():
+            return nombre_remitente.strip()
+        email = remitente_email or ""
+        if "<" in email and ">" in email:
+            email = email.split("<")[1].split(">")[0].strip()
+        if "@" in email:
+            return email.split("@")[0]
+        return email or "DESCONOCIDO"
+
     def _generar_proveedores_nuevos(self):
-        """Genera archivo con sugerencias de proveedores nuevos"""
-        nuevos = [r for r in self.resultados if not r.proveedor_identificado and r.remitente]
-        
-        if nuevos:
-            fecha = datetime.now().strftime("%Y%m%d")
-            ruta = os.path.join(CONFIG.OUTPUT_PATH, f"PROVEEDORES_NUEVOS_{fecha}.txt")
-            
-            with open(ruta, 'w', encoding='utf-8') as f:
-                f.write("PROVEEDORES NUEVOS DETECTADOS\n")
-                f.write(f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n")
-                f.write("=" * 60 + "\n\n")
-                
-                for r in nuevos:
-                    f.write(f"Remitente: {r.remitente}\n")
-                    f.write(f"Asunto: {r.asunto}\n")
-                    f.write(f"Archivo: {r.archivo_generado}\n")
-                    f.write("-" * 40 + "\n\n")
-            
-            self.logger.info(f"Archivo de proveedores nuevos: {ruta}")
+        """v1.21: NO-OP. La sección de proveedores nuevos ahora va en el
+        email resumen (ver Notificador.enviar_resumen). Se mantiene el
+        método para no romper llamadas existentes."""
+        return
     
     def _enviar_notificacion(self):
         """Envía email de notificación"""
@@ -2367,7 +2580,8 @@ class GmailProcessor:
                 self.errores,
                 excel_path,
                 CONFIG.DROPBOX_BASE,
-                log_path
+                log_path,
+                proveedores_nuevos=self.proveedores_nuevos_detectados,
             )
             self.logger.info("Notificación enviada ✓")
         except Exception as e:
