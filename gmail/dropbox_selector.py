@@ -37,14 +37,14 @@ def crear_cliente_dropbox(config):
     )
 
     if refresh_token and app_key and app_secret:
-        from dropbox_api import DropboxAPIClient
+        from gmail.dropbox_api import DropboxAPIClient
         logger.info("Usando Dropbox API (refresh token)")
         return DropboxAPIClient(refresh_token, dropbox_api_base, app_key, app_secret)
 
     # Fallback: access token directo (legacy)
     dropbox_token = getattr(config, 'DROPBOX_TOKEN', '') or os.environ.get('DROPBOX_TOKEN', '')
     if dropbox_token:
-        from dropbox_api import DropboxAPIClient
+        from gmail.dropbox_api import DropboxAPIClient
         logger.info("Usando Dropbox API (access token directo)")
         return DropboxAPIClient(dropbox_token, dropbox_api_base)
 
