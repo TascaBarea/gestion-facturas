@@ -55,15 +55,17 @@
 - `Parseo/config/settings.py` (repo local-only sin remote): `DICCIONARIO_DEFAULT` y `MAESTRO_DEFAULT` a G:.
 - VPS no tocado — `CONFIG.MAESTRO_PATH` resuelve dinámicamente por plataforma.
 
-**R.5 — migración física Drive** (PARCIAL, snapshot hecho). Plan acordado pero pendiente de ejecutar los moves:
-- `Datos/MAESTRO_PROVEEDORES.xlsx` + `Datos/DiccionarioProveedoresCategoria.xlsx` + `Datos/Movimientos_Cuenta_26.xlsx` → mover a destinos finales (renombrando los duplicados existentes como `.OLD_20260422` y mandándolos a papelera).
-- Borrar `Datos/` y subcarpetas `Compras/Año en curso/T1..T4,T_pendiente/`.
-- Crear `Cuadres/`.
-- **Snapshot inicial confirmado el 22/04** (IDs registrados en historial de la sesión). Hallazgo añadido: `Movimientos Banco/Año en curso/` **sí** tiene `Movimientos_Cuenta_26.xlsx` previo (no previsto en plan original) — aplicar mismo patrón rename→move→trash.
+**R.5 — migración física Drive** (EJECUTADA 23/04). Resultado:
+- 3 archivos movidos de `Datos/` con patrón rename→move→trash (IDs preservados). Los 3 duplicados viejos quedan en papelera Drive como `*.OLD_20260423` (30 días recuperable).
+- `Datos/` + subcarpetas `Compras/Año en curso/{T1..T4,T_pendiente}/` trasheadas.
+- `Cuadres/` creada (id `1iaW1BmqT1JALvVDCb0byCw8aR1u0gkoy`).
+- Snapshot final verificado — estructura coincide con la esperada.
 
-**R.6 y Bloque E** (pendientes): push VPS + smoke test + ejecución real `gmail.py --produccion` en VPS (manual, sin cron).
+**R.6 — push + pull VPS + smoke test** (EJECUTADO 23/04). 5 commits pusheados a GitHub, pull VPS fast-forward, py_compile + imports + VERSION 1.22 + `MaestroProveedores` (195 proveedores, CIF propio filtrado) todo verde. Cron VPS sigue inactivo (decisión del usuario).
 
-**Estado intermedio importante**: entre R.4 y R.5 los scripts apuntan a G:\ pero los archivos aún viven en `datos/` local. **No ejecutar scripts** hasta completar R.5.
+**Fix B — token VPS scope Drive** (EJECUTADO 23/04). Durante smoke R.6 se detectó que el token VPS sólo tenía scopes Gmail (`gmail.readonly`, `gmail.modify`) — faltaba `drive`. `load_maestro_from_drive` caía silenciosamente al fallback caché (403 `insufficientPermissions`). Fix: scp del `token.json` del PC al VPS. PC tiene 4 scopes (gmail.readonly, gmail.modify, business.manage, drive) y mismo `client_id` (`955658996230-8tr632h8aju0mt2loi8vo03vl7iqtba2.apps.googleusercontent.com`). Post-fix: descarga real MAESTRO desde Drive verificada (size 28 657, md5 `1f56005c59896e62c72d23ef68a98673`, cero warnings de fallback). 3 backups del token VPS conservados en `gmail/token.json.bak*` (red de seguridad 30 días).
+
+**Bloque E** (pendiente): ejecución real `python3 gmail/gmail.py --produccion` en VPS el viernes 24/04 con disparo manual. Observables: `[DROPBOX OK]` por PDF, `[DRIVE OK]` para Excels finales en `Compras/Año en curso/`, doble escritura Facturas Provisional (Dropbox + Drive), email resumen con sección "Proveedores nuevos detectados" si aplica, MAESTRO sin modificar.
 
 ---
 
