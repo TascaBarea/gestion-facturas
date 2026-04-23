@@ -5,14 +5,30 @@
 ---
 
 ## Próxima sesión
-**Objetivo:** CUADRE + pendientes menores
+**Objetivo:** Bloque E — ejecución real gmail.py --produccion en VPS (viernes 24/04, disparo manual).
 
-### Backlog 20/04/2026 (detectado tras fix dashboard dtype — ver SPEC v4.5 §14)
-- [ ] 20A — Google Drive sync: HTTP 403 "insufficient authentication scopes" (PC+VPS). Cambiar scope `drive.readonly` → `drive` en `nucleo/sync_drive.py`, regenerar `token.json`, propagar al VPS.
-- [ ] 20B — Ruta Windows hardcoded `C:\...\datos\Articulos 26.xlsx` falla en VPS. `grep` para localizar + migrar a `pathlib.Path` con `GESTION_FACTURAS_DIR`.
-- [ ] 20C — `datos/Ventas Barea Historico.xlsx` ausente en VPS. Copiar con `scp` en próximo despliegue; decidir vía (repo / Drive / sync manual).
-- [ ] 20D — Deploy key VPS sin write access en GitHub → `git push origin gh-pages` desde VPS falla. Regenerar key con write o condicionar push a PC.
-- [ ] v4.6 refactor — `ventas_semana/cargar_historico_wc.py:89` escribe total como string `"60,00 €"`. Pasar a floats nativos manteniendo lectura compatible con el formato antiguo.
+### Reforma destinos cloud — estado (23/04/2026)
+- [x] R.1 gmail v1.21 — MAESTRO solo-lectura (`ec83c8f`).
+- [x] R.2 gmail v1.22 — destinos cloud definitivos (`f72daf9`).
+- [x] R.3 cuadre.py sync Drive (`20105ac`).
+- [x] R.4 rutas PC → G:\ (`73d6d8e`).
+- [x] R.5 migración física Drive (Datos/ → destinos, T1..T4 trash, Cuadres/ creada).
+- [x] R.6 push + pull VPS + smoke tests — **todos verdes**.
+- [x] **Fix token VPS (B)**: scp PC token → VPS añadió scope `drive` que faltaba. 3 backups del token VPS conservados (red 30 días).
+- [ ] **Bloque E (viernes 24/04)**: `ssh root@194.34.232.6` y disparar `python3 gmail/gmail.py --produccion` manualmente. Ver logs en `/opt/gestion-facturas/outputs/logs_gmail/2026-04-24_primera_vps.log`. Observar `[DROPBOX OK]` por PDF + `[DRIVE OK]` para Excels finales + email resumen con posible sección "Proveedores nuevos detectados" + MAESTRO NO modificado.
+
+### Post Bloque E — pendientes
+- [ ] Revisar logs gmail.py del viernes 24/04. Si 2-3 ejecuciones consecutivas OK → evaluar activar cron en VPS.
+- [ ] Añadir sync Drive también a `scripts/mov_banco.py` (paralelo a `actualizar_movimientos.py`) — omitido por scope.
+- [ ] Documentar página Documentos: `streamlit_app/pages/documentos.py` usar SECCIONES config declarativa con los nuevos paths anidados.
+- [ ] Borrar `generar_refresh_token_dropbox.py` (gitignored, ya cumplió su función Fase X.2).
+
+### Backlog 20/04/2026 (SPEC v4.5 §14)
+- [x] 20A — Google Drive sync scope `drive` (cerrado 21/04).
+- [ ] 20B — Ruta Windows hardcoded `C:\...\datos\Articulos 26.xlsx` (ahora `Articulos_2026.xlsx` en PC tras C2). Migrar VPS `.env` a `pathlib.Path` con `GESTION_FACTURAS_DIR`.
+- [ ] 20C — `datos/Ventas Barea Historico.xlsx` ausente en VPS. Ahora está en Drive (`Ventas/Histórico/`, id `1JbaTVqa_Ojl87wALmLjTzdZtoY1FzDZ_`) — evaluar lectura desde Drive en VPS vs copia scp.
+- [ ] 20D — Deploy key VPS sin write access en GitHub → regenerar o condicionar push a PC.
+- [ ] v4.6 refactor — `ventas_semana/cargar_historico_wc.py:89` escribe total como string `"60,00 €"`. Pasar a floats nativos manteniendo lectura compatible.
 
 ### Pendientes seguridad
 - [ ] Cambiar contraseñas Streamlit (las 4 son "2017") → decisión del usuario
