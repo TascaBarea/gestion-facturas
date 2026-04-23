@@ -67,6 +67,16 @@
 
 **Bloque E** (pendiente): ejecución real `python3 gmail/gmail.py --produccion` en VPS el viernes 24/04 con disparo manual. Observables: `[DROPBOX OK]` por PDF, `[DRIVE OK]` para Excels finales en `Compras/Año en curso/`, doble escritura Facturas Provisional (Dropbox + Drive), email resumen con sección "Proveedores nuevos detectados" si aplica, MAESTRO sin modificar.
 
+### 24/04/2026 — Bloque E ejecutado + verificación DIA/ECOMS
+
+**Bloque E (primer disparo real post-migración cloud):** 12 emails procesados, 6 exitosos, 4 REVISAR, 0 errores. Log: `outputs/logs_gmail/2026-04-24_primera_vps.log`. Tags `[DROPBOX OK]` por PDF y `[DRIVE OK]` para Excels finales (PAGOS_Gmail + Facturas Provisional) en `Compras/Año en curso/`. Token VPS con scope `drive` operativo, MAESTRO solo-lectura confirmado, dedupe funcionando (hash + CIF+REF).
+
+**Casos REVISAR (4):** Solicitud factura (imagen), La Mar de Tazones (no identificado), DIA/ECOMS (extractor Formato 3 aún no desplegado en VPS en ese momento), duplicado La Mar de Tazones.
+
+**Verificación DIA/ECOMS end-to-end:** `ecoms.py` ya cubría CIF B72738602 con Formato 3 (factura de canje). Test con PDF real: fecha 20/04/2026 ✓, ref FF202600000014 ✓, total 4,68 € ✓ (cuadre 4,38 base + 0,30 IVA), 3 líneas con códigos/cantidades/IVA mixto 4%+10% correctos. Próxima ejecución semanal procesará DIA directamente.
+
+**Pendientes:** activación cron viernes 03:00, revisión REVISAR reales (La Mar de Tazones, Solicitud factura imagen), `git pull` VPS antes de próxima ejecución gmail.py (VPS alineado hoy tras pull manual).
+
 ---
 
 ## 1. VISIÓN GENERAL
