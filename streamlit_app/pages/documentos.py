@@ -1,6 +1,10 @@
 """
 pages/documentos.py — Archivos compartidos en Google Drive.
-Muestra los archivos sincronizados organizados por carpeta.
+
+v2 (24/04/2026): ampliado a 6 secciones alineadas con la estructura
+post-R.5 de "Barea - Datos Compartidos": Ventas, Compras, Movimientos
+Banco, Artículos, Maestro, Cuadres. Las 3 primeras tienen pestañas
+"Año en curso" / "Histórico"; las 3 últimas son planas.
 """
 
 import sys
@@ -17,7 +21,6 @@ st.caption("Archivos sincronizados en Google Drive")
 
 # ── Importar sync_drive ──────────────────────────────────────────────────────
 
-# Añadir raíz del proyecto al path para importar nucleo/
 _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
@@ -29,7 +32,61 @@ except ImportError:
     _DRIVE_OK = False
 
 
-# ── Funciones auxiliares ─────────────────────────────────────────────────────
+# ── Configuración cerrada de secciones ───────────────────────────────────────
+
+CARPETAS_DOCUMENTOS = [
+    {
+        "clave": "ventas",
+        "titulo": "Ventas",
+        "icono": "📊",
+        "descripcion": "Dashboards y datos de ventas semanales",
+        "ruta_drive": ["Ventas"],
+        "subcarpetas": ["Año en curso", "Histórico"],
+    },
+    {
+        "clave": "compras",
+        "titulo": "Compras",
+        "icono": "🧾",
+        "descripcion": "Facturas procesadas y pagos registrados",
+        "ruta_drive": ["Compras"],
+        "subcarpetas": ["Año en curso", "Histórico"],
+    },
+    {
+        "clave": "movimientos_banco",
+        "titulo": "Movimientos Banco",
+        "icono": "🏦",
+        "descripcion": "Extractos y consolidados bancarios",
+        "ruta_drive": ["Movimientos Banco"],
+        "subcarpetas": ["Año en curso", "Histórico"],
+    },
+    {
+        "clave": "articulos",
+        "titulo": "Artículos",
+        "icono": "📦",
+        "descripcion": "Catálogo de productos",
+        "ruta_drive": ["Articulos"],
+        "subcarpetas": None,
+    },
+    {
+        "clave": "maestro",
+        "titulo": "Maestro",
+        "icono": "📚",
+        "descripcion": "MAESTRO_PROVEEDORES + Diccionario artículo→categoría",
+        "ruta_drive": ["Maestro"],
+        "subcarpetas": None,
+    },
+    {
+        "clave": "cuadres",
+        "titulo": "Cuadres",
+        "icono": "⚖️",
+        "descripcion": "Cuadres bancarios generados por cuadre.py",
+        "ruta_drive": ["Cuadres"],
+        "subcarpetas": None,
+    },
+]
+
+
+# ── Formatters ───────────────────────────────────────────────────────────────
 
 def _fmt_size(size_str):
     """Convierte bytes (str) a formato legible."""
@@ -39,10 +96,9 @@ def _fmt_size(size_str):
         return "—"
     if size < 1024:
         return f"{size} B"
-    elif size < 1024 * 1024:
+    if size < 1024 * 1024:
         return f"{size / 1024:.1f} KB"
-    else:
-        return f"{size / (1024 * 1024):.1f} MB"
+    return f"{size / (1024 * 1024):.1f} MB"
 
 
 def _fmt_date(iso_str):
@@ -54,16 +110,31 @@ def _fmt_date(iso_str):
         return "—"
 
 
-def _mostrar_carpeta(nombre_carpeta, icono, descripcion):
-    """Muestra una sección con los archivos de una subcarpeta de Drive."""
-    st.markdown(f"### {icono} {nombre_carpeta}")
-    st.caption(descripcion)
+def _icono_archivo(nombre, mime):
+    if "spreadsheet" in mime or nombre.endswith((".xlsx", ".xls")):
+        return "📊"
+    if "html" in mime or nombre.endswith(".html"):
+        return "📄"
+    if "pdf" in mime or nombre.endswith(".pdf"):
+        return "📕"
+    return "📎"
 
+
+# ── Render ───────────────────────────────────────────────────────────────────
+
+def _listar_archivos(ruta_drive):
+    """Pinta los archivos que hay dentro de `ruta_drive` (lista de segmentos)."""
     try:
-        archivos = listar_carpeta(nombre_carpeta)
+        archivos = listar_carpeta(ruta_drive)
     except Exception as e:
         st.error(f"Error conectando con Drive: {e}")
         return
+
+    # Filtrar subcarpetas: solo mostrar archivos reales
+    archivos = [
+        a for a in archivos
+        if a.get("mimeType") != "application/vnd.google-apps.folder"
+    ]
 
     if not archivos:
         st.info("Sin archivos en esta carpeta.")
@@ -75,16 +146,7 @@ def _mostrar_carpeta(nombre_carpeta, icono, descripcion):
         fecha = _fmt_date(archivo.get("modifiedTime"))
         link = archivo.get("webViewLink", "")
         mime = archivo.get("mimeType", "")
-
-        # Icono según tipo
-        if "spreadsheet" in mime or nombre.endswith((".xlsx", ".xls")):
-            tipo_icono = "📊"
-        elif "html" in mime or nombre.endswith(".html"):
-            tipo_icono = "📄"
-        elif "pdf" in mime or nombre.endswith(".pdf"):
-            tipo_icono = "📕"
-        else:
-            tipo_icono = "📎"
+        tipo_icono = _icono_archivo(nombre, mime)
 
         with st.container(border=True):
             col1, col2, col3 = st.columns([4, 2, 2])
@@ -99,6 +161,22 @@ def _mostrar_carpeta(nombre_carpeta, icono, descripcion):
                 st.caption(f"Actualizado: {fecha}")
 
 
+def _render_seccion(cfg):
+    """Render de una sección: encabezado + archivos (con o sin pestañas)."""
+    st.markdown(f"### {cfg['icono']} {cfg['titulo']}")
+    st.caption(cfg["descripcion"])
+
+    if cfg["subcarpetas"]:
+        tabs = st.tabs(cfg["subcarpetas"])
+        for tab, sub in zip(tabs, cfg["subcarpetas"]):
+            with tab:
+                _listar_archivos(cfg["ruta_drive"] + [sub])
+    else:
+        _listar_archivos(cfg["ruta_drive"])
+
+    st.markdown("")  # separador visual entre secciones
+
+
 # ── Contenido principal ──────────────────────────────────────────────────────
 
 if not _DRIVE_OK:
@@ -110,33 +188,9 @@ if not _DRIVE_OK:
 
 st.markdown(
     f"Carpeta compartida: **{CARPETA_RAIZ}**  \n"
-    "Los archivos se sincronizan automáticamente tras cada ejecución de Gmail y Ventas."
+    "Los archivos se sincronizan automáticamente tras cada ejecución de los scripts."
 )
-
 st.markdown("---")
 
-_mostrar_carpeta("Ventas", "📈", "Dashboards y datos de ventas semanales")
-st.markdown("")
-_mostrar_carpeta("Facturas", "🧾", "Facturas procesadas y pagos registrados")
-
-# También mostrar archivos sueltos en la raíz (si los hay)
-try:
-    raiz = listar_carpeta()
-    # Filtrar: solo archivos, no carpetas
-    archivos_raiz = [
-        a for a in raiz
-        if a.get("mimeType") != "application/vnd.google-apps.folder"
-    ]
-    if archivos_raiz:
-        st.markdown("---")
-        st.markdown("### 📁 Otros archivos")
-        for archivo in archivos_raiz:
-            nombre = archivo.get("name", "?")
-            link = archivo.get("webViewLink", "")
-            fecha = _fmt_date(archivo.get("modifiedTime"))
-            if link:
-                st.markdown(f"- [{nombre}]({link}) — {fecha}")
-            else:
-                st.markdown(f"- {nombre} — {fecha}")
-except Exception:
-    pass
+for _cfg in CARPETAS_DOCUMENTOS:
+    _render_seccion(_cfg)
