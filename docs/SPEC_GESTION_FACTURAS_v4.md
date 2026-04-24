@@ -1,8 +1,48 @@
-# SPEC GESTION-FACTURAS v4.6
+# SPEC GESTION-FACTURAS v4.7
 
-> Documento maestro unificado — actualizado 23/04/2026
+> Documento maestro unificado — actualizado 24/04/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
+
+---
+
+## CHANGELOG v4.7 — 24/04/2026 (/documentos v2 + config/loader cascade)
+
+**Página `/documentos` v2** (commits `572f155`, `d803bf0`, `c820b65`). Ampliada de 2 a **6 secciones** alineadas con la estructura Drive post-R.5 — lista cerrada, sin scan dinámico:
+
+| Sección | Ruta Drive | Subcarpetas |
+|---------|------------|-------------|
+| 📊 Ventas | `Ventas/` | Año en curso · Histórico |
+| 🧾 Compras | `Compras/` | Año en curso · Histórico |
+| 🏦 Movimientos Banco | `Movimientos Banco/` | Año en curso · Histórico |
+| 📦 Artículos | `Articulos/` | (plana) |
+| 📚 Maestro | `Maestro/` | (plana) |
+| ⚖️ Cuadres | `Cuadres/` | (plana) |
+
+Config declarativa `CARPETAS_DOCUMENTOS` en `streamlit_app/pages/documentos.py`. Subcarpetas renderizadas con `st.tabs([...])`. Listado plano (sin mostrar sub-folders dentro de `listar_carpeta`).
+
+**Arquitectura de configuración sensible — `config/loader.py`** (commits `410858f`, `5530c10`). Nueva capa unificada con cascada de resolución:
+
+```
+st.secrets  →  env var  →  config/datos_sensibles.py  →  default
+  (Cloud)       (VPS)           (PC dev — gitignored)
+```
+
+- `config/settings.py:CIF_PROPIO` ahora se resuelve vía `loader.get("CIF_PROPIO", "")` (antes: `from config.datos_sensibles import CIF_PROPIO` sin try/except → `ModuleNotFoundError` al bootstrap en Cloud).
+- Política: secrets sensibles vía `st.secrets` en Cloud, variables de entorno en VPS, `config/datos_sensibles.py` en PC (gitignored). El loader cae al siguiente nivel cuando el actual devuelve `None`.
+- **Captura `ImportError` (NO solo `ModuleNotFoundError`)**: `from config import datos_sensibles` lanza `ImportError: cannot import name 'datos_sensibles' from 'config'` cuando el paquete `config/` existe pero el submódulo no — y ese `ImportError` **no** es subclase capturable por `except ModuleNotFoundError`. El loader usa `except ImportError` para cubrir ambos casos.
+- Tests: `tests/unit/test_config_loader.py` — 6 casos incluyendo simulación Cloud con `monkeypatch(__import__)` para ambos tipos de error.
+
+**Deuda técnica — `streamlit_app/requirements.txt` canónico en Cloud** (commits `d803bf0`, `c820b65`). Streamlit Cloud usa el `requirements.txt` **junto al main file** (`streamlit_app/app.py`), no el de la raíz. Libs añadidas para desbloquear `/documentos`:
+- Google API: `google-auth`, `google-auth-oauthlib`, `google-auth-httplib2`, `google-api-python-client`.
+- Deps transitivas arrastradas por `nucleo/__init__.py → .maestro`: `pdfplumber`, `rapidfuzz`.
+- Mantener **AMBOS** requirements sincronizados al añadir libs nuevas. Deuda documentada en `tasks/nota_requirements.md` — próxima sesión decide consolidación.
+
+**Infra Streamlit — mejoras defensivas** (commit `c820b65`):
+- `sys.path.insert(0, ROOT)` centralizado en `streamlit_app/app.py` (defensa en profundidad: las páginas ya lo hacían pero quedaba frágil ante páginas nuevas).
+- Patrón de logging visible en UI: `try/except ImportError` con `st.error(...)` + expander `st.code(traceback.format_exc())`. Ver `streamlit_app/pages/documentos.py`. Extensible a otras páginas — gracias a esto el 4º bug salió en 1 minuto con el traceback literal.
+
+**Limitación conocida — listado Drive en Cloud**. `gmail/token.json` está `.gitignored` → Streamlit Cloud no puede autenticar contra Drive → `/documentos` muestra la **estructura** de 6 secciones pero el listado real de archivos falla. Decisión pendiente próxima sesión (Opción A "Abrir en Drive" con URLs directos vs Opción B token como secret en Cloud).
 
 ---
 
@@ -581,8 +621,11 @@ python -m scripts.tickets.bm --parsear     # procesar + parsear con main.py
 
 ### 9.2 Streamlit App (tascabarea.streamlit.app)
 
+**URL producción:** `tascabarea.streamlit.app` (CNAME `gestion.tascabarea.com`).
+**Main file:** `streamlit_app/app.py`. **Requirements canónico en Cloud:** `streamlit_app/requirements.txt` (NO el de la raíz — ver §13.9 deuda técnica).
 **Login:** 4 roles (admin, socio, comes, eventos). Usuarios: Jaime (admin), Roberto (socio), Elena (comes), Benjamin (eventos).
-**Páginas:** Alta Evento, Calendario Eventos, Ventas (Plotly), Maestro Editor (admin), Cuadre (placeholder), Log Gmail (placeholder), Monitor (placeholder), Ejecutar Scripts (placeholder), Documentos (Drive)
+**Páginas:** Alta Evento, Calendario Eventos, Ventas (Plotly), Maestro Editor (admin), Cuadre (placeholder), Log Gmail (placeholder), Monitor (placeholder), Ejecutar Scripts (placeholder), Documentos (Drive, v2 con 6 secciones — ver abajo).
+**Página `/documentos` v2** (24/04/2026): lista declarativa `CARPETAS_DOCUMENTOS` con 6 entradas — Ventas, Compras, Movimientos Banco, Artículos, Maestro, Cuadres. Las 3 primeras con pestañas Año en curso/Histórico (`st.tabs`), las 3 últimas planas. Limitación actual: token Drive ausente en Cloud → muestra estructura pero no lista archivos (pendiente decisión Opción A URLs directos vs Opción B token-secret).
 **Diseño:** Tipografía Syne + DM Sans, sidebar oscuro, identidad Tasca Barea (#8B0000, #FFF8F0)
 **Filtro meses cerrados:** Triple barrera para excluir meses incompletos de comparativas:
 1. `generar_dashboard.py` filtra DataFrames al generar datos (default `solo_meses_cerrados=True`)
@@ -772,6 +815,35 @@ Path traversal (basename + realpath), CORS explícito, API key obligatoria, RBAC
 ### 13.8 Protección de datos (save_to_excel)
 
 `script_barea.py` lee datos existentes ANTES de abrir el writer. Si falla → aborta. Detección Excel abierto: `os.rename` temporal.
+
+### 13.9 Config sensible — cascada unificada (`config/loader.py`)
+
+**Tres entornos, tres fuentes**:
+
+| Entorno | Fuente primaria | Archivo/objeto |
+|---------|-----------------|----------------|
+| Streamlit Cloud | `st.secrets` | Dashboard Cloud `secrets.toml` |
+| VPS Contabo | variables de entorno | systemd env / `.env` |
+| PC dev | archivo legacy | `config/datos_sensibles.py` (gitignored) |
+
+`config/loader.get(key, default=None)` recorre la cascada `secrets → env → legacy → default` y devuelve el primer valor no nulo. Importar directamente `from config.datos_sensibles import X` está **deprecated** porque revienta el bootstrap en Cloud: el paquete `config/` existe pero el submódulo no, y Python lanza `ImportError: cannot import name 'datos_sensibles' from 'config'` — **que no es subclase capturable por `except ModuleNotFoundError`**. `config/settings.py` ya migrado al patrón `loader.get`.
+
+Tests: `tests/unit/test_config_loader.py` (6 casos, incluye simulación Cloud con `monkeypatch(__import__)` para ambos tipos de error).
+
+### 13.10 Deuda técnica — duplicación `requirements.txt`
+
+Hay dos requirements en el repo:
+
+| Archivo | Uso | Canónico para |
+|---------|-----|---------------|
+| `requirements.txt` (raíz) | dev local + VPS | pip install -r en PC/VPS |
+| `streamlit_app/requirements.txt` | Streamlit Cloud | deploy en tascabarea.streamlit.app |
+
+Cloud usa el que está junto al main file (`streamlit_app/app.py`). **Mantener ambos sincronizados al añadir libs**. Warning "More than one requirements file detected" en logs de Cloud NO es inofensivo — confirma que Cloud elige uno distinto al de la raíz. Tres alternativas para la próxima sesión (ver `tasks/nota_requirements.md`):
+
+- **A**: consolidar en `requirements.txt` raíz único + configurar Cloud para leerlo.
+- **B**: `streamlit_app/requirements.txt` con solo `-r ../requirements.txt`.
+- **C**: mantener duplicación + test CI que detecte divergencia.
 
 ---
 
@@ -1226,6 +1298,14 @@ Se ejecutó migrar_productos.py sobre 6 eventos activos (IDs: 3350, 3347, 3278, 
 - **Fix delta interanual:** usaba `meses_act` (incluía mes parcial) → ahora usa `meses_completos`. Q1 2025: 34.007€→25.576€
 - **`calcular_DIAS`** parametrizado con `year_list` (antes hardcoded `YEAR_LIST`)
 - **`.gitignore`** ampliado: datos/backups/, datos/dia_tickets/, datos/snapshots/, outputs/*.log|html|png, cuadre/banco/clasificaciones_historicas.json
+
+### v4.7 (24/04/2026) — /DOCUMENTOS v2 + CONFIG/LOADER CASCADE
+- `/documentos` v2: 6 secciones (Ventas, Compras, Movimientos Banco, Artículos, Maestro, Cuadres) con pestañas Año en curso/Histórico donde aplica. Config declarativa `CARPETAS_DOCUMENTOS`.
+- `config/loader.py`: cascada `st.secrets → env → datos_sensibles.py → default`. Captura `ImportError` (no solo `ModuleNotFoundError`) para cubrir `from X import Y` vs `import X.Y`.
+- `config/settings.py`: migrado a `loader.get` (antes rompía bootstrap Cloud).
+- Infra Streamlit: `sys.path.insert(0, ROOT)` en `app.py`; patrón logging visible con `traceback.format_exc()` en UI.
+- Requirements: deuda `streamlit_app/requirements.txt` vs raíz documentada en §13.10.
+- Tests: +7 (`test_config_loader.py` 6 casos, `test_documentos_config.py` 6 casos) → 158 pasan.
 
 ### v5.5 (08/04/2026) — WOOCOMMERCE DEVENGO + DESPLIEGUE DOCUMENTADO
 - WooCommerce integrado en Ventas Netas con criterio de devengo (fecha de celebración)

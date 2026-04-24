@@ -53,6 +53,26 @@
   → REGLA: Portes/envío SIEMPRE proporcionales entre productos.
   → FÓRMULA: (coste_envío × (1 + IVA_envío/100)) / (1 + IVA_productos/100)
 
+### Python imports — `ModuleNotFoundError` vs `ImportError`
+- **`from package import submodule` con submódulo ausente NO lanza `ModuleNotFoundError`** → lanza `ImportError: cannot import name 'X' from 'Y'`. Solo `import X.Y` lanza `ModuleNotFoundError`. El segundo hereda del primero, **NO al revés**. `except ModuleNotFoundError` deja escapar el `from..import` caso.
+  → REGLA: en código que tolera módulos opcionales (loaders, plugins, fallbacks), SIEMPRE `except ImportError`, nunca `except ModuleNotFoundError` aislado. Caso real (24/04/2026): `config/loader.py:_from_legacy()` capturaba solo `ModuleNotFoundError`; Streamlit Cloud lanzaba `ImportError` al hacer `from config import datos_sensibles`. Fix: cambiar a `except ImportError` (commit `5530c10`).
+
+### Streamlit Cloud — deploy y requirements
+- **`requirements.txt` canónico en Cloud es el JUNTO AL main file**, no el de la raíz → Streamlit Cloud resuelve `requirements.txt` adyacente a `streamlit_app/app.py`. Libs añadidas SOLO al de la raíz NO llegan a Cloud.
+  → REGLA: al añadir libs que Streamlit use, editar `streamlit_app/requirements.txt` (o ambos si se quiere mantener paridad con dev local/VPS). Ver SPEC §13.10 para deuda de consolidación.
+- **Warning "More than one requirements file detected" en logs de Cloud NO es inofensivo** → indica que Cloud está eligiendo uno distinto al esperado. Leer el log con cuidado.
+- **Logging visible en UI ahorra iteraciones de debug** → patrón `try/except ImportError` con `st.error(...)` + `st.expander("Traceback")` + `st.code(traceback.format_exc())`. Caso real: el 4º bug de la cadena `/documentos` v2 se resolvió en 1 minuto gracias a este logging (el traceback literal lo envió el usuario).
+  → REGLA: páginas Streamlit con imports de dependencias externas (Drive, APIs, etc.) deben envolver con este patrón al menos en la primera release.
+- **Cachés bytecode `.pyc` agresivos en Cloud** → a veces un redeploy normal no los limpia. Si un fix no aplica tras push, probar commit vacío o reboot manual. Validar visualmente antes de asumir que funciona.
+
+### Python path en apps multipágina Streamlit
+- **`sys.path` centralizado en main file** → cada página hacía su propio `sys.path.insert(0, ROOT)`, frágil ante páginas nuevas. Centralizar en `streamlit_app/app.py` garantiza que cualquier `pages/<new>.py` hereda el path correcto.
+  → REGLA: si las páginas importan módulos de la raíz del repo (nucleo, config, gmail, etc.), poner el `sys.path.insert(0, ROOT)` en el main file una sola vez.
+
+### Config sensible — cascada de fuentes
+- **Tres entornos, tres fuentes: Cloud/VPS/PC**. Usar `config/loader.py` con cascada `st.secrets → env var → datos_sensibles.py → default`. Importar directamente `from config.datos_sensibles import X` está deprecated (rompe bootstrap en Cloud).
+  → REGLA: claves sensibles nuevas (CIFs, API keys, tokens) se leen via `config.loader.get("CLAVE", default)`. Config devs locales via `datos_sensibles.py` (gitignored). Cloud via `st.secrets`. VPS via env vars.
+
 ### Sincronización de documentación
 - **Versiones desincronizadas entre archivos**
   → REGLA: Al modificar un módulo, actualizar versión en 2 sitios: header del código + tabla en CLAUDE.md.
@@ -79,6 +99,9 @@
 | 2026-03-13 | General | — | Archivo creado con errores documentados del proyecto |
 | 2026-04-21 | ventas_semana/generar_dashboard | `if df["total"].dtype == object` saltaba el cleanup en VPS (pandas 3.x, dtype `str`) → `sum()` concatenaba strings y `float()` petaba | Usar `pd.api.types.is_numeric_dtype`; pinnear pandas 2.3.0 en VPS; añadidas reglas "Pandas y tipos de datos" |
 | 2026-04-21 | gmail/auth_manager | `get_credentials(scopes=[...])` filtraba el objeto Credentials; al refrescar, `creds.to_json()` volcaba el subconjunto y sobrescribía token.json perdiendo el scope `drive` | No pasar `scopes` a `from_authorized_user_file()`; el token dicta los scopes autorizados. Regla nueva en sección "Gmail API" |
+| 2026-04-24 | config/loader | `except ModuleNotFoundError` capturaba bien `import config.datos_sensibles` pero dejaba escapar `from config import datos_sensibles` (distinto `ImportError`) → /documentos caía en Streamlit Cloud | Usar `except ImportError` (cubre ambos casos porque `ModuleNotFoundError` hereda de `ImportError`). Regla nueva "Python imports" |
+| 2026-04-24 | streamlit_app | Libs añadidas a `requirements.txt` raíz no llegaban a Cloud (Cloud usa el adyacente al main file) → imports fallaban en /documentos aunque localmente OK | Editar `streamlit_app/requirements.txt` al añadir libs para Cloud. Regla nueva "Streamlit Cloud — deploy y requirements". Deuda técnica documentada SPEC §13.10 |
+| 2026-04-24 | streamlit_app | Iteraciones ciegas de debug en Cloud tras cada push — sin traceback visible costaba 1 round trip por bug | Patrón logging visible en UI (try/except + st.error + expander con traceback.format_exc). Adoptado en documentos.py, extensible |
 | 2026-03-13 | Parseo | ESQUEMA buscado en carpeta equivocada | ESQUEMA está en gestion-facturas/docs/, no en Parseo/ |
 | 2026-03-13 | Gmail | REF "86" de BERNAL rechazada por gmail.py | gmail.py exigía len>=3, extractor genérico len>=2. Alineado a >=2 |
 | 2026-03-13 | La Llildiria | Total 93.94 en vez de 172.75 | PyPDF no captura tabla totales en PDFs imagen. Añadido cálculo desde subtotales + cambio a OCR primario |

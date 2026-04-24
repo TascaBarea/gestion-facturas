@@ -5,23 +5,60 @@
 ---
 
 ## Próxima sesión
-**Objetivo:** Bloque E — ejecución real gmail.py --produccion en VPS (viernes 24/04, disparo manual).
+**Objetivo:** resolver listado Drive en `/documentos` Cloud + favicon Comestibles + deuda requirements.
 
-### Reforma destinos cloud — estado (23/04/2026)
+### Pendientes priorizados
+
+- [ ] **ALTO — `/documentos` en Cloud no lista archivos reales** (porque `gmail/token.json` está `.gitignored`). Decidir entre:
+  - **Opción A (recomendada)**: botones "Abrir en Drive" por sección con URL directo a la carpeta correspondiente. Cero credenciales en Cloud. `/documentos` queda como vista de estructura + navegación rápida. Implementación: refactor `streamlit_app/pages/documentos.py` para mostrar botones en lugar de listados, usando URLs de Drive (añadir mapping folder_id → URL).
+  - **Opción B**: pegar `token.json` como secret en Streamlit Cloud dashboard. Más complejo (token OAuth expira, requiere rotación manual, mayor superficie de seguridad).
+
+- [ ] **MEDIO — favicon Comestibles Barea en Streamlit**.
+  - Asset: `Logo_BAREA_COMESTIBLES_RESOLUCION_WEB.png` (óvalo La Rumán, ~1507×1980) en `G:\Mi unidad\Barea - Datos Compartidos\Articulos\`.
+  - La imagen tal cual NO funciona como favicon 16×16 (queda borrón amarillo). Necesita versión recortada ~512×512 priorizando cara.
+  - Configurar en `st.set_page_config(page_icon=...)` en `streamlit_app/app.py`.
+
+- [ ] **BAJO — deuda técnica `requirements.txt` duplicados**. Documentado en `tasks/nota_requirements.md` y SPEC §13.10. Evaluar:
+  - Opción A: consolidar en `requirements.txt` raíz único, configurar Streamlit Cloud para leerlo.
+  - Opción B: `streamlit_app/requirements.txt` contiene solo `-r ../requirements.txt`.
+  - Opción C: mantener duplicación + test CI que detecte divergencia.
+
+### Activación cron viernes 03:00 en VPS (decisión operativa)
+- [ ] Si 2-3 ejecuciones gmail.py consecutivas OK en VPS → activar cron.
+
+### Otros pendientes arrastrados
+- [ ] Añadir sync Drive también a `scripts/mov_banco.py` (paralelo a `actualizar_movimientos.py`) — omitido por scope.
+- [ ] Borrar `generar_refresh_token_dropbox.py` (gitignored, ya cumplió su función Fase X.2).
+- [ ] Revisar REVISAR reales del run 24/04: La Mar de Tazones, Solicitud factura imagen.
+
+---
+
+## Sesión 24/04/2026
+**Objetivo:** Bloque E (gmail VPS) + verificación DIA/ECOMS + `/documentos` v2 en Streamlit.
+
+### Completado
+- [x] Bloque E: primer disparo real `gmail.py --produccion` en VPS. 12 emails, 6 exitosos, 4 REVISAR, 0 errores. `[DROPBOX OK]` + `[DRIVE OK]` verificados.
+- [x] Verificación DIA/ECOMS end-to-end. Formato 3 (factura canje) OK: fecha 20/04, ref FF202600000014, total 4,68 €, 3 líneas cuadre OK.
+- [x] SPEC v4.5 → v4.6 (Bloque E + verificación DIA, commit `bc970a7`).
+- [x] `/documentos` v2 en Streamlit Cloud: 6 secciones declarativas (Ventas, Compras, Movimientos Banco, Artículos, Maestro, Cuadres), pestañas Año en curso/Histórico donde aplica. Commit `572f155`.
+- [x] Fix cadena de 4 bugs post-deploy `/documentos`:
+  - `d803bf0` — Google API libs en `streamlit_app/requirements.txt`.
+  - `c820b65` — deps transitivas (`pdfplumber`, `rapidfuzz`), `sys.path` defensivo en `app.py`, logging visible con `traceback.format_exc()`.
+  - `410858f` — `config/loader.py` con cascada `secrets → env → legacy → default`; `config/settings.py` migrado.
+  - `5530c10` — loader captura `ImportError`, no solo `ModuleNotFoundError`.
+- [x] Tests nuevos: `test_config_loader.py` (6 casos, simulación Cloud con `monkeypatch(__import__)`), `test_documentos_config.py` (6 casos AST-based). Suite: 158 passed.
+- [x] SPEC v4.6 → v4.7 con `/documentos` v2 + `config/loader` + §13.9 + §13.10 deuda requirements.
+- [x] Autopsia: `tasks/cierre_sesion_24abr_documentos.md`.
+
+### Reforma destinos cloud — estado final
 - [x] R.1 gmail v1.21 — MAESTRO solo-lectura (`ec83c8f`).
 - [x] R.2 gmail v1.22 — destinos cloud definitivos (`f72daf9`).
 - [x] R.3 cuadre.py sync Drive (`20105ac`).
 - [x] R.4 rutas PC → G:\ (`73d6d8e`).
-- [x] R.5 migración física Drive (Datos/ → destinos, T1..T4 trash, Cuadres/ creada).
-- [x] R.6 push + pull VPS + smoke tests — **todos verdes**.
-- [x] **Fix token VPS (B)**: scp PC token → VPS añadió scope `drive` que faltaba. 3 backups del token VPS conservados (red 30 días).
-- [ ] **Bloque E (viernes 24/04)**: `ssh root@194.34.232.6` y disparar `python3 gmail/gmail.py --produccion` manualmente. Ver logs en `/opt/gestion-facturas/outputs/logs_gmail/2026-04-24_primera_vps.log`. Observar `[DROPBOX OK]` por PDF + `[DRIVE OK]` para Excels finales + email resumen con posible sección "Proveedores nuevos detectados" + MAESTRO NO modificado.
-
-### Post Bloque E — pendientes
-- [ ] Revisar logs gmail.py del viernes 24/04. Si 2-3 ejecuciones consecutivas OK → evaluar activar cron en VPS.
-- [ ] Añadir sync Drive también a `scripts/mov_banco.py` (paralelo a `actualizar_movimientos.py`) — omitido por scope.
-- [ ] Documentar página Documentos: `streamlit_app/pages/documentos.py` usar SECCIONES config declarativa con los nuevos paths anidados.
-- [ ] Borrar `generar_refresh_token_dropbox.py` (gitignored, ya cumplió su función Fase X.2).
+- [x] R.5 migración física Drive.
+- [x] R.6 push + pull VPS + smoke tests.
+- [x] Fix token VPS (scope `drive`).
+- [x] Bloque E ejecutado 24/04.
 
 ### Backlog 20/04/2026 (SPEC v4.5 §14)
 - [x] 20A — Google Drive sync scope `drive` (cerrado 21/04).
@@ -115,3 +152,5 @@
 | 2026-03-12 | Auditoría Parseo v5.18 + limpieza | ✅ | 70 _convertir_europeo consolidados, dead code, VERSION unificada |
 | 2026-03-13 | Análisis Gmail + docs + extractores | ✅ | CLAUDE.md v3.0, tasks/ creados, 2 skills |
 | 2026-03-27 | Config + Dia + Netlify→GH Pages + seguridad | ✅ | Ver detalle arriba |
+| 2026-04-23 | Reforma destinos cloud R.1-R.6 + fix token VPS | ✅ | SPEC v4.6 |
+| 2026-04-24 | Bloque E + DIA/ECOMS + `/documentos` v2 + config/loader | ✅ | SPEC v4.7, 5 commits, autopsia en tasks/cierre_sesion_24abr_documentos.md |
