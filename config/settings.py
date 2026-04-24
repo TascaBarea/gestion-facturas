@@ -14,7 +14,11 @@ VERSION = "5.17"
 # ==============================================================================
 # DATOS DE LA EMPRESA
 # ==============================================================================
-from config.datos_sensibles import CIF_PROPIO  # noqa: E402
+# Resolución robusta: Streamlit secrets → env var → datos_sensibles.py → "".
+# Evita ModuleNotFoundError en Streamlit Cloud (donde datos_sensibles.py no
+# está, por estar gitignored). Ver config/loader.py.
+from config.loader import get as _get_config  # noqa: E402
+CIF_PROPIO = _get_config("CIF_PROPIO", "")
 
 # ==============================================================================
 # RUTAS POR DEFECTO
