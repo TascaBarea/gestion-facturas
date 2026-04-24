@@ -3,3 +3,9 @@ WooCommerce>=3.0.0
 pandas>=2.0.0
 openpyxl>=3.1.0
 plotly>=5.18.0
+
+# Google Drive API (necesario para /documentos tras R.5)
+google-auth>=2.41.1
+google-auth-oauthlib>=1.2.3
+google-auth-httplib2>=0.2.1
+google-api-python-client>=2.187.0
