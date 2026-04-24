@@ -49,10 +49,18 @@ def _from_secrets(key: str) -> Any:
 
 def _from_legacy(key: str, default: Any) -> Any:
     """Intenta leer `key` de config/datos_sensibles.py. Devuelve `default` si
-    el módulo no existe o no tiene el atributo."""
+    el módulo no existe o no tiene el atributo.
+
+    Captura `ImportError` (no solo `ModuleNotFoundError`): Python lanza
+    `ImportError: cannot import name 'datos_sensibles' from 'config'`
+    cuando `config/` existe como paquete pero `datos_sensibles.py` no
+    está (caso Streamlit Cloud). Ese `ImportError` NO es subclase
+    capturable por `except ModuleNotFoundError`, así que se escapaba.
+    `ModuleNotFoundError` sí hereda de `ImportError`, por lo que
+    `except ImportError` cubre ambos casos."""
     try:
         from config import datos_sensibles  # type: ignore
-    except ModuleNotFoundError:
+    except ImportError:
         return default
     return getattr(datos_sensibles, key, default)
 

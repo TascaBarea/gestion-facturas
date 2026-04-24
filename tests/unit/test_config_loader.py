@@ -46,7 +46,7 @@ def test_legacy_fallback_funciona_si_archivo_existe():
     try:
         from config import datos_sensibles  # noqa: F401
         has_legacy = True
-    except ModuleNotFoundError:
+    except ImportError:
         has_legacy = False
 
     if not has_legacy:
@@ -60,13 +60,8 @@ def test_legacy_fallback_funciona_si_archivo_existe():
     assert isinstance(val, str) and len(val) > 0
 
 
-def test_settings_importa_sin_datos_sensibles(monkeypatch):
-    """Simula entorno Cloud: sin datos_sensibles → settings debe importar igual.
-
-    Inyectamos un sys.modules que ficticiamente oculta datos_sensibles.
-    """
-    # Si en este entorno datos_sensibles NO existe (Cloud), el import debe
-    # funcionar tal cual. Si existe (dev), parcheamos ModuleNotFoundError.
+def test_settings_importa_sin_datos_sensibles_con_ModuleNotFoundError(monkeypatch):
+    """Simulación Cloud variante A: ModuleNotFoundError (archivo físico ausente)."""
     import builtins
     _orig_import = builtins.__import__
 
@@ -75,13 +70,39 @@ def test_settings_importa_sin_datos_sensibles(monkeypatch):
             raise ModuleNotFoundError(f"No module named {name!r} (simulado Cloud)")
         return _orig_import(name, *args, **kwargs)
 
-    # Limpiar módulos posiblemente cacheados
     for m in ("config.datos_sensibles", "config.settings", "config.loader"):
         sys.modules.pop(m, None)
 
     monkeypatch.setattr(builtins, "__import__", _fake_import)
-    # Esta línea es la que DEBÍA fallar antes del fix; ahora debe funcionar.
     settings = importlib.import_module("config.settings")
     assert hasattr(settings, "CIF_PROPIO")
-    # En Cloud simulado, sin secrets ni env, CIF_PROPIO = ""
+    assert settings.CIF_PROPIO == "" or isinstance(settings.CIF_PROPIO, str)
+
+
+def test_settings_importa_sin_datos_sensibles_con_ImportError(monkeypatch):
+    """Simulación Cloud variante B: ImportError "cannot import name".
+
+    Este es el traceback real visto en Streamlit Cloud tras el commit 410858f:
+        ImportError: cannot import name 'datos_sensibles' from 'config'
+        (/mount/src/gestion-facturas/config/__init__.py)
+
+    El loader debe capturar ambos tipos (ImportError cubre ModuleNotFoundError).
+    """
+    import builtins
+    _orig_import = builtins.__import__
+
+    def _fake_import(name, *args, **kwargs):
+        if name == "config.datos_sensibles" or name.endswith(".datos_sensibles"):
+            raise ImportError(
+                "cannot import name 'datos_sensibles' from 'config' "
+                "(simulado Cloud)"
+            )
+        return _orig_import(name, *args, **kwargs)
+
+    for m in ("config.datos_sensibles", "config.settings", "config.loader"):
+        sys.modules.pop(m, None)
+
+    monkeypatch.setattr(builtins, "__import__", _fake_import)
+    settings = importlib.import_module("config.settings")
+    assert hasattr(settings, "CIF_PROPIO")
     assert settings.CIF_PROPIO == "" or isinstance(settings.CIF_PROPIO, str)
