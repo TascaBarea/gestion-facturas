@@ -9,6 +9,7 @@ Banco, Artículos, Maestro, Cuadres. Las 3 primeras tienen pestañas
 
 import sys
 import os
+import traceback
 from datetime import datetime
 
 import streamlit as st
@@ -25,11 +26,15 @@ _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
+_DRIVE_IMPORT_ERR = None
 try:
     from nucleo.sync_drive import listar_carpeta, CARPETA_RAIZ
     _DRIVE_OK = True
-except ImportError:
+except ImportError as _e:
     _DRIVE_OK = False
+    _DRIVE_IMPORT_ERR = f"{type(_e).__name__}: {_e}"
+    # Guardar traceback completo para diagnóstico en caliente si vuelve a fallar
+    _DRIVE_IMPORT_TB = traceback.format_exc()
 
 
 # ── Configuración cerrada de secciones ───────────────────────────────────────
@@ -181,9 +186,10 @@ def _render_seccion(cfg):
 
 if not _DRIVE_OK:
     st.error(
-        "No se pudo importar `nucleo.sync_drive`. "
-        "Verifica que las dependencias de Google API estén instaladas."
+        f"No se pudo importar `nucleo.sync_drive` — **{_DRIVE_IMPORT_ERR}**"
     )
+    with st.expander("Traceback completo (diagnóstico)"):
+        st.code(_DRIVE_IMPORT_TB, language="text")
     st.stop()
 
 st.markdown(

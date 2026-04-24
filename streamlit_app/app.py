@@ -3,8 +3,18 @@ Tasca Barea — Panel de gestión
 Streamlit multi-page app con roles de acceso.
 """
 
+import sys
 import time
 from pathlib import Path
+
+# Añadir raíz del repo al path ANTES de cualquier import de módulos del proyecto
+# (nucleo/, gmail/, config/...). En Streamlit Cloud el cwd es streamlit_app/,
+# por lo que estos paquetes no son visibles sin esto. Defensa en profundidad:
+# las páginas ya lo hacen individualmente, pero centralizar aquí garantiza
+# que cualquier página nueva herede el path correcto.
+_ROOT = Path(__file__).resolve().parent.parent
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
 import streamlit as st
 from PIL import Image
