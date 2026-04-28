@@ -33,6 +33,30 @@
 
 ---
 
+## Sesión 28/04/2026
+**Objetivo:** Resucitar filas zombi en `PAGOS_Gmail_2T26.xlsx` (6 confirmadas, secuelas de gmail.py pre-v1.14).
+
+### Completado
+- [x] **Resucitar 6 filas zombi `PAGOS_Gmail_2T26`** — script `scripts/resucitar_zombis.py` v1.0 + ejecución `--apply` interactiva.
+  - F3 SABORES PATERNA: TOTAL=199.73 €, REF=001525.
+  - F4 WEBEMPRESA: TOTAL=19.35 €.
+  - F5 MIGUEZ CAL (manual): FECHA=31/12/25, REF=A 4724, TOTAL=216.24 € (override por bug multi-albarán).
+  - F8 CERES (14/04): TOTAL=714.21 €, REF=2624798.
+  - F9 DEBORA GARCIA (manual): FORMA_PAGO=EF, OBS con nota IRPF -0.73 €.
+  - F11 CERES (10/04): TOTAL=198.71 €, REF=2624536.
+  - Backup: `PAGOS_Gmail_2T26_backup_20260428_1536.xlsx`.
+- [x] Corrección manual de `ARCHIVO` en F5 antes del apply (1205→1231) para destapar el bug de nombrado multi-albarán.
+
+### Backlog generado por esta sesión
+
+- [ ] **ALTO — Bug nombrado de archivo en facturas multi-albarán**: gmail.py nombra el PDF con la fecha del primer albarán en vez de la fecha de la factura. Detectado en MIGUEZ CAL SL (28/04/2026, factura 31/12/25 archivada como `1205`). Probable que afecte a cualquier proveedor con facturas que agrupen varios albaranes (ForPlan/MIGUEZ es el caso paradigmático, pero puede haber otros). Revisar lógica de nombrado en `gmail/gmail.py` además del extractor de MIGUEZ.
+- [ ] **MEDIO — Crear extractores faltantes**: FIVE GALAXIES COMMERCE LTD (Loyverse, mensual recurrente) y DUE SERVICIOS INTEGRALES LABORALES SL (PRL). Ambas marcadas zombi en este Excel pero out-of-scope de la sesión por falta de extractor.
+- [ ] **MEDIO — Bug FORMA_PAGO en flujo gmail.py**: para proveedores cuyo extractor no extrae FORMA_PAGO, el flujo aplica el valor de MAESTRO ignorando lo que diga el PDF. Caso real: DEBORA GARCIA (PDF=EF, MAESTRO=TJ → escribió TJ). Soluciones: (a) que el extractor extraiga FORMA_PAGO del PDF; (b) preferir SIEMPRE el PDF cuando esté presente.
+- [ ] **MEDIO — Soporte de IRPF**: el Excel actual no tiene columna IRPF. Algunas facturas (DEBORA GARCIA y otros autónomos) tienen retención que Kinema necesita para el modelo 111. Decidir si añadir columna `IRPF` o seguir anotándolo en OBS.
+- [ ] **BAJO — Borrar copia obsoleta `outputs/PAGOS_Gmail_2T26.xlsx`** (3-abr) — la canónica vive en Drive desde la reforma R.1 (23/04). Tener dos copias divergentes confunde el flujo.
+
+---
+
 ## Sesión 24/04/2026
 **Objetivo:** Bloque E (gmail VPS) + verificación DIA/ECOMS + `/documentos` v2 en Streamlit.
 
@@ -154,3 +178,4 @@
 | 2026-03-27 | Config + Dia + Netlify→GH Pages + seguridad | ✅ | Ver detalle arriba |
 | 2026-04-23 | Reforma destinos cloud R.1-R.6 + fix token VPS | ✅ | SPEC v4.6 |
 | 2026-04-24 | Bloque E + DIA/ECOMS + `/documentos` v2 + config/loader | ✅ | SPEC v4.7, 5 commits, autopsia en tasks/cierre_sesion_24abr_documentos.md |
+| 2026-04-28 | Resucitar 6 filas zombi PAGOS_Gmail_2T26 | ✅ | `scripts/resucitar_zombis.py` v1.0; backup `PAGOS_Gmail_2T26_backup_20260428_1536.xlsx`; 4 items backlog (multi-albarán, FORMA_PAGO, IRPF, extractores FIVE GALAXIES + DUE) |

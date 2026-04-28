@@ -78,6 +78,25 @@
   → REGLA: Al modificar un módulo, actualizar versión en 2 sitios: header del código + tabla en CLAUDE.md.
   → Actualizar ESQUEMA al cerrar sesión si hubo cambios significativos.
 
+### Filas zombi en PAGOS_Gmail
+- **Concepto: "fila zombi"** = entrada en `PAGOS_Gmail_<periodo>.xlsx` que quedó con TOTAL vacío y/o "ALERTA ROJA" en OBS porque la versión de gmail.py que la insertó tenía bugs hoy corregidos. Los extractores actuales sí parsean correctamente esos PDFs. Las filas no se reescriben automáticamente — quedan petrificadas hasta que algo las reprocese. Detectado en `PAGOS_Gmail_2T26.xlsx` (28/04/2026, 6 filas tras versiones pre-v1.14 de gmail.py).
+  → REGLA: tras cualquier upgrade significativo de gmail.py o de extractores, considerar pase de `scripts/resucitar_zombis.py` sobre los Excel del trimestre activo. El script es seguro (dry-run + backup + interactivo).
+  → REGLA: NO sobreescribir PROVEEDOR/CIF/IBAN si el Excel ya tiene valor del MAESTRO — la fuente canónica es MAESTRO, no el extractor (atributo `nombre`/`cif`/`iban` del extractor puede ser una versión corta, p.ej. `'CERES'` vs `'CERES CERVEZA SL'`). Limitar la sobreescritura a TOTAL/REF/FECHA/FORMA_PAGO/CUENTA. Las discrepancias en columnas protegidas se logean WARN no bloqueante (pueden indicar datos del proveedor desactualizados o factura mal asociada).
+
+### Bug nombrado de archivo en facturas multi-albarán
+- **gmail.py guarda el PDF con la fecha del PRIMER ALBARÁN, no la fecha de factura** → en facturas que agrupan varios albaranes (típico ForPlan/MIGUEZ CAL), el nombre de archivo refleja la fecha del primer albarán y desincroniza con la fecha real de factura. Caso real (28/04/2026): factura 31/12/25 archivada como `ATRASADA 4T25 1205 MIGUEZ CAL SL TF.pdf` (12/05 = primer albarán), no como `1231`. Después alguien renombra el PDF en disco al nombre correcto (1231) pero la columna ARCHIVO del Excel sigue con 1205 → buscar el PDF por nombre exacto falla.
+  → REGLA: Al investigar incidencias en proveedores con facturas multi-albarán, comparar `ARCHIVO` del Excel con el nombre real del PDF en disco. Si difieren en la fecha, sospechar bug de nombrado en gmail.py.
+  → REGLA: La FECHA_FACTURA extraída del PDF también puede ser la del primer albarán. El extractor de MIGUEZ tiene este bug (28/04/2026, anotado en backlog). Verificar manualmente facturas multi-albarán hasta arreglar el extractor.
+
+### Bug FORMA_PAGO en flujo gmail.py
+- **gmail.py prefiere MAESTRO sobre PDF para FORMA_PAGO cuando el extractor no la extrae** → si el extractor no expone `extraer_forma_pago()` o equivalente, el flujo pone en el Excel lo que diga MAESTRO_PROVEEDORES, ignorando lo que esté en el PDF. Caso real: DEBORA GARCIA TOLEDANO factura 14/04/26 — PDF dice "Efectivo", MAESTRO tiene `TJ` → escribió `TJ` en Excel.
+  → REGLA: Cuando un proveedor cambie ocasionalmente de forma de pago, esto causará un dato silenciosamente erróneo. Mientras el bug existe, revisar manualmente FORMA_PAGO de proveedores que paguen en efectivo o con métodos no fijos.
+  → SOLUCIÓN PENDIENTE: o (a) que el extractor extraiga FORMA_PAGO del PDF; o (b) que el flujo prefiera SIEMPRE el PDF cuando esté presente.
+
+### Patrón dual A/B de extractores
+- **Dos firmas conviviendo**: la mayoría de extractores definen solo hooks individuales (`extraer_lineas/total/fecha/referencia`) que reciben TEXTO. Solo unos pocos (CERES y similares) definen `extraer(pdf_path)` que devuelve dict con todo. gmail.py:2376-2453 maneja ambos: si la instancia tiene método `extraer`, lo invoca; si no, abre el PDF con pdfplumber+OCR y llama a los hooks.
+  → REGLA: Cualquier herramienta que necesite invocar extractores fuera de gmail.py (p.ej. `scripts/resucitar_zombis.py`) debe replicar este patrón dual para mantener paridad. La extracción de texto SÍ está expuesta como utilidad reutilizable: `nucleo.pdf.extraer_texto_pdf(ruta, metodo='pdfplumber', fallback=True)`. La selección de patrón A vs B sigue inline en gmail.py — duplicar con comentario apuntando a la línea origen.
+
 ### Pandas y tipos de datos
 - **`df["col"].dtype == object` es frágil entre pandas 2.x y 3.x** → pandas 3.x reporta columnas de strings como dtype `str`, no `object`, rompiendo ramas condicionales que dependen de esa igualdad.
   → REGLA: Usar `pd.api.types.is_numeric_dtype(df["col"])` o `pd.api.types.is_object_dtype(...)` en lugar de comparar `.dtype == object`. Invertir la condición: rama fácil (es numérico) → usar directo; rama costosa (cualquier no-numérico, incluido string) → limpiar + `pd.to_numeric(errors="coerce")`.
@@ -102,6 +121,9 @@
 | 2026-04-24 | config/loader | `except ModuleNotFoundError` capturaba bien `import config.datos_sensibles` pero dejaba escapar `from config import datos_sensibles` (distinto `ImportError`) → /documentos caía en Streamlit Cloud | Usar `except ImportError` (cubre ambos casos porque `ModuleNotFoundError` hereda de `ImportError`). Regla nueva "Python imports" |
 | 2026-04-24 | streamlit_app | Libs añadidas a `requirements.txt` raíz no llegaban a Cloud (Cloud usa el adyacente al main file) → imports fallaban en /documentos aunque localmente OK | Editar `streamlit_app/requirements.txt` al añadir libs para Cloud. Regla nueva "Streamlit Cloud — deploy y requirements". Deuda técnica documentada SPEC §13.10 |
 | 2026-04-24 | streamlit_app | Iteraciones ciegas de debug en Cloud tras cada push — sin traceback visible costaba 1 round trip por bug | Patrón logging visible en UI (try/except + st.error + expander con traceback.format_exc). Adoptado en documentos.py, extensible |
+| 2026-04-28 | scripts/resucitar_zombis | 1ª pasada del script sobreescribía PROVEEDOR (`CERES CERVEZA SL`→`CERES`) e IBAN (formato distinto) tomando del extractor en lugar del MAESTRO → habría roto la canonicalización del MAESTRO en filas resucitadas | Lista `COLUMNAS_PROTEGIDAS_MAESTRO=(PROVEEDOR,CIF,IBAN)`: si el Excel ya tiene valor, no sobreescribir y logear WARN. Regla nueva en sección "Filas zombi" |
+| 2026-04-28 | scripts/resucitar_zombis | 1ª pasada marcaba FECHA_FACTURA como cambio aunque solo difería el formato (DD/MM/YY vs DD/MM/YYYY) | Normalizar siempre FECHA_FACTURA a DD/MM/YY (estándar `.claude/rules/excel.md`); comparar fechas por valor, no por string |
+| 2026-04-28 | gmail/gmail.py | Bug nombrado multi-albarán descubierto: PDF de MIGUEZ CAL (factura 31/12/25) archivado en Excel como `1205` (1ª fecha de albarán) | Regla nueva en lessons "Bug nombrado de archivo en facturas multi-albarán" + entrada en backlog para revisar lógica de nombrado |
 | 2026-03-13 | Parseo | ESQUEMA buscado en carpeta equivocada | ESQUEMA está en gestion-facturas/docs/, no en Parseo/ |
 | 2026-03-13 | Gmail | REF "86" de BERNAL rechazada por gmail.py | gmail.py exigía len>=3, extractor genérico len>=2. Alineado a >=2 |
 | 2026-03-13 | La Llildiria | Total 93.94 en vez de 172.75 | PyPDF no captura tabla totales en PDFs imagen. Añadido cálculo desde subtotales + cambio a OCR primario |
