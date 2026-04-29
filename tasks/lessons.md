@@ -103,6 +103,27 @@
   → REGLA: Para proveedores con CIF vacío (extranjeros tipo ANTHROPIC), el riesgo es mayor porque `factura_existe` cae al fallback `nombre|REF`, y el `nombre` también es constante → la unicidad depende ENTERAMENTE del REF. Doble cuidado.
   → DETECCIÓN: revisar periódicamente `datos/emails_procesados.json` por proveedores con N entradas en `emails` pero pocas/una entrada en `facturas` (clave repetida). Es señal de REF colisionando.
 
+### Bytes NUL en pdfplumber
+- **pdfplumber a veces inserta `\x00` (byte NUL, ord=0) como separador en el texto extraído**. Caso real (29/04/2026): texto de `Invoice number EXB4HCQN 0006` en PDFs Anthropic — el "espacio" entre `EXB4HCQN` y `0006` resultó ser `\x00`, no un espacio real. Un regex con `\s*` falla porque `\s` cubre `[\t\n\r\f\v ]` pero NO el byte NUL.
+  → REGLA: para campos críticos extraídos del PDF con pdfplumber, los regex deben usar `[\s\x00]*` cuando se permitan separadores. Alternativa: pre-limpiar el texto con `texto.replace('\x00', ' ')` antes de aplicar regex.
+  → DETECCIÓN: si un regex que parece correcto cae al fallback inesperadamente, inspeccionar bytes con `for i, c in enumerate(texto[idx:idx+30]): print(i, repr(c), ord(c))` para ver el separador real.
+  → ÁMBITO: cualquier extractor que reciba texto de pdfplumber. Casos especialmente sospechosos: PDFs generados por servicios USA (Anthropic, etc.) donde la tipografía y el embedding de texto pueden diferir del estándar europeo.
+
+### Rescate manual de facturas duplicadas zombis
+- **Cuando una factura se descarta como duplicado CIF+REF por bug del extractor**, el flujo correcto NO es reprocesar vía gmail.py (eso re-etiquetaría email + intentaría duplicar todo). El flujo correcto es:
+  1. Parchear el extractor.
+  2. Smoke test contra PDFs históricos del proveedor para confirmar que extrae REFs únicas.
+  3. Re-parsear el PDF original con el extractor parcheado.
+  4. Resucitar manualmente: subir PDF a Dropbox + añadir 1 fila a cada Excel canónico (PAGOS Drive, Provisional Drive, Provisional Dropbox).
+  5. Limpiar el control DB del VPS (`emails_procesados.json`):
+     - Borrar la clave zombi de `facturas`.
+     - Insertar la clave nueva única.
+     - Reemplazar la entrada de `emails[email_id]` (de `motivo: "Duplicado..."` al formato canónico de 5 campos: `message_id, fecha_proceso, proveedor, archivo, dropbox`).
+     - NO tocar `ultima_ejecucion`.
+  6. Deploy del extractor parcheado al VPS (scp + verificar md5 match).
+  → REGLA: NO re-etiquetar el email Gmail con label `FACTURAS` para que el cron lo reprocese — eso intentaría duplicar el PDF en Dropbox (saltaría por hash dup pero contaminaría logs) y crearía una segunda fila Excel con la nueva REF (real) MIENTRAS la fila original errónea seguiría sin escribirse. El email permanece en `FACTURAS_PROCESADAS`.
+  → Caso real (29/04/2026): factura Anthropic 20/04 (REF correcta `EXB4HCQN-0007`, total 90€) se rescató con script one-shot `scripts/_rescate_anthropic_20260420.py`. Backups del control DB pre/post conservados en `outputs/backups/` como evidencia.
+
 ### Diagnóstico de facturas "perdidas" — alias coloquial vs canónico
 - **Cuando el usuario dice "la factura de X no se procesó"**, antes de buscar bug confirmar que X es exactamente el `nombre` del MAESTRO o uno de sus `alias`. Caso real (29/04): el usuario enumeró "Pili Blanco" y "Welldone" como no procesadas — ambas SÍ estaban procesadas, pero bajo el nombre canónico `BLANCO GUTIERREZ PILAR` (alias incluye `PILAR BLANCO`) y `DEL RIO LAMEYER RODOLFO` (alias incluye `WELLDONE`). El log y `gmail_resumen.json` listan SIEMPRE el nombre canónico del MAESTRO.
   → REGLA: para diagnosticar "no procesada", la cadena de verificación es:

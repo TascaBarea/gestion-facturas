@@ -53,10 +53,10 @@
 - Miguez Cal 16/04 → procesado 18/04, fila zombi F5 ya resucitada en sesión 28/04.
 - Martin Arbenza 26/03 → procesado 27/03 como `MARTIN ABENZA`; reenvíos del 22/04 saltados como hash dup ✓.
 
-### Backlog generado por esta sesión
-- [ ] **MEDIO — Arreglar `Parseo/extractores/anthropic.py`** según parche propuesto en reporte. Repo separado `Parseo/`. Validar con PDF real antes de desplegar a VPS.
-- [ ] **MEDIO — Reprocesar factura Anthropic 20/04** tras fix: re-etiquetar email Gmail (id `19dabd1a29b08e7a`) → `FACTURAS`. La factura no quedó en Excel ni Dropbox al ser descartada por dup.
-- [ ] **BAJO — Limpieza outputs auxiliares** sesión: borrar `outputs/emails_procesados_vps.json` (snapshot 256 KB) tras cierre. `outputs/bloque_e.log` mantener (útil para revisiones futuras, o moverlo a `outputs/logs_gmail/2026-04-24_primera_vps.log` para consistencia).
+### Backlog generado por esta sesión (CERRADO 29/04 tarde)
+- [x] **MEDIO — Arreglar `Parseo/extractores/anthropic.py`** ✅ commit Parseo `33e9add` — regex `r'Invoice\s+number\s+([A-Z][A-Z0-9]*?)[\s\x00]*(\d{3,5})\b'` que devuelve `EXB4HCQN-NNNN` único. Smoke test verde sobre 3 PDFs reales. Deploy VPS confirmado md5-match.
+- [x] **MEDIO — Reprocesar factura Anthropic 20/04** ✅ rescate manual ejecutado (sin re-etiquetar el email — el script `_rescate_anthropic_20260420.py` descargó el PDF vía Gmail API, parseó con extractor parcheado, subió a Dropbox y añadió 1 fila a cada uno de los 3 Excels). Control DB VPS limpiado (clave zombi `ANTHROPIC|EXB4HCQN` → `ANTHROPIC|EXB4HCQN-0007`).
+- [x] **BAJO — Limpieza outputs auxiliares** ✅ script y PDF temp borrados; backups del control DB (pre/post) conservados como evidencia de auditoría en `outputs/backups/`.
 
 ---
 
@@ -207,3 +207,4 @@
 | 2026-04-24 | Bloque E + DIA/ECOMS + `/documentos` v2 + config/loader | ✅ | SPEC v4.7, 5 commits, autopsia en tasks/cierre_sesion_24abr_documentos.md |
 | 2026-04-28 | Resucitar 6 filas zombi PAGOS_Gmail_2T26 | ✅ | `scripts/resucitar_zombis.py` v1.0; backup `PAGOS_Gmail_2T26_backup_20260428_1536.xlsx`; 4 items backlog (multi-albarán, FORMA_PAGO, IRPF, extractores FIVE GALAXIES + DUE) |
 | 2026-04-29 | Diagnóstico 6 facturas no procesadas Bloque E | ✅ | Reporte `outputs/diagnostico_6_facturas_20260429.md`; 5/6 ya procesadas (premisa inexacta — alias coloquiales vs canónicos); 1 bug real (`anthropic.py` REF persistente → anti-dup colisiona) con parche propuesto sin aplicar |
+| 2026-04-29 (tarde) | Fix anthropic.py + rescate factura 20/04 + limpieza control DB + deploy VPS | ✅ | Commits Parseo `33e9add` + gestion-facturas `59a62e9` (diagnóstico previo) + cierre. Rescate `EXB4HCQN-0007`, 4 escrituras OK. Control DB md5 PC==VPS post-scp `b415efe8`. Deploy VPS `/opt/Parseo/extractores/anthropic.py` md5-match. Reporte `outputs/fix_anthropic_20260429.md` |
