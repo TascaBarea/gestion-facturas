@@ -1,0 +1,105 @@
+15:51:52 | INFO     | MAESTRO descargado de Drive → /opt/gestion-facturas/datos/MAESTRO_PROVEEDORES.xlsx
+15:51:52 | INFO     | ============================================================
+15:51:52 | INFO     | GMAIL MODULE v1.22 - PRODUCCIÓN
+15:51:52 | INFO     | ============================================================
+15:51:52 | INFO     | Conectando a Gmail...
+15:51:52 | INFO     | Gmail conectado ✓
+15:51:52 | INFO     | Conectando a Dropbox...
+15:51:53 | INFO     | Dropbox conectado ✓
+15:51:53 | INFO     | Filtro fecha: after:2026/04/17 (última ejecución: 2026-04-18)
+15:51:54 | INFO     | Emails pendientes: 12
+15:51:54 | INFO     | Creando backups...
+15:51:54 | INFO     | Procesando: Factura Abril La Dolorosa...
+15:51:55 | INFO     |   ↳ Proveedor: PABLO RUIZ HERRERA
+15:51:55 | INFO     |   ↳ Usando extractor: pablo_ruiz_la_dolorosa.py
+15:51:55 | INFO     |   ↳ Fecha: 23/04/2026
+15:51:55 | INFO     |   ↳ Total: 285.05€
+15:51:55 | INFO     |   ↳ Ref: TB-2026-36
+15:51:55 | INFO     |   ↳ Archivo: 2T26 0423 PABLO RUIZ HERRERA TF.pdf
+15:51:57 | INFO     |   ↳ [DROPBOX OK] /File inviati/TASCA BAREA S.L.L/CONTABILIDAD/FACTURAS 2026/FACTURAS RECIBIDAS/2 TRIMESTRE 2026/2T26 0423 PABLO RUIZ HERRERA TF.pdf
+15:51:57 | INFO     |   ↳ Añadido a Excel
+15:51:57 | INFO     | Procesando: Fwd: FACTURA PENDIENTE DE PAGO...
+15:51:58 | INFO     |   ↳ PDF duplicado (hash), saltando
+15:51:58 | INFO     | Procesando: Fwd: FACTURA PENDIENTE DE PAGO...
+15:51:58 | INFO     |   ↳ PDF duplicado (hash), saltando
+15:51:58 | INFO     | Procesando: Solicitud de factura...
+15:51:59 | WARNING  |   ↳ Imagen, requiere revisión manual
+15:51:59 | INFO     | Procesando: Factura 06406_2625897_TASCA BAREA. CERES CERVEZA S...
+15:51:59 | INFO     |   ↳ Proveedor: CERES CERVEZA SL
+15:51:59 | INFO     |   ↳ Usando extractor: ceres.py
+15:51:59 | INFO     |   ↳ Fecha: 21/04/2026
+15:51:59 | INFO     |   ↳ Total: 642.80€
+15:51:59 | INFO     |   ↳ Ref: 2625897
+15:51:59 | INFO     |   ↳ Archivo: 2T26 0421 CERES CERVEZA SL RC.pdf
+15:52:02 | INFO     |   ↳ [DROPBOX OK] /File inviati/TASCA BAREA S.L.L/CONTABILIDAD/FACTURAS 2026/FACTURAS RECIBIDAS/2 TRIMESTRE 2026/2T26 0421 CERES CERVEZA SL RC.pdf
+15:52:02 | INFO     |   ↳ Añadido a Excel
+15:52:02 | INFO     | Procesando: Factura 1-001705.pdf...
+15:52:03 | INFO     |   ↳ Proveedor: SABORES DE PATERNA SCA
+15:52:03 | INFO     |   ↳ Usando extractor: sabores_paterna.py
+15:52:03 | INFO     |   ↳ Fecha: 17/04/2026
+15:52:03 | INFO     |   ↳ Total: 206.64€
+15:52:03 | INFO     |   ↳ Ref: 001705
+15:52:03 | INFO     |   ↳ Archivo: 2T26 0417 SABORES DE PATERNA SCA TF.pdf
+15:52:05 | INFO     |   ↳ [DROPBOX OK] /File inviati/TASCA BAREA S.L.L/CONTABILIDAD/FACTURAS 2026/FACTURAS RECIBIDAS/2 TRIMESTRE 2026/2T26 0417 SABORES DE PATERNA SCA TF.pdf
+15:52:05 | INFO     |   ↳ Añadido a Excel
+15:52:05 | INFO     | Procesando: CONSERVAS GOURMET // LA MAR DE TAZONES...
+15:52:09 | WARNING  |   ↳ Proveedor no identificado
+15:52:58 | WARNING  |   ↳ ⚠️ Fecha no detectada - puede ser factura ATRASADA
+15:52:58 | ERROR    |   ↳ 🔴 ALERTA ROJA: No se pudo extraer total del PDF
+15:52:58 | INFO     |   ↳ Archivo: REVISAR 2T26 0423 (info@cetareatazones.com).pdf
+15:52:59 | INFO     |   ↳ [DROPBOX OK] /File inviati/TASCA BAREA S.L.L/CONTABILIDAD/FACTURAS 2026/FACTURAS RECIBIDAS/2 TRIMESTRE 2026/REVISAR 2T26 0423 (info@cetareatazones.com).pdf
+15:52:59 | INFO     |   ↳ Añadido a Excel
+15:52:59 | INFO     | Procesando: facturas...
+15:53:01 | INFO     |   ↳ Proveedor: BLANCO GUTIERREZ PILAR
+15:53:01 | INFO     |   ↳ Usando extractor: praizal.py
+15:53:01 | INFO     |   ↳ Fecha: 13/11/2025
+15:53:01 | INFO     |   ↳ Total: 235.16€
+15:53:01 | INFO     |   ↳ Ref: 6652025
+15:53:01 | INFO     |   ↳ Archivo: ATRASADA 4T25 1113 BLANCO GUTIERREZ PILAR TF.pdf
+15:53:03 | INFO     |   ↳ [DROPBOX OK] /File inviati/TASCA BAREA S.L.L/CONTABILIDAD/FACTURAS 2026/FACTURAS RECIBIDAS/2 TRIMESTRE 2026/ATRASADAS/ATRASADA 4T25 1113 BLANCO GUTIERREZ PILAR TF.pdf
+15:53:03 | INFO     |   ↳ Añadido a Excel
+15:53:03 | INFO     | Procesando: Your receipt from Anthropic, PBC #2880-2984-9190...
+15:53:04 | INFO     |   ↳ Proveedor: ANTHROPIC
+15:53:04 | INFO     |   ↳ Usando extractor: anthropic.py
+15:53:04 | INFO     |   ↳ Fecha: 20/04/2026
+15:53:04 | INFO     |   ↳ Total: 90.00€
+15:53:04 | INFO     |   ↳ Ref: EXB4HCQN
+15:53:04 | WARNING  |   ↳ Factura CIF+REF duplicada — NO se guardará
+15:53:04 | INFO     |   ↳ Archivo: 2T26 0420 ANTHROPIC TJ.pdf
+15:53:04 | INFO     |   ↳ Duplicado CIF+REF: se omite Dropbox y Excel
+15:53:04 | INFO     | Procesando: Factura pendiente...
+15:53:05 | INFO     |   ↳ Proveedor: DEL RIO LAMEYER RODOLFO
+15:53:05 | INFO     |   ↳ Usando extractor: welldone.py
+15:53:05 | INFO     |   ↳ Fecha: 10/03/2026
+15:53:05 | INFO     |   ↳ Total: 202.58€
+15:53:05 | INFO     |   ↳ Ref: 000093
+15:53:05 | INFO     |   ↳ Archivo: ATRASADA 1T26 0310 DEL RIO LAMEYER RODOLFO TF, TJ.pdf
+15:53:06 | INFO     |   ↳ [DROPBOX OK] /File inviati/TASCA BAREA S.L.L/CONTABILIDAD/FACTURAS 2026/FACTURAS RECIBIDAS/2 TRIMESTRE 2026/ATRASADAS/ATRASADA 1T26 0310 DEL RIO LAMEYER RODOLFO TF, TJ.pdf
+15:53:06 | INFO     |   ↳ Añadido a Excel
+15:53:06 | INFO     | Procesando: Factura 06406_2625572_TASCA BAREA. CERES CERVEZA S...
+15:53:07 | INFO     |   ↳ Proveedor: CERES CERVEZA SL
+15:53:07 | INFO     |   ↳ Usando extractor: ceres.py
+15:53:07 | INFO     |   ↳ Fecha: 17/04/2026
+15:53:07 | INFO     |   ↳ Total: 329.08€
+15:53:07 | INFO     |   ↳ Ref: 2625572
+15:53:07 | INFO     |   ↳ Archivo: 2T26 0417 CERES CERVEZA SL RC.pdf
+15:53:08 | INFO     |   ↳ [DROPBOX OK] /File inviati/TASCA BAREA S.L.L/CONTABILIDAD/FACTURAS 2026/FACTURAS RECIBIDAS/2 TRIMESTRE 2026/2T26 0417 CERES CERVEZA SL RC.pdf
+15:53:08 | INFO     |   ↳ Añadido a Excel
+15:53:08 | INFO     | Procesando: Factura de tu compra de DIA nº ES13908020009975120...
+15:53:10 | WARNING  |   ↳ Proveedor no identificado
+15:53:13 | INFO     |   ↳ Fecha: 20/04/2026
+15:53:13 | ERROR    |   ↳ 🔴 ALERTA ROJA: No se pudo extraer total del PDF
+15:53:13 | INFO     |   ↳ Archivo: REVISAR 2T26 0420 (clientes@dia.es).pdf
+15:53:15 | INFO     |   ↳ [DROPBOX OK] /File inviati/TASCA BAREA S.L.L/CONTABILIDAD/FACTURAS 2026/FACTURAS RECIBIDAS/2 TRIMESTRE 2026/REVISAR 2T26 0420 (clientes@dia.es).pdf
+15:53:16 | INFO     |   ↳ Añadido a Excel
+15:53:16 | INFO     | Notificación enviada ✓
+15:53:16 | INFO     | ============================================================
+15:53:16 | INFO     | RESUMEN
+15:53:16 | INFO     |   Total procesados: 12
+15:53:16 | INFO     |   Exitosos: 6
+15:53:16 | INFO     |   Requieren revisión: 4
+15:53:16 | INFO     |   Errores: 0
+15:53:16 | INFO     | ============================================================
+15:53:16 | INFO     | Resumen JSON exportado: /opt/gestion-facturas/outputs/logs_gmail/gmail_resumen.json
+15:53:20 | INFO     | [DRIVE OK] Excels de compras sincronizados
+15:53:21 | INFO     | [DROPBOX OK] Facturas Provisional → /File inviati/TASCA BAREA S.L.L/CONTABILIDAD/FACTURAS 2026/FACTURAS RECIBIDAS/2 TRIMESTRE 2026/Facturas 2T26 Provisional.xlsx

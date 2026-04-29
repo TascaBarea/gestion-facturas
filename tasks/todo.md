@@ -33,6 +33,33 @@
 
 ---
 
+## Sesión 29/04/2026
+**Objetivo:** Diagnóstico de las 6 facturas que se creían no procesadas en el Bloque E del 23-24/04.
+
+### Completado
+- [x] **Diagnóstico 6 facturas Bloque E** — reporte `outputs/diagnostico_6_facturas_20260429.md`. Resultado: 5/6 ya procesadas correctamente (la premisa era inexacta — varias se procesaron bajo nombre canónico distinto del alias coloquial usado al enumerarlas). 1 bug real detectado.
+- [x] Verificación cruzada: log VPS Bloque E + control DB `emails_procesados.json` + queries Gmail API + MAESTRO.
+- [x] Verificación de cola pendiente para cron 01/05: 25 emails con label `FACTURAS` desde 22/04 → procesarán normal.
+
+### Bug confirmado (NO aplicado — propuesta documentada)
+- **`Parseo/extractores/anthropic.py:75-80`**: `extraer_referencia` captura el campo "Invoice number" que es **persistente del cliente** (`EXB4HCQN`) en lugar del Receipt # único de cada factura. Consecuencia: cada factura mensual de Anthropic choca con anti-dup CIF+REF (`ANTHROPIC|EXB4HCQN`) y se descarta silenciosamente. Confirmado para la factura del 20/04 (90€, REVISAR como duplicado) y previsible para todas las futuras.
+- Fix propuesto: usar regex `Receipt\s*#?\s*(\d{4}-\d{4}-\d{4})` como primer patrón, con fallback al Invoice number actual.
+- Tras el fix: re-etiquetar email 20/04 (`id=19dabd1a29b08e7a`) como `FACTURAS` para que el siguiente cron lo reprocese, o ejecución manual puntual.
+
+### Casos cerrados como YA_PROCESADO
+- Emjamesa 16/04 → procesado 18/04 (motivo: hash duplicado de cadena `Re: Re: Re:`).
+- Pili Blanco 21/04 → procesado en Bloque E como `BLANCO GUTIERREZ PILAR` (alias en MAESTRO).
+- Welldone 20/04 → procesado en Bloque E como `DEL RIO LAMEYER RODOLFO` (alias `WELLDONE` en MAESTRO).
+- Miguez Cal 16/04 → procesado 18/04, fila zombi F5 ya resucitada en sesión 28/04.
+- Martin Arbenza 26/03 → procesado 27/03 como `MARTIN ABENZA`; reenvíos del 22/04 saltados como hash dup ✓.
+
+### Backlog generado por esta sesión
+- [ ] **MEDIO — Arreglar `Parseo/extractores/anthropic.py`** según parche propuesto en reporte. Repo separado `Parseo/`. Validar con PDF real antes de desplegar a VPS.
+- [ ] **MEDIO — Reprocesar factura Anthropic 20/04** tras fix: re-etiquetar email Gmail (id `19dabd1a29b08e7a`) → `FACTURAS`. La factura no quedó en Excel ni Dropbox al ser descartada por dup.
+- [ ] **BAJO — Limpieza outputs auxiliares** sesión: borrar `outputs/emails_procesados_vps.json` (snapshot 256 KB) tras cierre. `outputs/bloque_e.log` mantener (útil para revisiones futuras, o moverlo a `outputs/logs_gmail/2026-04-24_primera_vps.log` para consistencia).
+
+---
+
 ## Sesión 28/04/2026
 **Objetivo:** Resucitar filas zombi en `PAGOS_Gmail_2T26.xlsx` (6 confirmadas, secuelas de gmail.py pre-v1.14).
 
@@ -179,3 +206,4 @@
 | 2026-04-23 | Reforma destinos cloud R.1-R.6 + fix token VPS | ✅ | SPEC v4.6 |
 | 2026-04-24 | Bloque E + DIA/ECOMS + `/documentos` v2 + config/loader | ✅ | SPEC v4.7, 5 commits, autopsia en tasks/cierre_sesion_24abr_documentos.md |
 | 2026-04-28 | Resucitar 6 filas zombi PAGOS_Gmail_2T26 | ✅ | `scripts/resucitar_zombis.py` v1.0; backup `PAGOS_Gmail_2T26_backup_20260428_1536.xlsx`; 4 items backlog (multi-albarán, FORMA_PAGO, IRPF, extractores FIVE GALAXIES + DUE) |
+| 2026-04-29 | Diagnóstico 6 facturas no procesadas Bloque E | ✅ | Reporte `outputs/diagnostico_6_facturas_20260429.md`; 5/6 ya procesadas (premisa inexacta — alias coloquiales vs canónicos); 1 bug real (`anthropic.py` REF persistente → anti-dup colisiona) con parche propuesto sin aplicar |

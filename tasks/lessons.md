@@ -97,6 +97,21 @@
 - **Dos firmas conviviendo**: la mayoría de extractores definen solo hooks individuales (`extraer_lineas/total/fecha/referencia`) que reciben TEXTO. Solo unos pocos (CERES y similares) definen `extraer(pdf_path)` que devuelve dict con todo. gmail.py:2376-2453 maneja ambos: si la instancia tiene método `extraer`, lo invoca; si no, abre el PDF con pdfplumber+OCR y llama a los hooks.
   → REGLA: Cualquier herramienta que necesite invocar extractores fuera de gmail.py (p.ej. `scripts/resucitar_zombis.py`) debe replicar este patrón dual para mantener paridad. La extracción de texto SÍ está expuesta como utilidad reutilizable: `nucleo.pdf.extraer_texto_pdf(ruta, metodo='pdfplumber', fallback=True)`. La selección de patrón A vs B sigue inline en gmail.py — duplicar con comentario apuntando a la línea origen.
 
+### Identificadores persistentes vs únicos en `extraer_referencia`
+- **Trampa**: Un campo en la factura puede llamarse `Invoice number` o `Customer ID` o `Reference` y ser **persistente del cliente/billing**, no único por factura. Si un extractor lo captura como REF, el anti-dup CIF+REF (gmail.py:2247-2255) descartará silenciosamente todas las facturas siguientes del mismo proveedor. Caso real (29/04/2026): `Parseo/extractores/anthropic.py:75-80` capturaba `Invoice number EXB4HCQN` (persistente) en lugar del `Receipt #2880-2984-9190` único → factura Anthropic 20/04 descartada como duplicada, situación que se repetiría cada mes.
+  → REGLA: Al crear/revisar un extractor, comprobar con AL MENOS DOS facturas distintas del mismo proveedor que `extraer_referencia()` devuelva valores DIFERENTES. Si devuelve el mismo string para ambas, el patrón captura un identificador persistente — corregir.
+  → REGLA: Para proveedores con CIF vacío (extranjeros tipo ANTHROPIC), el riesgo es mayor porque `factura_existe` cae al fallback `nombre|REF`, y el `nombre` también es constante → la unicidad depende ENTERAMENTE del REF. Doble cuidado.
+  → DETECCIÓN: revisar periódicamente `datos/emails_procesados.json` por proveedores con N entradas en `emails` pero pocas/una entrada en `facturas` (clave repetida). Es señal de REF colisionando.
+
+### Diagnóstico de facturas "perdidas" — alias coloquial vs canónico
+- **Cuando el usuario dice "la factura de X no se procesó"**, antes de buscar bug confirmar que X es exactamente el `nombre` del MAESTRO o uno de sus `alias`. Caso real (29/04): el usuario enumeró "Pili Blanco" y "Welldone" como no procesadas — ambas SÍ estaban procesadas, pero bajo el nombre canónico `BLANCO GUTIERREZ PILAR` (alias incluye `PILAR BLANCO`) y `DEL RIO LAMEYER RODOLFO` (alias incluye `WELLDONE`). El log y `gmail_resumen.json` listan SIEMPRE el nombre canónico del MAESTRO.
+  → REGLA: para diagnosticar "no procesada", la cadena de verificación es:
+    1. Email existe en Gmail (consulta API por `from:` o `subject:` libre).
+    2. Label actual: `FACTURAS` (pendiente) vs `FACTURAS_PROCESADAS` (Label_5 — procesado).
+    3. Email_id en `emails_procesados.json:emails` (con `proveedor` y `motivo`).
+    4. Si `proveedor` aparece, es el nombre **canónico** del MAESTRO — buscar por ese nombre en log/Excel, no por el alias coloquial.
+  → REGLA: el sistema procesa EL CONTENIDO de un email, no su fecha. Un email del 21/04 puede contener una factura del 13/11/2025 — el `archivo` reflejará la fecha real de la factura, no la del email.
+
 ### Pandas y tipos de datos
 - **`df["col"].dtype == object` es frágil entre pandas 2.x y 3.x** → pandas 3.x reporta columnas de strings como dtype `str`, no `object`, rompiendo ramas condicionales que dependen de esa igualdad.
   → REGLA: Usar `pd.api.types.is_numeric_dtype(df["col"])` o `pd.api.types.is_object_dtype(...)` en lugar de comparar `.dtype == object`. Invertir la condición: rama fácil (es numérico) → usar directo; rama costosa (cualquier no-numérico, incluido string) → limpiar + `pd.to_numeric(errors="coerce")`.
