@@ -1,8 +1,54 @@
-# SPEC GESTION-FACTURAS v4.7
+# SPEC GESTION-FACTURAS v4.8
 
-> Documento maestro unificado — actualizado 24/04/2026
+> Documento maestro unificado — actualizado 29/04/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
+
+---
+
+## CHANGELOG v4.8 — 28-29/04/2026 (resucitar_zombis.py + bugs descubiertos)
+
+**Nuevo script `scripts/resucitar_zombis.py` v1.0** (commit `6c608ce`). Herramienta interactiva para reprocesar "filas zombi" en `PAGOS_Gmail_<periodo>.xlsx`: entradas con TOTAL vacío y/o "ALERTA ROJA" en OBS que quedaron petrificadas porque la versión de gmail.py que las insertó tenía bugs hoy corregidos. Los extractores actuales sí parsean correctamente esos PDFs, pero las filas no se reescriben automáticamente.
+
+**Diseño** (paridad real con flujo de producción):
+
+- **Resolución de extractor**: `MAESTRO_PROVEEDORES.archivo_extractor` como fuente primaria (idéntico a `gmail.py:2170`); fallback a dict manual `MAPEO_EXTRACTORES_FALLBACK` si el MAESTRO no tiene el campo poblado.
+- **Patrón dual A/B**: replica inline la lógica de `gmail.py:2376-2453` con comentario apuntando al origen. Patrón A (clase con `extraer(pdf_path)` que devuelve dict — caso CERES). Patrón B (clase solo con `extraer_lineas/total/fecha/referencia` que reciben TEXTO — caso mayoritario, requiere `nucleo.pdf.extraer_texto_pdf` con fallback OCR).
+- **Búsqueda de PDFs**: si el archivo empieza por `ATRASADA`, prioriza la carpeta `<trimestre del Excel>/ATRASADAS` (deducido del propio nombre del Excel: `PAGOS_Gmail_2T26.xlsx` → 2T2026). Las atrasadas se contabilizan en el trimestre actual, no en el de su fecha original.
+- **Protección MAESTRO**: `COLUMNAS_PROTEGIDAS_MAESTRO = (PROVEEDOR, CIF, IBAN)`. Si el Excel ya tiene valor, NO se sobreescribe — la fuente canónica de identidad del proveedor es el MAESTRO, no el atributo `nombre`/`cif`/`iban` del extractor (que puede ser una versión corta, p.ej. `'CERES'` vs `'CERES CERVEZA SL'`). Las discrepancias se logean WARN no bloqueante: pueden indicar incidencia (datos del proveedor desactualizados, factura mal asociada).
+- **Equivalencia de fechas**: FECHA_FACTURA siempre se normaliza a `DD/MM/YY` (estándar `.claude/rules/excel.md`). Si el actual y el propuesto representan el mismo día (independiente del formato `DD/MM/YY` vs `DD/MM/YYYY`), no se cuenta como cambio.
+- **Modo seguro por defecto**: `--apply` requiere flag explícito; sin él, dry-run. Backup obligatorio antes de escribir (`PAGOS_Gmail_<periodo>_backup_YYYYMMDD_HHMM.xlsx`). Detección de PermissionError → mensaje "Excel ABIERTO" + exit code 2 sin escritura parcial.
+
+**Sesión inaugural — 6 filas zombi resucitadas en `PAGOS_Gmail_2T26.xlsx`**:
+
+| Fila | Proveedor | Acción | Resultado |
+|------|-----------|--------|-----------|
+| F3 | SABORES PATERNA | auto | TOTAL=199,73 €, REF=001525 |
+| F4 | WEBEMPRESA | auto | TOTAL=19,35 € |
+| F5 | MIGUEZ CAL | manual override | FECHA=31/12/25, REF=A 4724, TOTAL=216,24 € (nota multi-albarán) |
+| F8 | CERES (14/04) | auto | TOTAL=714,21 €, REF=2624798 |
+| F9 | DEBORA GARCIA | manual override | FORMA_PAGO=EF (PDF dice efectivo, MAESTRO tenía TJ) + nota IRPF -0,73 € |
+| F11 | CERES (10/04) | auto | TOTAL=198,71 €, REF=2624536 |
+
+Out-of-scope (sin extractor, marcadas `fallidas` por el script y apuntadas en backlog): F6 FIVE GALAXIES COMMERCE LTD, F10 DUE SERVICIOS INTEGRALES LABORALES SL.
+
+**Bugs descubiertos durante la sesión** (todos en backlog `tasks/todo.md` sesión 28/04 — no se atacan en este commit):
+
+1. **ALTO — Bug nombrado de archivo en facturas multi-albarán** (`gmail/gmail.py`). gmail.py nombra el PDF con la fecha del PRIMER albarán en vez de la fecha de la factura. Detectado en MIGUEZ CAL: factura 31/12/25 archivada como `ATRASADA 4T25 1205 MIGUEZ CAL SL TF.pdf` (12/05 = primer albarán); el PDF físico fue renombrado manualmente a `1231` correcto pero la columna `ARCHIVO` del Excel mantenía `1205` → fallaba el lookup por nombre exacto. Probable que afecte a cualquier proveedor con facturas multi-albarán.
+2. **MEDIO — Bug FORMA_PAGO en flujo gmail.py**. Para proveedores cuyo extractor no expone `extraer_forma_pago()`, el flujo aplica el valor de MAESTRO ignorando lo que diga el PDF. Caso DEBORA GARCIA: PDF=Efectivo, MAESTRO=TJ → escribió TJ. Soluciones posibles: (a) que el extractor extraiga FORMA_PAGO; (b) preferir SIEMPRE el PDF cuando esté presente.
+3. **MEDIO — Bug fecha en extractor MIGUEZ CAL** (`Parseo/extractores/miguez_cal.py`). En facturas multi-albarán lee la fecha del primer albarán como `FECHA_FACTURA`. Debería usar la fecha del header de factura.
+4. **MEDIO — Soporte de IRPF**. El Excel actual no tiene columna IRPF. Algunas facturas (DEBORA GARCIA y otros autónomos) tienen retención que Kinema necesita para el modelo 111. Decidir si añadir columna `IRPF` o seguir anotándolo en OBS.
+5. **MEDIO — Crear extractores faltantes**: FIVE GALAXIES COMMERCE LTD (Loyverse, mensual recurrente) y DUE SERVICIOS INTEGRALES LABORALES SL (PRL).
+6. **BAJO — Limpieza post-R.1**: existe copia obsoleta `outputs/PAGOS_Gmail_2T26.xlsx` (3-abr) que la reforma R.1 dejó atrás. La canónica vive en Drive desde 23/04. Antes de borrar: grep en repo de referencias.
+
+**Reglas nuevas en `tasks/lessons.md`**:
+
+- **Filas zombi en PAGOS_Gmail** — concepto + workflow de resucitación + protección MAESTRO.
+- **Bug nombrado multi-albarán** — fecha del primer albarán vs factura.
+- **Bug FORMA_PAGO** — gmail.py prefiere MAESTRO sobre PDF.
+- **Patrón dual A/B de extractores** — paridad obligada con `gmail.py:2376-2453` para herramientas externas que invoquen extractores.
+
+**Workflow recomendado tras upgrade significativo de gmail.py o extractores**: pase de `python scripts/resucitar_zombis.py` (dry-run) sobre los Excel del trimestre activo. Si reporta zombis con extractor disponible y datos limpios → `--apply`. El script es seguro por diseño: dry-run + backup + interactivo + protección MAESTRO.
 
 ---
 
