@@ -49,6 +49,12 @@
   → Para el resto: pdfplumber o pypdf con fallback_ocr=True.
 - **`extraer_numero_factura` eliminado en Parseo v5.18** → gmail.py debe usar `extraer_referencia`
   → REGLA: Al crear extractores nuevos, solo implementar `extraer_referencia` (nunca `extraer_numero_factura`).
+- **MAESTRO con `ARCHIVO_EXTRACTOR=X.py` pero archivo inexistente** → gmail.py loguea `Extractor no encontrado` y cae al fallback genérico, dejando filas Excel zombi (TOTAL/REF vacíos). Caso real (04/05/2026): `ACEITES DE ESPECIALIDAD JALEO` con `ARCHIVO_EXTRACTOR=jaleo.py` configurado en MAESTRO desde hacía meses, pero `Parseo/extractores/jaleo.py` nunca se creó → 2 zombis acumuladas.
+  → REGLA: Al dar de alta un proveedor en MAESTRO con `TIENE_EXTRACTOR=SI` y `ARCHIVO_EXTRACTOR=X.py`, crear el archivo el mismo día. Si se pospone, marcar `TIENE_EXTRACTOR=NO` hasta que esté listo, así gmail.py usa fallback genérico explícito (no roto).
+  → REGLA: Para detectar futuros casos, ejecutar periódicamente: para cada fila MAESTRO con `TIENE_EXTRACTOR=SI`, verificar `Path(extractores_dir / archivo_extractor).exists()`. Discrepancia → alerta.
+- **Mismo proveedor con 2 formatos PDF distintos** → un solo regex no cubre ambos casos. Caso real (04/05/2026): JALEO tiene formato "factura moderna" (cabecera one-line `Factura N\d+ Fecha dd/mm/yyyy ... Total X€`) y formato "presupuesto" (bloques separados con `NÚMERO DE ORDEN #\d+`, `FECHA DE ORDEN dd-mm-yyyy`, `TOTAL : X €`).
+  → REGLA: Cuando un proveedor tiene >1 formato, escribir CADA método (`extraer_total/fecha/referencia`) con regex jerárquicos: primero el patrón más específico, luego el genérico. Validar smoke test con un PDF de cada formato. Documentar los formatos en el docstring del módulo.
+  → REGLA: Cuidar colisiones con campos parecidos. Caso JALEO: `extraer_total` debe matchear `TOTAL : 523,50 €` pero NO `TOTAL PARCIAL : 698,00 €` → usar `^TOTAL\s*:` con `re.MULTILINE`. Y `extraer_referencia` debe priorizar `Factura N\d+` sobre `#\d+` porque PDF1 contiene `Observaciones #1859` que NO es la REF real.
 
 ### Portes y envío en facturas
 - **Portes como línea separada** → error de IVA y descuadre en totales

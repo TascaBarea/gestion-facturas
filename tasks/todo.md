@@ -80,13 +80,29 @@
   4. Test: listar carpeta Drive vía API.
   5. scp token + scp gmail.py al VPS, verificar md5 match.
   6. Commit gestion-facturas + push.
-- [ ] **🟡 2. Crear `Parseo/extractores/jaleo.py`** con `extraer_total` (mirar 2 PDFs reales en Dropbox: `2T26 0427 ACEITES DE ESPECIALIDAD JALEO TJ.pdf` y `ATRASADA 1T26 0323 ACEITES DE ESPECIALIDAD JALEO TJ.pdf`).
-- [ ] **🟡 3. Resucitar 2 filas Jaleo zombi** en los 3 Excels (PAGOS Drive, Provisional Drive, Provisional Dropbox) con `scripts/resucitar_zombis.py` tras crear el extractor.
+- [x] **🟡 2. Crear `Parseo/extractores/jaleo.py`** ✅ commit Parseo `16f6c18`. Smoke test verde 2/2 PDFs (PDF1 N260761 598,50€ formato moderno + PDF2 #1807 523,50€ formato presupuesto). Deploy VPS md5-match `f9a8889b`. Reporte `outputs/fix_jaleo_20260504.md`.
+- [x] **🟡 3. Resucitar 2 filas Jaleo zombi** ✅ aplicado solo en Provisional Dropbox (filas 53 + 64) — Drive Excels descartados del scope porque están desfasados 5 días (44 filas) — requieren re-sync masivo aparte. Total recuperado: 1.122,00 €.
 - [ ] **🟢 4. Investigar CIF `B85501989`** detectado para "COMESTIBLES BAREA" en factura del 30/04. La tienda real es B87760575 (Tasca Barea SLL). Determinar si es error OCR o un proveedor nuevo legítimo. Archivo: `2T26 0430 COMESTIBLES BAREA.pdf` en Dropbox.
 - [ ] **🟢 5. Alta MAESTRO + extractor para "Aquí Santoña"** (`comercial@aquisantona.com`). Factura quedó como `REVISAR 2T26 0504 (comercial@aquisantona.com).pdf` sin proveedor ni total.
 
+### Pendientes derivados (sesión 04/05 tarde)
+- [ ] **🔴 NUEVO — Drive Excels desfasados 5 días (44 filas)** en `G:\PAGOS_Gmail_2T26.xlsx` y `G:\Facturas 2T26 Provisional.xlsx`. Probable consecuencia del bug Drive 403: gmail.py lleva varias ejecuciones sin escribir en Drive. Cuando se complete el OAuth Drive (pendiente 1), plantear re-sync masivo desde Dropbox o re-ejecución selectiva.
+
 ### Pendiente cron viernes
-- [ ] **NOTA**: el cron del viernes 08/05 seguirá fallando el sync Drive hasta que el OAuth se complete. No bloquea el procesamiento de emails (lo demás funciona).
+- [ ] **NOTA**: el cron del viernes 08/05 seguirá fallando el sync Drive hasta que el OAuth se complete. No bloquea el procesamiento de emails (lo demás funciona). Las facturas JALEO entrantes ya usarán el nuevo extractor.
+
+---
+
+## Sesión 04/05/2026 — TARDE
+**Objetivo:** Cerrar pendiente 2 (extractor JALEO) y pendiente 3 (rescate zombis) tras el corte por cobertura del OAuth.
+
+### Completado
+- [x] **Crear `Parseo/extractores/jaleo.py`** — 117 líneas. 2 formatos manejados: "moderno" (PDF1 27/04 cabecera one-line `Factura N260761 ... Total 598,50€`) y "presupuesto" (PDF2 23/03 atrasada con bloques separados `#1807` + `TOTAL : 523,50 €`). `extraer_lineas` queda como TODO. `extraer_forma_pago` no implementado (MAESTRO ya define TJ). Decorador con 3 aliases, registrado bajo `ACEITES DE ESPECIALIDAD JALEO / ACEITES JALEO / JALEO`. Commit Parseo `16f6c18`.
+- [x] **Smoke test verde 2/2** sobre PDFs reales. Total/fecha/REF correctos en ambos.
+- [x] **Deploy VPS md5-match** `f9a8889bcde5951641437345a6e2cbba`. `__pycache__` limpiados local + VPS.
+- [x] **Rescate 2 zombis Provisional Dropbox** — script `_rescate_jaleo_20260504.py` (one-shot, borrado al cierre). Dry-run + apply OK. Filas 53 (`N260761`, 598,50€) y 64 (`#1807`, 523,50€). Total recuperado **1.122,00 €**. Backup: `Facturas 2T26 Provisional_backup_20260504_2253.xlsx`.
+- [x] **Hallazgo crítico documentado**: Drive Excels (G:\) llevan 5 días sin actualizarse — 44 filas de desfase respecto a Dropbox. Decisión usuario: solo Dropbox; Drive re-sync queda como pendiente nuevo.
+- [x] **Reporte completo** `outputs/fix_jaleo_20260504.md`.
 
 ---
 
