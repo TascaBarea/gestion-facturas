@@ -60,6 +60,36 @@
 
 ---
 
+## Sesión 04/05/2026 — INTERRUMPIDA por cobertura
+**Objetivo:** Resolver 5 pendientes post-ejecución gmail.py 04/05 11:41 (token Drive scope, jaleo extractor, rescate Jaleo zombi, CIF B85501989, alta Aquí Santoña).
+
+### Completado
+- [x] **Diagnóstico log 04/05**: 41 emails, 36 OK, 4 revisar, 0 errores. 3 problemas accionables identificados (Drive 403, 2 Jaleo sin total, Aquí Santoña REVISAR). Check defensivo MIGUEZ (`_check_fecha_vs_email`) disparó 2 veces sobre atrasadas reales (no falsos positivos) — funciona como red de seguridad observacional.
+- [x] **Causa raíz Drive 403 confirmada**: bug del 21/04 reapareció. `gmail/gmail.py:706` filtra con `CONFIG.GMAIL_SCOPES = [gmail.readonly, gmail.modify]` (sin drive); línea 718 sobrescribe el token tras refresh, perdiendo el scope `drive`. Token actual verificado: scopes = `[gmail.readonly, gmail.modify]`, `drive` ausente.
+- [x] **Plan dual decidido** (registrado para próxima sesión): regenerar token con `renovar_token_business.py` + parchear `GMAIL_SCOPES` en `gmail.py:191-194` añadiendo `drive`. Alternativa "limpia" (refactor `gmail.py:conectar()` para delegar en `auth_manager.get_gmail_service()`) queda como ítem de backlog futuro.
+- [x] **Backup token conservado**: `gmail/token.json.bak.20260504` (md5 `e42e90a3...`, idéntico al token activo).
+
+### Interrumpido
+- [!] **OAuth flow abortado** sin completar (cobertura). Sesión revertida a estado idéntico al inicio: parche reverido en `gmail.py`, token restaurado del backup, working tree sin cambios commiteables (solo dirty pre-existente). El cron del viernes seguirá funcionando como hoy: procesa los emails, falla solo el sync Drive final con [DRIVE FALLO] 403 conocido.
+
+### Pendientes para próxima sesión (orden recomendado, atómico)
+- [ ] **🔴 1. Re-auth Drive + parche `GMAIL_SCOPES` + deploy VPS**:
+  1. `python gmail/renovar_token_business.py` → autorizar 4 scopes en navegador (Gmail readonly, Gmail modify, Business manage, Drive).
+  2. Verificar `token.json.scopes` contiene los 4.
+  3. Aplicar parche en `gmail/gmail.py:191-194` añadiendo `'https://www.googleapis.com/auth/drive'` a `GMAIL_SCOPES`.
+  4. Test: listar carpeta Drive vía API.
+  5. scp token + scp gmail.py al VPS, verificar md5 match.
+  6. Commit gestion-facturas + push.
+- [ ] **🟡 2. Crear `Parseo/extractores/jaleo.py`** con `extraer_total` (mirar 2 PDFs reales en Dropbox: `2T26 0427 ACEITES DE ESPECIALIDAD JALEO TJ.pdf` y `ATRASADA 1T26 0323 ACEITES DE ESPECIALIDAD JALEO TJ.pdf`).
+- [ ] **🟡 3. Resucitar 2 filas Jaleo zombi** en los 3 Excels (PAGOS Drive, Provisional Drive, Provisional Dropbox) con `scripts/resucitar_zombis.py` tras crear el extractor.
+- [ ] **🟢 4. Investigar CIF `B85501989`** detectado para "COMESTIBLES BAREA" en factura del 30/04. La tienda real es B87760575 (Tasca Barea SLL). Determinar si es error OCR o un proveedor nuevo legítimo. Archivo: `2T26 0430 COMESTIBLES BAREA.pdf` en Dropbox.
+- [ ] **🟢 5. Alta MAESTRO + extractor para "Aquí Santoña"** (`comercial@aquisantona.com`). Factura quedó como `REVISAR 2T26 0504 (comercial@aquisantona.com).pdf` sin proveedor ni total.
+
+### Pendiente cron viernes
+- [ ] **NOTA**: el cron del viernes 08/05 seguirá fallando el sync Drive hasta que el OAuth se complete. No bloquea el procesamiento de emails (lo demás funciona).
+
+---
+
 ## Sesión 30/04/2026
 **Objetivo:** Push de los 4 commits 28-29/04 a GitHub + fix bugs MIGUEZ multi-albarán y DEBORA forma_pago.
 
@@ -225,3 +255,4 @@
 | 2026-04-29 | Diagnóstico 6 facturas no procesadas Bloque E | ✅ | Reporte `outputs/diagnostico_6_facturas_20260429.md`; 5/6 ya procesadas (premisa inexacta — alias coloquiales vs canónicos); 1 bug real (`anthropic.py` REF persistente → anti-dup colisiona) con parche propuesto sin aplicar |
 | 2026-04-29 (tarde) | Fix anthropic.py + rescate factura 20/04 + limpieza control DB + deploy VPS | ✅ | Commits Parseo `33e9add` + gestion-facturas `59a62e9` (diagnóstico previo) + cierre. Rescate `EXB4HCQN-0007`, 4 escrituras OK. Control DB md5 PC==VPS post-scp `b415efe8`. Deploy VPS `/opt/Parseo/extractores/anthropic.py` md5-match. Reporte `outputs/fix_anthropic_20260429.md` |
 | 2026-04-30 | Push GitHub + fix DEBORA forma_pago + check defensivo gmail.py multi-albarán | ✅ | Push 5 commits gestion-facturas + sync VPS. Commit Parseo `961f5c7` (DEBORA). Commit gestion-facturas `<hash>` (gmail.py + cierre). MIGUEZ extractor INTACTO (irreproducible, 4 smoke tests verdes). Reporte `outputs/fix_bugs_gmail_20260430.md` |
+| 2026-05-04 | Diagnóstico post-ejecución 04/05 + intento fix Drive scope | ⏸ INTERRUMPIDA | Diagnóstico completo (causa Drive 403 confirmada = bug 21/04 reapareció). OAuth flow abortado por cobertura. Sesión revertida a estado pre-sesión sin commits. 5 pendientes documentados para próxima sesión. |
