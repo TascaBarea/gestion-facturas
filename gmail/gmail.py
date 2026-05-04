@@ -837,13 +837,25 @@ class GmailClient:
             )
             
             headers = {h['name']: h['value'] for h in msg['payload'].get('headers', [])}
-            
+
+            # internalDate: timestamp en ms epoch UTC (recepción real Gmail).
+            # Lo exponemos como datetime para checks defensivos posteriores
+            # (p.ej. comparar con la fecha extraída del PDF).
+            internal_date_dt = None
+            try:
+                ms = int(msg.get('internalDate', 0))
+                if ms > 0:
+                    internal_date_dt = datetime.fromtimestamp(ms / 1000)
+            except (ValueError, TypeError):
+                pass
+
             return {
                 'id': email_id,
                 'message_id': headers.get('Message-ID', ''),
                 'from': headers.get('From', ''),
                 'subject': headers.get('Subject', ''),
                 'date': headers.get('Date', ''),
+                'internal_date': internal_date_dt,
                 'payload': msg['payload']
             }
         except Exception as e:
@@ -2034,6 +2046,13 @@ class GmailProcessor:
                         self._procesar_imagen(resultado, nombre_archivo, contenido, fecha_proceso)
                         break
 
+            # v1.23: check defensivo multi-albarán.
+            # Si la fecha extraída del PDF queda > 7 días antes del internalDate
+            # del email, sospechar bug de extractor multi-albarán (caso MIGUEZ:
+            # extrae fecha del primer albarán en vez de la cabecera de factura).
+            # Solo logea WARNING — NO bloquea ni altera el flujo.
+            self._check_fecha_vs_email(resultado, email_data)
+
             self.resultados.append(resultado)
 
             # ── PASO 5: Registrar en JSON y guardar INMEDIATAMENTE ──
@@ -2055,6 +2074,37 @@ class GmailProcessor:
                 self.control.registrar_email_visto(email_id, f"error: {e}")
                 self.control.guardar()
     
+    def _check_fecha_vs_email(self, resultado: 'ResultadoProcesamiento', email_data: Dict):
+        """Red de seguridad observacional contra bugs de extractor multi-albarán.
+
+        Si la fecha extraída del PDF queda > 7 días antes del internalDate
+        del email, logea WARNING. No bloquea ni altera el flujo.
+
+        Caso de referencia: bug MIGUEZ multi-albarán (sesión 28/04/2026):
+        el extractor devolvía la fecha del primer albarán de la tabla en
+        vez de la fecha de cabecera de factura, causando que el archivo
+        quedara nombrado con la fecha errónea (caso real: factura 31/12/25
+        archivada como '1205'). El bug fue irreproducible con el código
+        actual (cf. tasks/lessons.md "Bug irreproducible — no tocar").
+        Este check es la red de seguridad para futuros casos similares.
+        """
+        if not resultado.factura or not resultado.factura.fecha:
+            return
+        internal_date = email_data.get('internal_date')
+        if not internal_date:
+            return
+        try:
+            delta_dias = (internal_date.date() - resultado.factura.fecha.date()).days
+        except (AttributeError, TypeError):
+            return
+        if delta_dias > 7:
+            self.logger.warning(
+                f"  ↳ ⚠️ Fecha factura {resultado.factura.fecha:%d/%m/%Y} > "
+                f"7 días antes de email ({internal_date:%d/%m/%Y}, "
+                f"delta={delta_dias}d): posible multi-albarán o factura "
+                f"atrasada. Verificar nombre archivo."
+            )
+
     def _mover_email_seguro(self, email_id: str):
         """
         Mueve email a PROCESADAS con retry.

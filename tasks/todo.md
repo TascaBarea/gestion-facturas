@@ -60,6 +60,22 @@
 
 ---
 
+## Sesión 30/04/2026
+**Objetivo:** Push de los 4 commits 28-29/04 a GitHub + fix bugs MIGUEZ multi-albarán y DEBORA forma_pago.
+
+### Completado
+- [x] **Push GitHub gestion-facturas**: 4 commits 28-29/04 (`6c608ce`, `23bdc33`, `59a62e9`, `296deb8`) + commit cierre 30/04. VPS sincronizado por fast-forward (HEAD = `bd038f7`, ya alineado con origin/main).
+- [x] **Bug DEBORA forma_pago**: añadido `extraer_forma_pago` en `Parseo/extractores/debora_garcia.py` con regex `Método de pago` + diccionario de códigos canónicos (EF/TF/TJ/RC/BZ/PP). Smoke test verde sobre 3 PDFs reales (los 3 dicen "Efectivo" → devuelve `EF`). Commit Parseo `961f5c7`. Deploy VPS md5-match.
+- [x] **Check defensivo en gmail.py para multi-albarán**: nuevo método `_check_fecha_vs_email` que loga WARNING si `factura.fecha < internal_date − 7d`. Red de seguridad observacional (NO bloquea). `_obtener_detalle_email` ahora expone `internal_date` (datetime UTC).
+- [x] **MIGUEZ multi-albarán** investigado y descartado: extractor pasa los 4 smoke tests verdes (incluye el caso ATRASADA 4T25 1231 que originó el zombi); md5 PC == VPS desde commit inicial Parseo (Marzo). Bug histórico no reproducible. Decisión: NO modificar el extractor; el check defensivo en gmail.py basta como red de seguridad.
+
+### Backlog cerrado de la sesión 28/04
+- [x] **ALTO — Bug nombrado multi-albarán en gmail.py**: cerrado con check defensivo (no era reproducible en el extractor MIGUEZ actual).
+- [x] **MEDIO — Bug FORMA_PAGO MAESTRO vs PDF**: cerrado con `extraer_forma_pago` en debora_garcia.py.
+- [x] **MEDIO — Soporte IRPF**: descartado tras decisión Jaime — la fila zombi F9 ya tiene la nota IRPF en OBS, y eso es suficiente. NO se añade columna al Excel.
+
+---
+
 ## Sesión 28/04/2026
 **Objetivo:** Resucitar filas zombi en `PAGOS_Gmail_2T26.xlsx` (6 confirmadas, secuelas de gmail.py pre-v1.14).
 
@@ -208,3 +224,4 @@
 | 2026-04-28 | Resucitar 6 filas zombi PAGOS_Gmail_2T26 | ✅ | `scripts/resucitar_zombis.py` v1.0; backup `PAGOS_Gmail_2T26_backup_20260428_1536.xlsx`; 4 items backlog (multi-albarán, FORMA_PAGO, IRPF, extractores FIVE GALAXIES + DUE) |
 | 2026-04-29 | Diagnóstico 6 facturas no procesadas Bloque E | ✅ | Reporte `outputs/diagnostico_6_facturas_20260429.md`; 5/6 ya procesadas (premisa inexacta — alias coloquiales vs canónicos); 1 bug real (`anthropic.py` REF persistente → anti-dup colisiona) con parche propuesto sin aplicar |
 | 2026-04-29 (tarde) | Fix anthropic.py + rescate factura 20/04 + limpieza control DB + deploy VPS | ✅ | Commits Parseo `33e9add` + gestion-facturas `59a62e9` (diagnóstico previo) + cierre. Rescate `EXB4HCQN-0007`, 4 escrituras OK. Control DB md5 PC==VPS post-scp `b415efe8`. Deploy VPS `/opt/Parseo/extractores/anthropic.py` md5-match. Reporte `outputs/fix_anthropic_20260429.md` |
+| 2026-04-30 | Push GitHub + fix DEBORA forma_pago + check defensivo gmail.py multi-albarán | ✅ | Push 5 commits gestion-facturas + sync VPS. Commit Parseo `961f5c7` (DEBORA). Commit gestion-facturas `<hash>` (gmail.py + cierre). MIGUEZ extractor INTACTO (irreproducible, 4 smoke tests verdes). Reporte `outputs/fix_bugs_gmail_20260430.md` |

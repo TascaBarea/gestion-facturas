@@ -103,6 +103,16 @@
   → REGLA: Para proveedores con CIF vacío (extranjeros tipo ANTHROPIC), el riesgo es mayor porque `factura_existe` cae al fallback `nombre|REF`, y el `nombre` también es constante → la unicidad depende ENTERAMENTE del REF. Doble cuidado.
   → DETECCIÓN: revisar periódicamente `datos/emails_procesados.json` por proveedores con N entradas en `emails` pero pocas/una entrada en `facturas` (clave repetida). Es señal de REF colisionando.
 
+### Anclar regex de fechas al contexto correcto
+- **Cuando un PDF tiene múltiples fechas en distintas secciones** (cabecera de factura + tabla de albaranes/líneas/vencimientos), el regex de extracción debe anclarse al contexto de la fecha de cabecera, no capturar la primera que encuentre. Caso de referencia: facturas MIGUEZ CAL multi-albarán contienen `31/12/25 A 4724 ...` en cabecera y `ALBARÁN A-3184 FECHA 05/12/2025` en tabla — un regex genérico capturaría la del primer albarán como fecha de factura.
+  → REGLA: patterns útiles para anclar — precedido de `Factura`, `Fecha factura`, `F.Emisión`; o restringido a las primeras N líneas; o anclado a un patrón único de la cabecera (ej. `^DD/MM/YY\s+A\s+\d+` para identificar la línea inmediatamente debajo de "FECHA FACTURA CLIENTE N.I.F TELÉFONO PÁG.").
+  → DETECCIÓN tardía (red de seguridad observacional, gmail.py:_check_fecha_vs_email): si `factura.fecha < internalDate − 7 días` en facturas recientes, el log emite WARNING con la sospecha de multi-albarán. NO bloquea; sólo invita a revisar el nombre del archivo manualmente.
+
+### Bug irreproducible — no tocar
+- **Si un bug histórico documentado no es reproducible con el código actual** (los tests pasan verde y no hay diferencia git ni md5 vs producción), NO modificar el código preventivamente. Documentar el caso histórico, añadir red de seguridad observacional (logs, alertas), y esperar a que el bug reaparezca para diagnosticarlo con datos. Modificar regex "por si acaso" cuando los tests pasan solo introduce riesgo nuevo sin eliminar el viejo.
+  → CASO DE REFERENCIA: MIGUEZ multi-albarán abril 2026 — fila Excel archivada con fecha del primer albarán (`05/12`) en lugar de cabecera (`31/12`). Detectado al resucitar zombis el 28/04. Investigación 29-30/04 confirmó: extractor pasa smoke test verde sobre 4 PDFs reales (incluido el problemático), md5 PC == VPS desde marzo. Hipótesis no verificable: `.pyc` cached o pdfplumber distinto en la corrida del 18/04. ACCIÓN TOMADA: check defensivo en gmail.py (`_check_fecha_vs_email`), NO modificar extractor.
+  → REGLA HEURÍSTICA: si gastas más tiempo "robusteciendo" un código que pasa los tests que diagnosticando el bug, estás haciendo cargo culture engineering. Para. Documenta. Espera datos.
+
 ### Bytes NUL en pdfplumber
 - **pdfplumber a veces inserta `\x00` (byte NUL, ord=0) como separador en el texto extraído**. Caso real (29/04/2026): texto de `Invoice number EXB4HCQN 0006` en PDFs Anthropic — el "espacio" entre `EXB4HCQN` y `0006` resultó ser `\x00`, no un espacio real. Un regex con `\s*` falla porque `\s` cubre `[\t\n\r\f\v ]` pero NO el byte NUL.
   → REGLA: para campos críticos extraídos del PDF con pdfplumber, los regex deben usar `[\s\x00]*` cuando se permitan separadores. Alternativa: pre-limpiar el texto con `texto.replace('\x00', ' ')` antes de aplicar regex.
