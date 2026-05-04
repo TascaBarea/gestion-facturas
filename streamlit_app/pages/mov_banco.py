@@ -10,6 +10,7 @@ from pathlib import Path
 import streamlit as st
 
 from utils.auth import require_role
+from utils.entorno import ruta_existe_seguro
 
 require_role(["admin"])
 
@@ -39,7 +40,7 @@ def _fmt_eur(valor) -> str:
 def _info_consolidado() -> dict:
     """Lee estado actual del consolidado."""
     info = {"existe": False, "pestañas": []}
-    if not CONSOLIDADO.exists():
+    if not ruta_existe_seguro(CONSOLIDADO):
         return info
     info["existe"] = True
     from openpyxl import load_workbook

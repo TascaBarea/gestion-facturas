@@ -14,10 +14,50 @@ from pathlib import Path
 
 import streamlit as st
 from utils.auth import require_role
+from utils.entorno import es_streamlit_cloud, ruta_existe_seguro
 
 require_role(["admin"])
 
-# ── Detección de entorno ────────────────────────────────────────────────────
+st.title("Ejecutar scripts")
+
+# ── Bloqueo temprano en Streamlit Cloud ─────────────────────────────────────
+# Los scripts de esta página tocan filesystem local (Drive, Dropbox, Excel),
+# Gmail API o ejecutan procesos largos. En Cloud NO se pueden ejecutar.
+# La ejecución real ocurre en PC local o en VPS Contabo (cron). Mostramos un
+# mensaje claro en lugar de dejar que la app crashee con PermissionError al
+# resolver rutas Linux que no existen en el contenedor de Cloud.
+
+if es_streamlit_cloud():
+    st.warning(
+        "⚠️ Esta página no se puede usar desde Streamlit Cloud. Los scripts "
+        "(Gmail, Ventas, Cuadre, Movimientos Banco, Dashboard, etc.) tocan "
+        "filesystem local (Drive, Dropbox), Gmail API o procesos largos."
+    )
+    st.markdown(
+        "**Cómo ejecutarlos:**\n\n"
+        "- **Desde el PC** (PowerShell):\n"
+        "  ```powershell\n"
+        "  cd C:\\_ARCHIVOS\\TRABAJO\\Facturas\\gestion-facturas\n"
+        "  python gmail/gmail.py --produccion\n"
+        "  python ventas_semana/script_barea.py\n"
+        "  python cuadre/banco/cuadre.py\n"
+        "  ```\n"
+        "- **Desde el VPS Contabo** (`ssh root@194.34.232.6`):\n"
+        "  ```bash\n"
+        "  cd /opt/gestion-facturas && source .venv/bin/activate\n"
+        "  python gmail/gmail.py --produccion\n"
+        "  ```\n"
+        "- **Cron del VPS** ya programa automáticamente:\n"
+        "  - viernes 03:00 → `gmail.py`\n"
+        "  - lunes 03:00 → `script_barea.py`"
+    )
+    st.info(
+        "Streamlit Cloud queda como capa de **solo lectura/visualización** "
+        "(documentos, dashboards, datos ya generados)."
+    )
+    st.stop()
+
+# ── Detección de entorno (solo se ejecuta en PC o VPS reales) ───────────────
 
 ES_WINDOWS = platform.system() == 'Windows'
 ES_LINUX = platform.system() == 'Linux'
@@ -29,21 +69,22 @@ if ES_WINDOWS:
     ))
     VENV_PYTHON = PROJECT_ROOT / '.venv' / 'Scripts' / 'python.exe'
 elif ES_LINUX:
-    # Detectar ruta del proyecto en VPS
+    # Detectar ruta del proyecto en VPS (rutas locales reales en Linux).
+    # Usamos ruta_existe_seguro para no crashear si una de las candidatas
+    # devuelve PermissionError en algún entorno restringido.
+    PROJECT_ROOT = None
     for _ruta in ['/opt/gestion-facturas', '/root/gestion-facturas', '/home/ubuntu/gestion-facturas']:
-        if Path(_ruta).exists():
+        if ruta_existe_seguro(_ruta):
             PROJECT_ROOT = Path(_ruta)
             break
-    else:
+    if PROJECT_ROOT is None:
         PROJECT_ROOT = Path('/opt/gestion-facturas')
     VENV_PYTHON = PROJECT_ROOT / '.venv' / 'bin' / 'python3'
 else:
     PROJECT_ROOT = Path('.')
     VENV_PYTHON = Path('python3')
 
-ES_LOCAL = PROJECT_ROOT.exists() and VENV_PYTHON.exists()
-
-st.title("Ejecutar scripts")
+ES_LOCAL = ruta_existe_seguro(PROJECT_ROOT) and ruta_existe_seguro(VENV_PYTHON)
 
 if not ES_LOCAL:
     st.warning("Ejecución no disponible: no se encuentra el proyecto o el entorno virtual.")
@@ -54,7 +95,7 @@ if not ES_LOCAL:
 
 def _ultimo_gmail() -> str:
     p = PROJECT_ROOT / "outputs" / "logs_gmail" / "gmail_resumen.json"
-    if not p.exists():
+    if not ruta_existe_seguro(p):
         return "Sin ejecuciones previas"
     try:
         data = json.loads(p.read_text(encoding="utf-8"))
@@ -70,7 +111,7 @@ def _ultimo_gmail() -> str:
 
 def _ultimo_ventas() -> str:
     p = PROJECT_ROOT / "datos" / "Ventas Barea 2026.xlsx"
-    if not p.exists():
+    if not ruta_existe_seguro(p):
         # Buscar alternativa
         ventas_dir = PROJECT_ROOT / "ventas_semana"
         for f in sorted(ventas_dir.glob("Ventas Barea*.xlsx"), reverse=True):
@@ -83,7 +124,7 @@ def _ultimo_ventas() -> str:
 
 def _ultimo_cuadre() -> str:
     outputs = PROJECT_ROOT / "outputs"
-    if not outputs.exists():
+    if not ruta_existe_seguro(outputs):
         return "Sin cuadres previos"
     cuadres = sorted(outputs.glob("CUADRE_*.xlsx"), key=lambda f: f.stat().st_mtime, reverse=True)
     if not cuadres:
@@ -98,7 +139,7 @@ def _ultimo_cuadre() -> str:
 
 def _ultimo_mov_banco() -> str:
     p = PROJECT_ROOT / "datos" / "Movimientos Cuenta 26.xlsx"
-    if not p.exists():
+    if not ruta_existe_seguro(p):
         return "Sin consolidado"
     mtime = datetime.fromtimestamp(p.stat().st_mtime)
     return f"**{mtime:%d/%m/%Y %H:%M}** — última actualización"
@@ -295,7 +336,7 @@ for i, (key, config) in enumerate(SCRIPTS.items()):
                 # Verificar script
                 if config.get("cmd") is None and not archivos_temp:
                     st.error("Este script requiere archivos")
-                elif config.get("cmd") and not Path(config["cwd"]).exists():
+                elif config.get("cmd") and not ruta_existe_seguro(config["cwd"]):
                     st.error(f"Directorio no encontrado: {config['cwd']}")
                 else:
                     st.session_state.proceso_activo = True

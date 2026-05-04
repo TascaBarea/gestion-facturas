@@ -12,6 +12,7 @@ from pathlib import Path
 
 from utils.auth import require_role
 from utils.data_client import get_gmail, ultima_actualizacion
+from utils.entorno import ruta_existe_seguro
 
 require_role(["admin"])
 
@@ -82,7 +83,7 @@ COLA_PATH = Path(os.environ.get(
 
 
 def _cargar_pendientes():
-    if not COLA_PATH.exists():
+    if not ruta_existe_seguro(COLA_PATH):
         return []
     with open(COLA_PATH, 'r', encoding='utf-8') as f:
         cola = json.load(f)
@@ -92,7 +93,7 @@ def _cargar_pendientes():
 def _resolver_pendiente(factura: dict, destino: str):
     """Sube el PDF a Dropbox según la decisión del usuario y actualiza la cola."""
     pdf_path = Path(factura.get('ruta_pdf_temporal', ''))
-    if not pdf_path.exists():
+    if not ruta_existe_seguro(pdf_path):
         st.error(f"PDF no encontrado: {pdf_path}")
         return
 

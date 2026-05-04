@@ -12,6 +12,7 @@ import pandas as pd
 import streamlit as st
 
 from utils.auth import require_role
+from utils.entorno import ruta_existe_seguro
 
 require_role(["admin"])
 
@@ -57,7 +58,7 @@ def _fmt_eur(valor) -> str:
 @st.cache_data(ttl=60)
 def _detectar_trimestres() -> list[dict]:
     """Escanea carpetas de Dropbox y devuelve trimestres disponibles."""
-    if not DROPBOX_BASE.exists():
+    if not ruta_existe_seguro(DROPBOX_BASE):
         return []
     trimestres: list[dict] = []
     for year_dir in sorted(DROPBOX_BASE.glob("FACTURAS *"), reverse=True):
@@ -66,7 +67,7 @@ def _detectar_trimestres() -> list[dict]:
             continue
         year = m.group(1)
         recibidas = year_dir / "FACTURAS RECIBIDAS"
-        if not recibidas.exists():
+        if not ruta_existe_seguro(recibidas):
             continue
         # Buscar ambos patrones: "N TRI YYYY" (2025) y "N TRIMESTRE YYYY" (2026+)
         tri_dirs = sorted(recibidas.glob("* TRI*"), reverse=True)
@@ -80,7 +81,8 @@ def _detectar_trimestres() -> list[dict]:
             label = f"{num}T{year[2:]}"
             atrasadas = tri_dir / "ATRASADAS"
             pdfs = list(tri_dir.glob("*.pdf"))
-            pdfs_a = list(atrasadas.glob("*.pdf")) if atrasadas.exists() else []
+            atrasadas_existe = ruta_existe_seguro(atrasadas)
+            pdfs_a = list(atrasadas.glob("*.pdf")) if atrasadas_existe else []
             if not pdfs and not pdfs_a:
                 continue
             trimestres.append(
@@ -89,8 +91,8 @@ def _detectar_trimestres() -> list[dict]:
                     "label": label,
                     "display": tri_dir.name,
                     "path": str(tri_dir),
-                    "tiene_atrasadas": atrasadas.exists() and len(pdfs_a) > 0,
-                    "path_atrasadas": str(atrasadas) if atrasadas.exists() else None,
+                    "tiene_atrasadas": atrasadas_existe and len(pdfs_a) > 0,
+                    "path_atrasadas": str(atrasadas) if atrasadas_existe else None,
                     "num_pdfs": len(pdfs),
                     "num_atrasadas": len(pdfs_a),
                 }
@@ -101,7 +103,7 @@ def _detectar_trimestres() -> list[dict]:
 @st.cache_data(ttl=300)
 def _cargar_indice() -> dict:
     """Carga el diccionario de categorías para el parseo."""
-    if not DICCIONARIO_PATH.exists():
+    if not ruta_existe_seguro(DICCIONARIO_PATH):
         return {}
     _, _, indice = cargar_diccionario(DICCIONARIO_PATH)
     return indice
@@ -133,12 +135,12 @@ def _resolver_ruta_pdf(archivo: str) -> Path | None:
     if not tri_data:
         return None
     ruta = Path(tri_data["path"]) / archivo
-    if ruta.exists():
+    if ruta_existe_seguro(ruta):
         return ruta
     # Buscar en ATRASADAS
     if tri_data.get("path_atrasadas"):
         ruta_a = Path(tri_data["path_atrasadas"]) / archivo
-        if ruta_a.exists():
+        if ruta_existe_seguro(ruta_a):
             return ruta_a
     return None
 
@@ -917,7 +919,7 @@ if excel_corregido:
         from nucleo.aprendizaje import detectar_correcciones, guardar_correcciones_nuevas
 
         # Buscar snapshot más reciente
-        snapshots = sorted(SNAPSHOTS_DIR.glob("parseo_*.json"), reverse=True) if SNAPSHOTS_DIR.exists() else []
+        snapshots = sorted(SNAPSHOTS_DIR.glob("parseo_*.json"), reverse=True) if ruta_existe_seguro(SNAPSHOTS_DIR) else []
 
         if not snapshots:
             st.warning("No hay snapshots de parseos anteriores. Ejecuta un parseo primero.")
