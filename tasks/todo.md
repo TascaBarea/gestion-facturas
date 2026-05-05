@@ -90,6 +90,27 @@
 
 ---
 
+## Sesión 05/05/2026 — NOCHE
+**Objetivo:** Arreglar tests CI rotos (TOTAL_MIN_SOSPECHOSO).
+
+### Completado
+- [x] **Diagnóstico completo del bug** — ambos tests (`test_validaciones_negocio.py` y `test_ventana_gracia.py`) cargan `gmail.py` vía `importlib.util.spec_from_file_location("gmail_module*", ...)` y esperan API eliminada: 3 constantes (`TOTAL_MIN_SOSPECHOSO`, `TOTAL_MAX_SOSPECHOSO`, `FECHA_MAX_ANTIGUEDAD_DIAS`) y 3 funciones (`trimestre_de_fecha`, `es_trimestre_inmediatamente_anterior`, `determinar_destino_factura`).
+- [x] **Origen identificado** — merge `cec9306` (18/04/2026) "prioridad código PC" eliminó 481 líneas de `gmail.py`. La versión PC priorizada NO tenía las constantes de rango y reemplazó la API de ventana de gracia (4 estados → binaria via `obtener_trimestre` + `es_factura_atrasada`).
+- [x] **Decisión Opción A** (recomendación senior) — borrar ambos tests obsoletos. Las features se descartaron conscientemente; restaurar constantes solo para que pasen los tests sería gimnasia.
+- [x] **Borrados 2 tests** (304 líneas total) — commit `c0f1710`.
+- [x] **Suite tests/unit/ verificada local** — antes: 2 errors during collection (suite no arrancaba). Después: 114 passed, 22 failed. Los 22 fallos son deuda async preexistente en `test_api_security.py` (falta plugin `pytest-asyncio`) — bug distinto, fuera de scope.
+
+### Backlog generado (preexistente destapado al arreglar collection)
+- [ ] **🟡 4 ImportError en CI por dependencias faltantes en workflow** — el workflow `.github/workflows/tests.yml` instala solo `openpyxl pdfplumber rapidfuzz pydantic httpx` adicionales a `pip install -e ".[dev]"`, y eso deja sin satisfacer 4 imports:
+  - `test_gmail_maestro_drive.py` → falta `google` (google-auth)
+  - `test_nucleo.py` → falta `numpy`
+  - `test_runner.py` → falta `dotenv` (python-dotenv)
+  - `test_sync_drive.py` → falta `googleapiclient` (google-api-python-client)
+  Fix probable: añadir esas 4 deps al workflow O moverlas a `pyproject.toml [dev]` para que `pip install -e ".[dev]"` las cubra. La segunda es más mantenible.
+- [ ] **🟡 22 tests async fallando en `test_api_security.py` (en local)** — collection rota lo ocultaba en CI. Falta `pytest-asyncio` en el env. CI no lo está disparando porque la collection muere antes (los 4 ImportError nuevos lo tapan), pero saldrá cuando se arreglen. Fix: añadir `pytest-asyncio` a `[dev]` deps + configurar `asyncio_mode=auto` en `pyproject.toml`.
+
+---
+
 ## Sesión 05/05/2026 — TARDE
 **Objetivo:** Desactivar cron gmail.py + documentar flujo manual.
 
