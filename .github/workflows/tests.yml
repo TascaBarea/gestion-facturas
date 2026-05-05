@@ -23,7 +23,6 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -e ".[dev]"
-          pip install openpyxl pdfplumber rapidfuzz pydantic httpx
 
       - name: Ejecutar tests unitarios
         run: pytest tests/unit/ -v --tb=short -m unit
