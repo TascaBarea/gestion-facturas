@@ -62,6 +62,13 @@
   → REGLA: Portes/envío SIEMPRE proporcionales entre productos.
   → FÓRMULA: (coste_envío × (1 + IVA_envío/100)) / (1 + IVA_productos/100)
 
+### Automatización vs ejecución manual
+- **Cron silencioso para flujos que requieren validación humana** → problemas que se acumulan días/semanas sin que nadie los vea. Caso real (04/05/2026): la factura JALEO 27/04 quedó zombi 7 días hasta que se notó al revisar el log de una ejecución manual. El extractor faltaba en MAESTRO `ARCHIVO_EXTRACTOR=jaleo.py` desde hacía meses; un cron nocturno lo habría seguido fallando indefinidamente.
+  → REGLA: Para flujos donde el log requiere lectura humana caso por caso (zombis, extractores nuevos, formatos PDF cambiantes, fallos OAuth), preferir ejecución manual con observación en directo al cron silencioso. Decisión 05/05/2026: `gmail.py` pasa a manual desde PC con Claude Code; `script_barea.py` (ventas, lunes) y backups siguen automáticos porque su flujo es mecánico.
+  → REGLA: Si se reactiva un cron de un flujo "humano", plantar también alerta automática (email/Slack) cuando aparezca `[DRIVE FALLO]`, `Extractor no encontrado` o `ALERTA ROJA` en el log. Sin alerta, el cron es peor que la ejecución manual.
+- **Premisas no verificadas sobre infraestructura** → afirmaciones que se propagan entre sesiones. Caso real (05/05/2026): registré en cierre 04/05 y 05/05 mañana que "el cron del viernes procesará..." sin haber consultado `crontab -l` ni una vez. Auditoría 05/05 tarde reveló que el cron NO existía — solo había un header huérfano `# Gmail facturas - viernes 03:00` que nunca se llegó a activar. La premisa contaminó dos sesiones.
+  → REGLA: Antes de afirmar que un cron / timer / hook automático "procesará X", verificar con el comando concreto (`crontab -l`, `systemctl list-timers`, `ls /etc/cron.d/`). Si no se ha verificado, escribir "(suposición — verificar)" o no afirmarlo.
+
 ### Python imports — `ModuleNotFoundError` vs `ImportError`
 - **`from package import submodule` con submódulo ausente NO lanza `ModuleNotFoundError`** → lanza `ImportError: cannot import name 'X' from 'Y'`. Solo `import X.Y` lanza `ModuleNotFoundError`. El segundo hereda del primero, **NO al revés**. `except ModuleNotFoundError` deja escapar el `from..import` caso.
   → REGLA: en código que tolera módulos opcionales (loaders, plugins, fallbacks), SIEMPRE `except ImportError`, nunca `except ModuleNotFoundError` aislado. Caso real (24/04/2026): `config/loader.py:_from_legacy()` capturaba solo `ModuleNotFoundError`; Streamlit Cloud lanzaba `ImportError` al hacer `from config import datos_sensibles`. Fix: cambiar a `except ImportError` (commit `5530c10`).

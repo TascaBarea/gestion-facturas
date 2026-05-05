@@ -82,12 +82,27 @@
 ### Pendientes derivados (sesión 04/05 tarde)
 - [x] **🔴 Drive Excels desfasados 5 días** ✅ Provisional re-sincronizado desde Dropbox en sesión 05/05/2026 (21 → 65 filas). PAGOS_Gmail_2T26 sin equivalente en Dropbox; se actualizará automáticamente cuando el cron del viernes 08/05 corra con OAuth Drive funcional. Backup pre-resync: `Facturas 2T26 Provisional_backup_pre_resync_20260505_2023.xlsx`.
 
-### Pendiente cron viernes
-- [ ] **NOTA**: el cron del viernes 08/05 procesará con Drive sync **funcional** (OAuth resuelto 05/05). Será test end-to-end de los 4 fixes recientes (anthropic 33e9add, debora 961f5c7, miguez check c810d77, jaleo 16f6c18) + del fix OAuth de hoy. PAGOS_Gmail Drive recibirá las facturas pendientes desde 29/04.
+### Pendiente próxima ejecución manual
+- [ ] **NOTA**: la próxima ejecución manual de `python gmail.py --produccion` desde PC será test end-to-end de los 5 fixes recientes (anthropic 33e9add, debora 961f5c7, miguez check c810d77, jaleo 16f6c18, OAuth Drive 0c10a86). PAGOS_Gmail Drive recibirá las facturas pendientes desde 29/04. Ver `docs/FLUJO_MANUAL_GMAIL.md`.
+
+### Corrección de premisa
+- [x] **El cron de gmail.py NO existe** — auditoría 05/05/2026 tarde reveló que en VPS solo había un header huérfano `# Gmail facturas - viernes 03:00` sin línea cron debajo. Las afirmaciones previas en sesiones 04/05 y 05/05 mañana ("cron viernes procesará...") eran incorrectas. Header reemplazado por comentario explicativo apuntando a `docs/FLUJO_MANUAL_GMAIL.md`. Backup pre-cambio: `/opt/gestion-facturas/backups/crontab_pre_20260505.txt` (en VPS).
 
 ---
 
-## Sesión 05/05/2026
+## Sesión 05/05/2026 — TARDE
+**Objetivo:** Desactivar cron gmail.py + documentar flujo manual.
+
+### Completado
+- [x] **Auditoría crontab VPS** — `crontab -l`, systemd timers, `/etc/cron.d/`, otros usuarios. Resultado: NO existe cron activo de `gmail.py`; solo había un header huérfano `# Gmail facturas - viernes 03:00`. La premisa "cron viernes procesará" registrada en sesiones 04/05 y 05/05 mañana era falsa.
+- [x] **Header crontab reemplazado** por 3 líneas explicativas apuntando a `docs/FLUJO_MANUAL_GMAIL.md`. Línea backup diario `control-barea` intacta. cron daemon active.
+- [x] **Backup crontab pre-cambio** en `/opt/gestion-facturas/backups/crontab_pre_20260505.txt`.
+- [x] **Documentación del flujo manual** en `docs/FLUJO_MANUAL_GMAIL.md`: comando único, cuándo lanzar, pre-checks, lectura de log, renovación de token, reactivación cron si en el futuro se quisiera.
+- [x] **Lessons.md** — regla nueva sobre cron silencioso vs ejecución manual con observación humana.
+
+---
+
+## Sesión 05/05/2026 — MAÑANA
 **Objetivo:** OAuth Drive + parche `GMAIL_SCOPES` + re-sync Drive Excels desfasados.
 
 ### Completado
