@@ -90,6 +90,19 @@
 
 ---
 
+## Sesión 05/05/2026 — NOCHE-3
+**Objetivo:** Consolidar deps de test (4 ImportError + 22 async).
+
+### Completado
+- [x] **Auditoría pyproject.toml + workflow** — `pyproject.toml [dev]` solo tenía 4 deps (pytest, pytest-cov, pytest-asyncio, httpx). Workflow `tests.yml` instalaba 5 extras a mano (`openpyxl pdfplumber rapidfuzz pydantic httpx`). Las 4 deps que CI no satisfacía (google-auth, google-api-python-client, numpy, python-dotenv) NO estaban en ningún sitio — sí en .venv local del PC porque alguien las pip-install-ó a mano en su día.
+- [x] **Consolidadas 9 deps en `pyproject.toml [dev]`** — añadidas google-api-python-client, google-auth, google-auth-oauthlib, numpy, openpyxl, pdfplumber, pydantic, python-dotenv, rapidfuzz. Reordenado alfabéticamente. `asyncio_mode=auto` ya estaba en `[tool.pytest.ini_options]`.
+- [x] **Workflow simplificado** — eliminada la línea `pip install openpyxl pdfplumber rapidfuzz pydantic httpx`. Ahora una sola fuente de verdad: `pip install -e ".[dev]"`.
+- [x] **Reinstalado local** — `pytest-asyncio 1.3.0`, `pytest-cov 7.1.0`, `coverage 7.13.5`. Las google/numpy/dotenv ya estaban.
+- [x] **Suite local 136 passed, 0 failed** (antes: 114 + 22 async fail). 44 deselected (sin marker `unit`).
+- [x] **3 iteraciones CI hasta verde**: `1de22b5` (consolidación inicial, 4→1 errors) → `df71401` (+pandas+fastapi, 0 errors collection pero 22 ERRORs runtime) → `ab94d04` (+python-multipart, **success** 179 passed/1 skipped). Backlog 🟡 4 ImportError CI + 🟡 22 async cerrados.
+
+---
+
 ## Sesión 05/05/2026 — NOCHE-2
 **Objetivo:** Extractor COMPROVINO + alta MAESTRO + cierre backlog CIF B85501989.
 
@@ -114,13 +127,8 @@
 - [x] **Suite tests/unit/ verificada local** — antes: 2 errors during collection (suite no arrancaba). Después: 114 passed, 22 failed. Los 22 fallos son deuda async preexistente en `test_api_security.py` (falta plugin `pytest-asyncio`) — bug distinto, fuera de scope.
 
 ### Backlog generado (preexistente destapado al arreglar collection)
-- [ ] **🟡 4 ImportError en CI por dependencias faltantes en workflow** — el workflow `.github/workflows/tests.yml` instala solo `openpyxl pdfplumber rapidfuzz pydantic httpx` adicionales a `pip install -e ".[dev]"`, y eso deja sin satisfacer 4 imports:
-  - `test_gmail_maestro_drive.py` → falta `google` (google-auth)
-  - `test_nucleo.py` → falta `numpy`
-  - `test_runner.py` → falta `dotenv` (python-dotenv)
-  - `test_sync_drive.py` → falta `googleapiclient` (google-api-python-client)
-  Fix probable: añadir esas 4 deps al workflow O moverlas a `pyproject.toml [dev]` para que `pip install -e ".[dev]"` las cubra. La segunda es más mantenible.
-- [ ] **🟡 22 tests async fallando en `test_api_security.py` (en local)** — collection rota lo ocultaba en CI. Falta `pytest-asyncio` en el env. CI no lo está disparando porque la collection muere antes (los 4 ImportError nuevos lo tapan), pero saldrá cuando se arreglen. Fix: añadir `pytest-asyncio` a `[dev]` deps + configurar `asyncio_mode=auto` en `pyproject.toml`.
+- [x] **🟡 4 ImportError en CI por dependencias faltantes en workflow** ✅ CERRADO 05/05 NOCHE-3. Consolidadas 9 deps en `pyproject.toml [dev]` (google-auth, google-auth-oauthlib, google-api-python-client, numpy, python-dotenv, openpyxl, pdfplumber, pydantic, rapidfuzz). Workflow simplificado: `pip install -e ".[dev]"` sin extras manuales. Commit `1de22b5`.
+- [x] **🟡 22 tests async fallando en `test_api_security.py`** ✅ CERRADO 05/05 NOCHE-3. `pytest-asyncio` ya estaba en `[dev]` pero faltaba reinstalar. Suite local post-fix: **136 passed, 0 failed**. Reporte: `outputs/fix_ci_deps_20260505.md`.
 
 ---
 
