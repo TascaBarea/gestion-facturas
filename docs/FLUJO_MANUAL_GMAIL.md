@@ -24,10 +24,15 @@ Otros crons (`script_barea.py` para ventas los lunes, backups diarios) **siguen 
 
 ```bash
 cd c:/_ARCHIVOS/TRABAJO/Facturas/gestion-facturas
-python gmail.py --produccion
+PYTHONPATH=. python gmail/gmail.py --produccion
 ```
 
-(O desde la raíz del repo: `python gmail/gmail.py --produccion`.)
+`PYTHONPATH=.` es necesario porque `gmail/gmail.py` importa `nucleo.*` y `core.*` y Python no encuentra esos paquetes sin él. Sin `PYTHONPATH=.` falla con `ModuleNotFoundError: No module named 'nucleo'` (regla en `lessons.md`).
+
+Alternativa con `tee` para guardar log local además del log interno de gmail.py:
+```bash
+PYTHONPATH=. python gmail/gmail.py --produccion 2>&1 | tee outputs/logs_gmail/$(date +%Y-%m-%d)_manual.log
+```
 
 ---
 
@@ -46,6 +51,7 @@ Criterio del usuario, pero como referencia:
 1. **Excels NO abiertos** en Excel/LibreOffice — buscar lock files `~$*.xlsx` en:
    - `G:\Mi unidad\Barea - Datos Compartidos\Compras\Año en curso\`
    - `C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD\FACTURAS 2026\FACTURAS RECIBIDAS\<TRIMESTRE>\`
+   - **`outputs/` del propio repo** (gmail.py escribe ahí también; un lock zombi tras crash de Excel bloquea la ejecución con `ARCHIVO BLOQUEADO`).
 2. **Drive Desktop activo** — icono visible en la bandeja del sistema (Windows). Sin él, los Excels en `G:\` no se sincronizan a la nube.
 3. **Cobertura/internet estable** — el OAuth Drive y la API Gmail necesitan conexión. Cobertura inestable rompió el flujo OAuth el 04/05 mañana.
 4. **Token válido** — si fue regenerado hace mucho, comprobar `python -c "import json; print(json.load(open('gmail/token.json'))['expiry'])"`. Si caducó, ver "Renovar token" abajo.

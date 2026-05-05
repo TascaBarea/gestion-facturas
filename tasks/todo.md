@@ -78,6 +78,9 @@
 - [x] **🟡 3. Resucitar 2 filas Jaleo zombi** ✅ aplicado solo en Provisional Dropbox (filas 53 + 64) — Drive Excels descartados del scope porque están desfasados 5 días (44 filas) — requieren re-sync masivo aparte. Total recuperado: 1.122,00 €.
 - [x] **🟢 4. Investigar CIF `B85501989`** ✅ CERRADO 05/05/2026 noche. Es CIF de COMPROVINO SL (proveedor de vinos, nombre comercial BODEGABIERTA). Bug original: el PDF tenía datos del cliente (Comestibles Barea) prominentes y la heurística genérica los registró como proveedor. Resuelto creando extractor dedicado + alta MAESTRO con `cif='B85501989'` estático. Ver `outputs/fix_comprovino_20260505.md`.
 - [ ] **🟢 5. Alta MAESTRO + extractor para "Aquí Santoña"** (`comercial@aquisantona.com`). Factura quedó como `REVISAR 2T26 0504 (comercial@aquisantona.com).pdf` sin proveedor ni total.
+- [ ] **🟢 NUEVO 6. Alta MAESTRO + extractor "Torres Import S.A.U."** (`torresimport@torresimport.com`). Detectado en validación 05/05 23:54. Mismo patrón que Aquí Santoña: factura `REVISAR 2T26 0505 (torresimport@torresimport.com).pdf` sin proveedor identificado, sin total, ref `227152`, fecha no detectada.
+- [ ] **🟡 NUEVO 7. Investigar `Parseo/extractores/pifema.py`** — extractor existe pero falla en producción (validación 05/05): fecha extraída `03/06/2026` (futura) y total no extraído (ALERTA ROJA). Email "AB26/171" con archivo `2T26 0603 PIFEMA SL TF.pdf`. Anti-dup descartó la factura por CIF+REF=PIFEMA|1284 ya en Excel, así que NO hay zombi nueva, pero el extractor está roto. Requiere inspección PDF + fix `extraer_fecha` y `extraer_total`.
+- [ ] **🟢 NUEVO 8. Race condition OCR temp file en `francisco_guerra.py`** — `[WinError 32] tmphw7nbhd2.png está siendo utilizado por otro proceso`. No bloqueante (extractor recupera con fallback), pero recurrente. Considerar añadir retry o usar `NamedTemporaryFile(delete=False)` + cleanup explícito.
 
 ### Pendientes derivados (sesión 04/05 tarde)
 - [x] **🔴 Drive Excels desfasados 5 días** ✅ Provisional re-sincronizado desde Dropbox en sesión 05/05/2026 (21 → 65 filas). PAGOS_Gmail_2T26 sin equivalente en Dropbox; se actualizará automáticamente cuando el cron del viernes 08/05 corra con OAuth Drive funcional. Backup pre-resync: `Facturas 2T26 Provisional_backup_pre_resync_20260505_2023.xlsx`.
@@ -87,6 +90,21 @@
 
 ### Corrección de premisa
 - [x] **El cron de gmail.py NO existe** — auditoría 05/05/2026 tarde reveló que en VPS solo había un header huérfano `# Gmail facturas - viernes 03:00` sin línea cron debajo. Las afirmaciones previas en sesiones 04/05 y 05/05 mañana ("cron viernes procesará...") eran incorrectas. Header reemplazado por comentario explicativo apuntando a `docs/FLUJO_MANUAL_GMAIL.md`. Backup pre-cambio: `/opt/gestion-facturas/backups/crontab_pre_20260505.txt` (en VPS).
+
+---
+
+## Sesión 05/05/2026 — NOCHE-4 (validación end-to-end)
+**Objetivo:** Lanzar `gmail.py --produccion` para validar los 6 fixes acumulados en producción.
+
+### Completado
+- [x] **gmail.py ejecutado** (tras 2 ajustes path/PYTHONPATH + 1 unlock zombi). 5 emails pendientes, 3 OK, 2 revisión, 0 errores. Log: `outputs/logs_gmail/2026-05-05_manual.log`.
+- [x] **OAuth Drive fix VALIDADO** — `[DRIVE OK] Excels de compras sincronizados`. Sin `[DRIVE FALLO] 403`. PAGOS Drive recuperado de **21 → 69 filas** (+48 las 5 días desfasados desde 29/04).
+- [x] **Miguez check defensivo VALIDADO** — MIGUEZ CAL procesada limpiamente sin disparar el check (ref `A 1537`, fecha 30/04, coherente con email).
+- [x] **Provisional Drive y Dropbox sincronizados** (md5 idéntico tras la ejecución, +4 filas cada uno).
+- [x] **Bugs en docs corregidos**: `docs/FLUJO_MANUAL_GMAIL.md` tenía 2 errores en el comando documentado (`gmail.py` no `gmail/gmail.py`, faltaba `PYTHONPATH=.`). Corregido + añadido `outputs/` al pre-check de lock files (lock zombi en `outputs/~$PAGOS_Gmail_2T26.xlsx` abortó el primer intento).
+- [x] **3 problemas nuevos detectados** y registrados como backlog (PIFEMA fecha futura + total no extraído, TORRES IMPORT proveedor nuevo, FRANCISCO GUERRA race condition OCR).
+- [x] **4 fixes pendientes de validación** (Anthropic, Debora, Jaleo, Comprovino) — esperan próxima factura del proveedor.
+- [x] **Reporte completo** `outputs/validacion_20260505.md`.
 
 ---
 
