@@ -190,7 +190,8 @@ class Config:
     # Gmail
     GMAIL_SCOPES: List[str] = field(default_factory=lambda: [
         'https://www.googleapis.com/auth/gmail.readonly',
-        'https://www.googleapis.com/auth/gmail.modify'
+        'https://www.googleapis.com/auth/gmail.modify',
+        'https://www.googleapis.com/auth/drive',
     ])
     LABEL_ORIGEN: str = "FACTURAS"
     LABEL_DESTINO: str = "FACTURAS_PROCESADAS"

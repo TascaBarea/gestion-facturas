@@ -73,23 +73,35 @@
 - [!] **OAuth flow abortado** sin completar (cobertura). Sesión revertida a estado idéntico al inicio: parche reverido en `gmail.py`, token restaurado del backup, working tree sin cambios commiteables (solo dirty pre-existente). El cron del viernes seguirá funcionando como hoy: procesa los emails, falla solo el sync Drive final con [DRIVE FALLO] 403 conocido.
 
 ### Pendientes para próxima sesión (orden recomendado, atómico)
-- [ ] **🔴 1. Re-auth Drive + parche `GMAIL_SCOPES` + deploy VPS**:
-  1. `python gmail/renovar_token_business.py` → autorizar 4 scopes en navegador (Gmail readonly, Gmail modify, Business manage, Drive).
-  2. Verificar `token.json.scopes` contiene los 4.
-  3. Aplicar parche en `gmail/gmail.py:191-194` añadiendo `'https://www.googleapis.com/auth/drive'` a `GMAIL_SCOPES`.
-  4. Test: listar carpeta Drive vía API.
-  5. scp token + scp gmail.py al VPS, verificar md5 match.
-  6. Commit gestion-facturas + push.
+- [x] **🔴 1. Re-auth Drive + parche `GMAIL_SCOPES` + deploy VPS** ✅ resuelto en sesión 05/05/2026. Token regenerado con 4 scopes (`gmail.readonly`, `gmail.modify`, `business.manage`, `drive`), parche `gmail.py:191-194` aplicado, Drive API verificada (list Barea - Datos Compartidos OK), creds.to_json() preserva los 4 scopes. Deploy VPS md5-match `6c4af8156aacc6807af82e6218eed5fc`. Reporte: `outputs/fix_oauth_drive_20260505.md`.
 - [x] **🟡 2. Crear `Parseo/extractores/jaleo.py`** ✅ commit Parseo `16f6c18`. Smoke test verde 2/2 PDFs (PDF1 N260761 598,50€ formato moderno + PDF2 #1807 523,50€ formato presupuesto). Deploy VPS md5-match `f9a8889b`. Reporte `outputs/fix_jaleo_20260504.md`.
 - [x] **🟡 3. Resucitar 2 filas Jaleo zombi** ✅ aplicado solo en Provisional Dropbox (filas 53 + 64) — Drive Excels descartados del scope porque están desfasados 5 días (44 filas) — requieren re-sync masivo aparte. Total recuperado: 1.122,00 €.
 - [ ] **🟢 4. Investigar CIF `B85501989`** detectado para "COMESTIBLES BAREA" en factura del 30/04. La tienda real es B87760575 (Tasca Barea SLL). Determinar si es error OCR o un proveedor nuevo legítimo. Archivo: `2T26 0430 COMESTIBLES BAREA.pdf` en Dropbox.
 - [ ] **🟢 5. Alta MAESTRO + extractor para "Aquí Santoña"** (`comercial@aquisantona.com`). Factura quedó como `REVISAR 2T26 0504 (comercial@aquisantona.com).pdf` sin proveedor ni total.
 
 ### Pendientes derivados (sesión 04/05 tarde)
-- [ ] **🔴 NUEVO — Drive Excels desfasados 5 días (44 filas)** en `G:\PAGOS_Gmail_2T26.xlsx` y `G:\Facturas 2T26 Provisional.xlsx`. Probable consecuencia del bug Drive 403: gmail.py lleva varias ejecuciones sin escribir en Drive. Cuando se complete el OAuth Drive (pendiente 1), plantear re-sync masivo desde Dropbox o re-ejecución selectiva.
+- [x] **🔴 Drive Excels desfasados 5 días** ✅ Provisional re-sincronizado desde Dropbox en sesión 05/05/2026 (21 → 65 filas). PAGOS_Gmail_2T26 sin equivalente en Dropbox; se actualizará automáticamente cuando el cron del viernes 08/05 corra con OAuth Drive funcional. Backup pre-resync: `Facturas 2T26 Provisional_backup_pre_resync_20260505_2023.xlsx`.
 
 ### Pendiente cron viernes
-- [ ] **NOTA**: el cron del viernes 08/05 seguirá fallando el sync Drive hasta que el OAuth se complete. No bloquea el procesamiento de emails (lo demás funciona). Las facturas JALEO entrantes ya usarán el nuevo extractor.
+- [ ] **NOTA**: el cron del viernes 08/05 procesará con Drive sync **funcional** (OAuth resuelto 05/05). Será test end-to-end de los 4 fixes recientes (anthropic 33e9add, debora 961f5c7, miguez check c810d77, jaleo 16f6c18) + del fix OAuth de hoy. PAGOS_Gmail Drive recibirá las facturas pendientes desde 29/04.
+
+---
+
+## Sesión 05/05/2026
+**Objetivo:** OAuth Drive + parche `GMAIL_SCOPES` + re-sync Drive Excels desfasados.
+
+### Completado
+- [x] **Parche `gmail/gmail.py:191-194`** — añadido `'https://www.googleapis.com/auth/drive'` a `GMAIL_SCOPES`. Razón: `gmail.py:706` carga con `from_authorized_user_file(path, GMAIL_SCOPES)` y al hacer `creds.to_json()` filtra el token al subset; sin drive en la lista, cada refresh borraba el scope. Mismo patrón ya documentado en lessons.md (caso 21/04 + revisitado 04/05).
+- [x] **Token regenerado vía `gmail/renovar_token_business.py`** con los 4 scopes: gmail.readonly, gmail.modify, business.manage, drive. Backup PRE-OAuth conservado (`token.json.bak.20260505`).
+- [x] **Drive API verificada** — `svc.files().list(q='Barea - Datos Compartidos')` devuelve la carpeta canónica con ID `1nYsbBT2oxmXAIgOdF60gqDlnuKV8X-y-`. Sin 403.
+- [x] **Robustez creds.to_json()** — tras load + serializar, los 4 scopes se preservan.
+- [x] **Deploy VPS** — md5-match `6c4af8156aacc6807af82e6218eed5fc`. Backup remoto `token.json.bak_pre_oauth_20260505`.
+- [x] **Re-sync Drive Provisional** — copiado desde Dropbox (8753 bytes / 65 filas), reemplazando versión Drive del 29/04 (6401 bytes / 21 filas). Backup `Facturas 2T26 Provisional_backup_pre_resync_20260505_2023.xlsx`. Δ filas Dropbox==Drive ✓, bytes ✓.
+- [x] **PAGOS Drive deja en pendiente cron viernes** — sin equivalente en Dropbox como fuente.
+- [x] **Reporte completo** `outputs/fix_oauth_drive_20260505.md`.
+
+### Backlog generado
+- [ ] **🟡 Refactor `gmail.py:conectar()`** delegando en `auth_manager.get_gmail_service()` para eliminar la duplicación de carga de credenciales. Este parche es la solución mínima; refactor pendiente.
 
 ---
 
