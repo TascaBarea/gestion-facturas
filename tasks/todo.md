@@ -76,7 +76,7 @@
 - [x] **🔴 1. Re-auth Drive + parche `GMAIL_SCOPES` + deploy VPS** ✅ resuelto en sesión 05/05/2026. Token regenerado con 4 scopes (`gmail.readonly`, `gmail.modify`, `business.manage`, `drive`), parche `gmail.py:191-194` aplicado, Drive API verificada (list Barea - Datos Compartidos OK), creds.to_json() preserva los 4 scopes. Deploy VPS md5-match `6c4af8156aacc6807af82e6218eed5fc`. Reporte: `outputs/fix_oauth_drive_20260505.md`.
 - [x] **🟡 2. Crear `Parseo/extractores/jaleo.py`** ✅ commit Parseo `16f6c18`. Smoke test verde 2/2 PDFs (PDF1 N260761 598,50€ formato moderno + PDF2 #1807 523,50€ formato presupuesto). Deploy VPS md5-match `f9a8889b`. Reporte `outputs/fix_jaleo_20260504.md`.
 - [x] **🟡 3. Resucitar 2 filas Jaleo zombi** ✅ aplicado solo en Provisional Dropbox (filas 53 + 64) — Drive Excels descartados del scope porque están desfasados 5 días (44 filas) — requieren re-sync masivo aparte. Total recuperado: 1.122,00 €.
-- [ ] **🟢 4. Investigar CIF `B85501989`** detectado para "COMESTIBLES BAREA" en factura del 30/04. La tienda real es B87760575 (Tasca Barea SLL). Determinar si es error OCR o un proveedor nuevo legítimo. Archivo: `2T26 0430 COMESTIBLES BAREA.pdf` en Dropbox.
+- [x] **🟢 4. Investigar CIF `B85501989`** ✅ CERRADO 05/05/2026 noche. Es CIF de COMPROVINO SL (proveedor de vinos, nombre comercial BODEGABIERTA). Bug original: el PDF tenía datos del cliente (Comestibles Barea) prominentes y la heurística genérica los registró como proveedor. Resuelto creando extractor dedicado + alta MAESTRO con `cif='B85501989'` estático. Ver `outputs/fix_comprovino_20260505.md`.
 - [ ] **🟢 5. Alta MAESTRO + extractor para "Aquí Santoña"** (`comercial@aquisantona.com`). Factura quedó como `REVISAR 2T26 0504 (comercial@aquisantona.com).pdf` sin proveedor ni total.
 
 ### Pendientes derivados (sesión 04/05 tarde)
@@ -87,6 +87,19 @@
 
 ### Corrección de premisa
 - [x] **El cron de gmail.py NO existe** — auditoría 05/05/2026 tarde reveló que en VPS solo había un header huérfano `# Gmail facturas - viernes 03:00` sin línea cron debajo. Las afirmaciones previas en sesiones 04/05 y 05/05 mañana ("cron viernes procesará...") eran incorrectas. Header reemplazado por comentario explicativo apuntando a `docs/FLUJO_MANUAL_GMAIL.md`. Backup pre-cambio: `/opt/gestion-facturas/backups/crontab_pre_20260505.txt` (en VPS).
+
+---
+
+## Sesión 05/05/2026 — NOCHE-2
+**Objetivo:** Extractor COMPROVINO + alta MAESTRO + cierre backlog CIF B85501989.
+
+### Completado
+- [x] **Diagnóstico bug 04/05** confirmado — PDF de COMPROVINO tiene datos del cliente (Comestibles Barea) prominentes y datos del proveedor (COMPROVINO/BODEGABIERTA) en jerarquía visual menor. Heurística genérica de gmail.py registró el cliente como proveedor con CIF B85501989 (que en realidad es del proveedor).
+- [x] **Extractor `Parseo/extractores/comprovino.py`** creado (~110 líneas). Aliases: `COMPROVINO SL / COMPROVINO S.L. / COMPROVINO / BODEGABIERTA`. CIF estático `B85501989` (defensa anti-confusión). Smoke test verde 3/3 sobre 1 PDF (255,21€ / 30/04/2026 / A/261096). Commit Parseo `e6aabf7`.
+- [x] **Alta MAESTRO_PROVEEDORES** fila 197 (CUENTA=None, lo rellena Kinema). 196 → 197 filas. Backup `MAESTRO_PROVEEDORES_backup_20260505_2320.xlsx`. Sigue patrón VINOS (CLASE=2, TIPO_CATEGORIA=HARDCODED, CATEGORIA_FIJA=VINOS) idéntico a Gredales/Pago Alto Landon.
+- [x] **Deploy VPS** md5-match `5a0c7f995d1f8fee176d6f4be032f02b`. `__pycache__` limpiado local + VPS. MAESTRO sincroniza vía git pull (no gitignored).
+- [x] **Lessons** — regla nueva sobre PDFs con jerarquía visual cliente/proveedor invertida.
+- [x] **Backlog CIF B85501989 CERRADO**.
 
 ---
 
