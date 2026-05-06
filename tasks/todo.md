@@ -93,6 +93,24 @@
 
 ---
 
+## Sesión 06/05/2026 — FUENTE DE VERDAD MAESTRO (v1.24)
+**Objetivo:** resolver bug silencioso lectura Drive vs escritura datos/.
+
+### Completado
+- [x] **Bug confirmado**: `datos/` 197 filas con COMPROVINO+JALEO; `G:\Maestro\` 196 filas (mtime 28/04) sin COMPROVINO. La próxima factura COMPROVINO/JALEO habría reproducido "Proveedor NUEVO" del 04/05.
+- [x] **Decisión arquitectónica Opción B**: `datos/MAESTRO_PROVEEDORES.xlsx` (PC repo) es la fuente de verdad. Validada en chat con Jaime (un solo usuario activo, simplicidad > Drive multi-usuario).
+- [x] **`gmail.py` simplificado**: ~80 LOC eliminadas. Removidos `_MAESTRO_PATH_WINDOWS`, `MaestroDriveError`, `load_maestro_from_drive` (~70 líneas), su llamada en `_conectar_servicios`, e import transitivo `from nucleo.sync_drive import descargar_archivo`. `resolver_maestro_path` simplificado: siempre `<base_path>/datos/MAESTRO_PROVEEDORES.xlsx`.
+- [x] **VERSION** 1.23 → 1.24 + bloque MEJORAS v1.24 en header.
+- [x] **Tests**: borrado `test_gmail_maestro_drive.py` (206 LOC, testaba API eliminada). Nuevo `test_maestro_path.py` (7 tests). Preservado `test_nombre_aproximado.py` (6 tests reubicados de heurística no afectada). Suite local: 157 passed, 0 failed (antes 144).
+- [x] **Drive deprecado**: `G:\Maestro\MAESTRO_PROVEEDORES.xlsx` movido a `G:\_DEPRECATED_20260506\Maestro\` con README explicativo. `DiccionarioProveedoresCategoria.xlsx` NO afectado (no es MAESTRO).
+- [x] **Commit `b4e0651` push origin main**. CI verde (run 25445425979, 46s). Sync VPS OK.
+- [x] **Reporte completo** `outputs/fix_maestro_fuente_verdad_20260506.md` (incluye plan migración B→A si entran nuevos usuarios).
+
+### Backlog cerrado
+- 🔴 Bug silencioso MAESTRO lectura Drive vs escritura datos/ → ✅ resuelto.
+
+---
+
 ## Sesión 06/05/2026 — BLOQUE A (auditoría gmail.py, 5 quick wins)
 **Objetivo:** aplicar Bloque A de la auditoría completa generada en chat (`AUDITORIA_GMAIL_PY_20260506.md`).
 
