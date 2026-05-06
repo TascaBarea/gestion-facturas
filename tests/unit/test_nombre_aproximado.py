@@ -28,18 +28,23 @@ pytestmark = pytest.mark.unit
 
 
 def test_nombre_aproximado_primera_linea_pdf():
+    # v1.25: la heurística usa self (helpers + lista negra), por lo que se
+    # invoca con instancia. Los 4 tests de fallback siguen pudiendo usar
+    # None porque no entran al bloque texto_pdf.
+    proc = GmailProcessor(modo_test=True)
     texto = "Sabores de Paterna S.L.\nFactura Nº 12345\nFecha: 15/04/2026"
-    result = GmailProcessor._nombre_aproximado(
-        None, texto_pdf=texto, nombre_remitente="X", remitente_email="x@y.com"
+    result = proc._nombre_aproximado(
+        texto_pdf=texto, nombre_remitente="X", remitente_email="x@y.com"
     )
     assert result == "Sabores de Paterna S.L."
 
 
 def test_nombre_aproximado_salta_lineas_no_utiles():
     # Primera línea "Factura N°" → se salta; segunda línea con letras → se usa
+    proc = GmailProcessor(modo_test=True)
     texto = "Factura Nº 2026-001\nCeres Cerveza Artesana\nFecha: 20/03/2026"
-    result = GmailProcessor._nombre_aproximado(
-        None, texto_pdf=texto, nombre_remitente="X", remitente_email="x@y.com"
+    result = proc._nombre_aproximado(
+        texto_pdf=texto, nombre_remitente="X", remitente_email="x@y.com"
     )
     assert result == "Ceres Cerveza Artesana"
 

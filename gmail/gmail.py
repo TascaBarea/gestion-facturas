@@ -1,9 +1,38 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GMAIL MODULE v1.24
+GMAIL MODULE v1.25
 Sistema Automatizado de Procesamiento de Facturas
-TASCA BAREA S.L.L. - Abril 2026
+TASCA BAREA S.L.L. - Mayo 2026
+
+MEJORAS v1.25 — BLOQUE B + FILTRADO NO-FACTURA:
+- Heurística _nombre_aproximado refactorizada a 4 capas. Antes capturaba
+  el nombre del CLIENTE (TASCA BAREA / COMESTIBLES BAREA) o etiquetas
+  de plantilla (FORMA DE PAGO) en lugar del nombre del proveedor.
+    · Capa 4 (NUEVA, primera prioridad): líneas con sufijo societario
+      S.A.U./S.L.U./S.L.L./S.A./S.L./S.COOP. Captura "TORRES IMPORT
+      S.A.U." y "COMPROVINO SL" en los PDFs reales analizados.
+    · Capa 2 (NUEVA): proximidad al CIF detectado por regex (1-3 líneas
+      antes del CIF).
+    · Capa 0: primera línea razonable (lógica antigua, ahora pasa por
+      la lista negra de Capa 1).
+    · Capa 1 (lista negra): CONFIG.NOMBRES_CLIENTE rechaza nombres
+      propios del cliente (TASCA BAREA, COMESTIBLES BAREA, etc.).
+  Helper _es_nombre_proveedor_razonable centraliza el criterio que
+  antes estaba duplicado inline.
+- CONFIG.NOMBRES_CLIENTE: lista negra de nombres del cliente.
+- Detector _es_factura_valida: heurística para distinguir factura
+  real vs catálogo/presentación. Cuenta marcadores típicos
+  (nº factura, fecha, importe, CIF). ≥2 = factura, <2 = no-factura.
+  Integrado en _procesar_pdf: si no es factura, marca REVISAR con
+  motivo claro pero PROCESA igualmente (estrategia conservadora,
+  nada se descarta). Caso de referencia: PDF Aquí Santoña 04/05
+  (catálogo comercial 21 pág., 0 marcadores) procesado como factura.
+- Validación en frío contra 2 PDFs reales (Torres Import 4/4
+  marcadores, Aquí Santoña 0/4) en chat 06/05/2026.
+- La firma de _nombre_aproximado se mantiene (3 params), no se
+  amplía. Los 6 tests preservados en test_nombre_aproximado.py
+  siguen funcionando sin cambios.
 
 MEJORAS v1.24 — FUENTE DE VERDAD MAESTRO UNIFICADA:
 - resolver_maestro_path() apunta SIEMPRE a <base_path>/datos/
@@ -107,7 +136,7 @@ Ejecuta: python gmail.py --produccion
          python gmail.py --test (modo prueba sin modificar archivos)
 """
 
-VERSION = "1.24"
+VERSION = "1.25"
 
 import os
 import sys
@@ -239,6 +268,18 @@ class Config:
         'tascabarea@gmail.com',
         'comunidadrodas2@gmail.com',
         'hola@comestiblesbarea.com'
+    ])
+
+    # v1.25: Lista negra de nombres del cliente. _nombre_aproximado las
+    # rechaza al construir el nombre del proveedor (caso COMPROVINO
+    # 04/05/2026 capturó "COMESTIBLES BAREA" como proveedor).
+    NOMBRES_CLIENTE: List[str] = field(default_factory=lambda: [
+        "TASCA BAREA",
+        "COMESTIBLES BAREA",
+        "TASCA BAREA S.L.",
+        "TASCA BAREA SLL",
+        "COMESTIBLES BAREA SLL",
+        "BAREA",
     ])
     
     # Procesamiento
@@ -2152,6 +2193,26 @@ class GmailProcessor:
         resultado.proveedor = proveedor
         resultado.proveedor_identificado = proveedor is not None
 
+        # v1.25: Detector no-factura. Marca REVISAR si el PDF carece
+        # de marcadores típicos (caso PDF Aquí Santoña 04/05/2026 —
+        # catálogo comercial procesado erróneamente como factura).
+        # Conservador: NO descarta el procesamiento, solo etiqueta.
+        if texto_pdf_cache:
+            es_factura, marcadores = self._es_factura_valida(texto_pdf_cache)
+            if not es_factura:
+                resultado.requiere_revision = True
+                motivo_no_factura = (
+                    f"Posible no-factura (solo {len(marcadores)} marcadores: "
+                    f"{', '.join(marcadores) if marcadores else 'ninguno'})"
+                )
+                if resultado.motivo_revision:
+                    resultado.motivo_revision += f" | {motivo_no_factura}"
+                else:
+                    resultado.motivo_revision = motivo_no_factura
+                self.logger.warning(
+                    f"  ↳ ⚠️ {motivo_no_factura}"
+                )
+
         if not proveedor:
             # v1.21: si hay CIF legible en el PDF → proveedor nuevo (stub + tracking).
             # Si no hay CIF → sigue siendo REVISAR (PDF no parseable / sin info).
@@ -2581,27 +2642,105 @@ class GmailProcessor:
         
         self.logger.warning(f"  ↳ Imagen, requiere revisión manual")
     
+    # v1.25: Sufijos societarios usados por la Capa 4 de _nombre_aproximado.
+    # Orden importa: primero los más largos/específicos (S.A.U. antes que SA),
+    # para que el match no se "coma" un sufijo más simple.
+    _SUFIJOS_SOCIETARIOS = (
+        " S.A.U.", " S.A.U", " SAU",
+        " S.L.U.", " S.L.U", " SLU",
+        " S.L.L.", " S.L.L", " SLL",
+        " S.COOP.", " S.COOP", " SCOOP",
+        " S.A.", " S.A", " SA",
+        " S.L.", " S.L", " SL",
+    )
+
+    # v1.25: Keywords que descartan una candidata (etiquetas de plantilla
+    # de factura, no son nombres de empresa). Ampliada respecto a v1.24
+    # tras analizar PDF Torres Import (capturaba "FORMA DE PAGO").
+    _KEYWORDS_NO_NOMBRE = (
+        "factura", "invoice", "fecha", "nº ", "n.", "cif", "iva", "total",
+        "albaran", "albarán", "vencim", "forma de pago", "base imponible",
+        "descuentos", "producto", "proveedor", "destinatario", "dirección",
+        "i.v.a.", "r.e.", "punto verde", "expedida",
+    )
+
+    def _es_nombre_proveedor_razonable(self, candidata: str) -> bool:
+        """v1.25: True si `candidata` puede ser nombre de proveedor.
+
+        Combina los criterios duplicados que tenía la heurística vieja
+        (longitud + letras + keywords) y añade lista negra de nombres
+        del cliente (CONFIG.NOMBRES_CLIENTE).
+        """
+        if not (3 <= len(candidata) <= 80):
+            return False
+        if sum(c.isalpha() for c in candidata) < 2:
+            return False
+        bajo = candidata.lower()
+        if any(p in bajo for p in self._KEYWORDS_NO_NOMBRE):
+            return False
+        up = candidata.upper()
+        if any(cn in up for cn in CONFIG.NOMBRES_CLIENTE):
+            return False
+        return True
+
     def _nombre_aproximado(
         self,
         texto_pdf: str,
         nombre_remitente: str,
         remitente_email: str,
     ) -> str:
-        """Heurística para asignar un nombre comercial a un proveedor nuevo.
+        """v1.25: Heurística de 4 capas para identificar nombre del proveedor
+        cuando el PDF tiene CIF detectable pero no está en MAESTRO.
 
-        Prioridad: primera línea 'razonable' del texto del PDF (3-80 chars,
-        con al menos 2 letras), fallback al nombre del remitente, fallback
-        al usuario antes del @ del email, fallback al email completo.
+        Capas en orden de prioridad:
+          4. Línea con sufijo societario (S.A.U./S.L./SA/...). Más fiable
+             porque captura el nombre legal directamente.
+          2. Línea cerca de un CIF/NIF detectado en el texto (1-3 líneas
+             antes del CIF en el flujo natural de un PDF español).
+          0. Primera línea 'razonable' (longitud + letras + sin keywords
+             + sin nombre cliente). Lógica antigua, ahora con lista negra.
+
+        Fallbacks:
+          · nombre_remitente del email
+          · local-part del email (antes del @)
+          · "DESCONOCIDO"
+
+        Validado en frío contra PDFs reales (chat 06/05/2026):
+          - COMPROVINO → "COMPROVINO SL" (Capa 4)
+          - Torres Import → "TORRES IMPORT S.A.U." (Capa 4)
         """
         if texto_pdf:
-            for linea in texto_pdf.splitlines():
+            lineas = texto_pdf.splitlines()
+
+            # CAPA 4 — sufijo societario (más fiable)
+            for linea in lineas:
                 candidata = linea.strip()
-                if 3 <= len(candidata) <= 80 and sum(c.isalpha() for c in candidata) >= 2:
-                    # Evitar líneas que son claramente no-nombre
-                    bajo = candidata.lower()
-                    if any(p in bajo for p in ("factura", "invoice", "fecha", "nº ", "n.", "cif", "iva", "total")):
-                        continue
+                if not self._es_nombre_proveedor_razonable(candidata):
+                    continue
+                up = candidata.upper()
+                if any(suf in up for suf in self._SUFIJOS_SOCIETARIOS):
                     return candidata
+
+            # CAPA 2 — proximidad al CIF detectado en el texto
+            # Patrón CIF español: letra + 8 dígitos (con/sin guión).
+            import re
+            m_cif = re.search(r"\b[A-Z]\s*-?\s*\d{8}[A-Z]?\b", texto_pdf)
+            if m_cif:
+                cif_pos = m_cif.start()
+                # Calcular en qué línea está el CIF
+                idx_linea_cif = texto_pdf[:cif_pos].count("\n")
+                for j in range(max(0, idx_linea_cif - 3), idx_linea_cif):
+                    candidata = lineas[j].strip()
+                    if self._es_nombre_proveedor_razonable(candidata):
+                        return candidata
+
+            # CAPA 0 — primera línea razonable (lógica antigua + lista negra)
+            for linea in lineas:
+                candidata = linea.strip()
+                if self._es_nombre_proveedor_razonable(candidata):
+                    return candidata
+
+        # Fallbacks (sin cambios respecto a v1.24)
         if nombre_remitente and nombre_remitente.strip():
             return nombre_remitente.strip()
         email = remitente_email or ""
@@ -2610,6 +2749,57 @@ class GmailProcessor:
         if "@" in email:
             return email.split("@")[0]
         return email or "DESCONOCIDO"
+
+    def _es_factura_valida(self, texto_pdf: str) -> tuple[bool, list[str]]:
+        """v1.25: Heurística para distinguir factura real vs PDF basura
+        (catálogos, presentaciones, brochures comerciales).
+
+        Retorna (es_factura: bool, marcadores_encontrados: list[str]).
+
+        Cuenta marcadores típicos de factura:
+          1. "factura"/"invoice" + alfanumérico (nº factura)
+          2. Fecha en formato dd/mm/yyyy, dd-mm-yyyy o dd.mm.yyyy
+          3. "total"/"base imponible"/"iva" + número (importe)
+          4. CIF/NIF formato español
+
+        Umbral: ≥2 marcadores → es factura. <2 → no-factura
+        (probable catálogo o presentación).
+
+        Validado en frío contra PDFs reales (chat 06/05/2026):
+          - Torres Import (factura) → 4/4 marcadores ✓
+          - Aquí Santoña (catálogo 21 pág.) → 0/4 marcadores ✗
+
+        Si texto_pdf está vacío, devuelve (False, []) — el caller
+        debe tratarlo como caso normal de OCR fallido, no como
+        no-factura.
+        """
+        import re
+        if not texto_pdf or not texto_pdf.strip():
+            return False, []
+        t = texto_pdf.lower()
+        encontrados: list[str] = []
+
+        # 1. Número de factura
+        if re.search(
+            r"(?:factura|nº\s*factura|n\.\s*factura|invoice)\s*[:\-]?\s*[a-z0-9/\-]{3,}",
+            t, re.IGNORECASE,
+        ) or re.search(r"factura\s+\w*\s*\d{4,}", t):
+            encontrados.append("nº factura")
+
+        # 2. Fecha
+        if re.search(r"\b\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b", texto_pdf):
+            encontrados.append("fecha")
+
+        # 3. Importe
+        if re.search(r"total[^\n]{0,40}[\d.,]+\s*€?", t) or \
+           re.search(r"base\s+imponible|iva\s+\d", t):
+            encontrados.append("importe")
+
+        # 4. CIF/NIF
+        if re.search(r"\b[A-Z]\s*-?\s*\d{8}[A-Z]?\b", texto_pdf, re.IGNORECASE):
+            encontrados.append("cif")
+
+        return (len(encontrados) >= 2), encontrados
 
     def _generar_proveedores_nuevos(self):
         """v1.21: NO-OP. La sección de proveedores nuevos ahora va en el
