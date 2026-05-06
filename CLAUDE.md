@@ -57,10 +57,10 @@ gestion-facturas/
 <!-- Al modificar un módulo: actualizar aquí Y en SPEC -->
 | Módulo  | Versión | Archivo fuente                     |
 |---------|---------|------------------------------------|:
-| Gmail   | v1.18   | gmail/gmail.py                     |
+| Gmail   | v1.25   | gmail/gmail.py                     |
 | Ventas  | v4.7    | ventas_semana/script_barea.py      |
 | Cuadre  | v1.7    | cuadre/banco/cuadre.py             |
-| SPEC    | v4.8    | docs/SPEC_GESTION_FACTURAS_v4.md   |
+| SPEC    | v4.9    | docs/SPEC_GESTION_FACTURAS_v4.md   |
 
 ---
 

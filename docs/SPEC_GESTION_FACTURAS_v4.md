@@ -1,8 +1,112 @@
-# SPEC GESTION-FACTURAS v4.8
+# SPEC GESTION-FACTURAS v4.9
 
-> Documento maestro unificado — actualizado 29/04/2026
+> Documento maestro unificado — actualizado 06/05/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
+
+---
+
+## CHANGELOG v4.9 — 05–06/05/2026 (auditoría gmail.py: Bloque A + MAESTRO unificado + Bloque B)
+
+Tres sesiones de auditoría/refactor consecutivas sobre `gmail/gmail.py`. Versión interna **v1.22 → v1.25**. Suite local **157 → 179 tests** (passed, 0 failed). CI verde tras 3 iteraciones (push 91f648c → fix `__new__` → 00eceff). HEAD VPS = `a3f1134`.
+
+### v1.23 — Bloque A: 5 quick wins (commit `eee4cda` rango)
+
+Hardening sin cambios funcionales. Cinco correcciones puntuales identificadas en auditoría de calidad:
+
+| QW | Problema | Fix |
+|---|---|---|
+| 1 | `Notificador` con `version` hardcoded | `Notificador(version=VERSION)` (DRY con constante de cabecera) |
+| 2 | `francisco_guerra.py` — race condition WinError 32 en OCR | `NamedTemporaryFile.close()` antes de `Image.open()` + cleanup `try/except OSError` |
+| 3 | `conectar()` sin validación de scopes | `Credentials.from_authorized_user_file(scopes=GMAIL_SCOPES)` + `'drive' in creds.scopes` con `RuntimeError` si falta |
+| 4 | Carga MAESTRO sin `FileNotFoundError` claro | `raise FileNotFoundError(f"MAESTRO no encontrado: {path}")` antes del open |
+| 5 | Email "Proveedores nuevos" sin estructura tipada | `@dataclass ProveedorNuevoDetectado(cif, nombre, iban, factura, importe, fecha)` |
+
+Tests: **`tests/unit/test_gmail_quick_wins.py`** (8 tests).
+
+### v1.24 — MAESTRO fuente verdad unificada (commit `b4e0651` rango)
+
+**Bug silencioso resuelto.** v1.21–v1.23 leían MAESTRO de `G:\Mi unidad\...\Maestro\` (Drive Desktop, Windows) o `/opt/...` (Linux), pero `api/maestro.py` (única vía de escritura) escribía siempre en `<base>/datos/MAESTRO_PROVEEDORES.xlsx`. Resultado: PC y VPS leían un archivo distinto al que se modificaba desde Streamlit. Detectado al investigar por qué un alta vía Streamlit no aparecía en el siguiente run de gmail.py.
+
+**Fix:** unificar a `<base>/datos/MAESTRO_PROVEEDORES.xlsx` en todas las plataformas.
+
+- `resolver_maestro_path(es_windows, base)` simplificado a una sola rama; conserva soporte env `MAESTRO_OVERRIDE` para tests.
+- Eliminados ~80 LOC: `_MAESTRO_PATH_WINDOWS`, `MaestroDriveError`, `load_maestro_from_drive`, helper de descarga vía Drive API.
+- Drive ya no es fuente primaria del MAESTRO en runtime — el archivo canónico vive en el repo (gitignored). Drive sigue siendo el sync para Excels de salida (Compras/Año en curso/, etc.).
+- Tests: `tests/unit/test_maestro_path.py` (7 casos: Windows/Linux equivalencia, override, ausencia de helpers eliminados).
+
+### v1.25 — Bloque B: refactor heurística + filtrado no-factura (commits `91f648c` + `00eceff`)
+
+Dos bugs en producción descubiertos al analizar PDFs reales (COMPROVINO 04/05, Aquí Santoña 04/05):
+
+| Bug | Caso real | Fix |
+|---|---|---|
+| Heurística captura nombre del cliente | COMPROVINO 04/05 → `_nombre_aproximado` devolvía `"COMESTIBLES BAREA"` (cliente, no proveedor) | Refactor a 4 capas + lista negra `CONFIG.NOMBRES_CLIENTE` |
+| Heurística captura etiquetas plantilla | Torres Import → devolvía `"FORMA DE PAGO"` | Lista `_KEYWORDS_NO_NOMBRE` filtra |
+| Procesa catálogos como facturas | Aquí Santoña 04/05 → catálogo 21 págs → entrada basura en Excel | Detector `_es_factura_valida` (≥2 marcadores: nº factura, fecha, importe, CIF/NIF) |
+
+**Heurística `_nombre_aproximado` — refactor 1 capa → 4 capas:**
+
+| Capa | Estrategia | Ejemplo capturado |
+|---|---|---|
+| 4 | Sufijo societario (`S.A.U./S.L.U./S.L.L./S.A./S.L./S.COOP`) | `TORRES IMPORT S.A.U.`, `COMPROVINO SL` |
+| 2 | Proximidad al CIF (1–3 líneas antes) | nombre cerca del `B12345678` |
+| 0 | Primera línea razonable | `ARTESANIA LOCAL` |
+| 1 | **Lista negra `NOMBRES_CLIENTE`** (filtro transversal a 4/2/0) | rechaza `TASCA BAREA S.L.`, `COMESTIBLES BAREA` |
+
+Fallbacks: `nombre_remitente` → local-part email → `"DESCONOCIDO"`.
+
+**Detector `_es_factura_valida(texto) -> (bool, list[str])`:** cuenta 4 marcadores (nº factura, fecha `dd/mm/yyyy`, importe `TOTAL/BASE/IVA`, CIF/NIF español). Umbral ≥2 → factura. Si <2 → marca `requiere_revision="Posible no-factura"` pero **no descarta el procesamiento** (estrategia conservadora).
+
+**Helpers nuevos:** `_es_nombre_proveedor_razonable(s)` (longitud + letras + sin keywords + sin nombre cliente). **Constantes nuevas:** `CONFIG.NOMBRES_CLIENTE`, `_SUFIJOS_SOCIETARIOS`, `_KEYWORDS_NO_NOMBRE`.
+
+Tests:
+- **`tests/unit/test_bloque_b.py`** (NUEVO, 22 tests): 2 CONFIG + 8 razonable + 7 heurística (4 capas + 3 fallback + regresión) + 5 detector.
+- **`tests/unit/test_nombre_aproximado.py`** (preservado, 6 tests): 2 tests adaptados a invocación con instancia (`proc = GmailProcessor.__new__(GmailProcessor)`) porque v1.25 usa `self` para acceder a helpers — los otros 4 siguen invocando con `None` porque caen al fallback sin tocar `self`.
+
+**Validación cruzada con textos reales (extraídos de PDFs reales analizados durante la sesión):**
+
+| PDF | v1.24 | v1.25 |
+|---|---|---|
+| Torres Import | `"FORMA DE PAGO"` ❌ | `"TORRES IMPORT S.A.U."` ✅ (Capa 4) |
+| COMPROVINO | `"COMESTIBLES BAREA"` ❌ | `"COMPROVINO SL"` ✅ (Capa 4) |
+| Aquí Santoña catálogo | (cualquier línea catálogo) ❌ | n/a — `_es_factura_valida` 0/4 → REVISAR ✅ |
+
+### Iteración CI v1.25 — bug `__init__` pesado en CI
+
+Push 91f648c falló en CI con `FileNotFoundError: /opt/gestion-facturas/datos/MAESTRO_PROVEEDORES.xlsx` (MAESTRO está gitignored, no existe en runner). Local pasaba porque sí lo tenía. **Fix `00eceff`:** los tests instancian `GmailProcessor.__new__(GmailProcessor)` en lugar de `GmailProcessor(modo_test=True)` — los métodos testeados (`_es_nombre_proveedor_razonable`, `_nombre_aproximado`, `_es_factura_valida`) NO acceden a `self.maestro`, así que `__new__` basta y evita cargar Excel inexistente.
+
+### Reglas nuevas en `tasks/lessons.md`
+
+- **MAESTRO única fuente verdad** — `<base>/datos/MAESTRO_PROVEEDORES.xlsx` en todas las plataformas. Lectura y escritura por la misma ruta. Drive solo para Excels de salida.
+- **Validar heurísticas en frío** — antes de aplicar refactor de heurística, extraer texto de 2-3 PDFs reales del caso problema y validar manualmente layer-by-layer; ahorra iteraciones de CI.
+- **Tests con `__init__` pesado en CI** — si `__init__` carga ficheros gitignored (MAESTRO, credenciales, etc.), instanciar con `Cls.__new__(Cls)` en tests unitarios cuando los métodos bajo test no acceden a esos atributos.
+
+### Documentación de la sesión
+
+- `outputs/bloque_a_quick_wins_20260506.md` — informe Bloque A.
+- `outputs/maestro_unificado_20260506.md` — informe MAESTRO fuente verdad.
+- `outputs/bloque_b_no_factura_20260506.md` — informe Bloque B + filtrado.
+
+### Backlog cerrado en estas sesiones
+
+- 🔴 OAuth Drive scope filtering bug (validado en producción 24/04 + hardening v1.23)
+- 🔴 Drive Excels desfasados (sync re-ejecutado tras fix scope)
+- 🟡 Tests TOTAL_MIN_SOSPECHOSO obsoletos (eliminados, eran del v1.18.2 pre-refactor)
+- 🟢 CIF B85501989 → COMPROVINO (alta MAESTRO + extractor `comprovino.py`)
+- 🟡 4 ImportError CI + 22 async failures (consolidación deps en `pyproject [dev]`)
+- 🟡 Bloque A — 5 quick wins
+- 🔴 Bug silencioso MAESTRO paths divergentes
+- 🟢 Race condition OCR `francisco_guerra.py`
+- 🟢 Filtrado no-factura (Aquí Santoña catálogo)
+
+### Backlog vivo (no abordado en estas sesiones)
+
+- 🟡 `Parseo/extractores/pifema.py` — fecha futura + total no extraído.
+- 🟢 Alta MAESTRO + extractor "Aquí Santoña" / "Torres Import" formal (v1.25 mejora detección, alta sigue pendiente).
+- 🟡 Refactor `gmail.py:conectar()` — deuda OAuth.
+- 🟡 Bloques C / D auditoría (Excel I/O, refactor modular).
+- `/documentos` Cloud Opción A (URLs directos a Drive).
 
 ---
 
@@ -406,7 +510,7 @@ Cuadre_011025-020126.xlsx  → Cuadre del 01/10/25 al 02/01/26
 
 ## 6. MÓDULO COMPRAS
 
-### 6.1 GMAIL (v1.22) — ✅ 99%
+### 6.1 GMAIL (v1.25) — ✅ 99%
 
 **Script:** `gmail/gmail.py` (~2.500 líneas, Google API)
 **Módulos:** auth.py, descargar.py, identificar.py, renombrar.py, guardar.py, generar_sepa.py, dropbox_api.py, dropbox_selector.py
@@ -416,7 +520,11 @@ Cuadre_011025-020126.xlsx  → Cuadre del 01/10/25 al 02/01/26
 - PDFs de facturas → **solo Dropbox** (`FACTURAS {año}/FACTURAS RECIBIDAS/X TRIMESTRE {año}/`).
 - `Facturas {trim} Provisional.xlsx` → Dropbox + Drive/`Compras/Año en curso/` (doble escritura; Kinema revisa Dropbox).
 - `PAGOS_Gmail_{trim}.xlsx` → solo Drive/`Compras/Año en curso/`.
-- MAESTRO → **solo-lectura** (Windows: G:\...\Maestro\; Linux: cache via Drive API en `/opt/.../datos/`). gmail.py nunca modifica MAESTRO (solo `api/maestro.py` es writer, vía Streamlit).
+- MAESTRO → **solo-lectura, fuente verdad unificada** (v1.24): `<base>/datos/MAESTRO_PROVEEDORES.xlsx` en todas las plataformas. gmail.py nunca modifica MAESTRO (solo `api/maestro.py` es writer, vía Streamlit). Drive solo sync de Excels de salida.
+
+**Heurística proveedor + filtrado no-factura (v1.25):**
+- `_nombre_aproximado` 4 capas: sufijo societario → proximidad CIF → primera línea razonable, con lista negra `CONFIG.NOMBRES_CLIENTE` transversal y `_KEYWORDS_NO_NOMBRE`.
+- `_es_factura_valida(texto)` cuenta marcadores (nº factura / fecha / importe / CIF). <2 → marca REVISAR `"Posible no-factura"` sin descartar procesamiento.
 
 #### Flujo semanal
 
