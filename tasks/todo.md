@@ -80,7 +80,7 @@
 - [ ] **🟢 5. Alta MAESTRO + extractor para "Aquí Santoña"** (`comercial@aquisantona.com`). Factura quedó como `REVISAR 2T26 0504 (comercial@aquisantona.com).pdf` sin proveedor ni total.
 - [ ] **🟢 NUEVO 6. Alta MAESTRO + extractor "Torres Import S.A.U."** (`torresimport@torresimport.com`). Detectado en validación 05/05 23:54. Mismo patrón que Aquí Santoña: factura `REVISAR 2T26 0505 (torresimport@torresimport.com).pdf` sin proveedor identificado, sin total, ref `227152`, fecha no detectada.
 - [ ] **🟡 NUEVO 7. Investigar `Parseo/extractores/pifema.py`** — extractor existe pero falla en producción (validación 05/05): fecha extraída `03/06/2026` (futura) y total no extraído (ALERTA ROJA). Email "AB26/171" con archivo `2T26 0603 PIFEMA SL TF.pdf`. Anti-dup descartó la factura por CIF+REF=PIFEMA|1284 ya en Excel, así que NO hay zombi nueva, pero el extractor está roto. Requiere inspección PDF + fix `extraer_fecha` y `extraer_total`.
-- [ ] **🟢 NUEVO 8. Race condition OCR temp file en `francisco_guerra.py`** — `[WinError 32] tmphw7nbhd2.png está siendo utilizado por otro proceso`. No bloqueante (extractor recupera con fallback), pero recurrente. Considerar añadir retry o usar `NamedTemporaryFile(delete=False)` + cleanup explícito.
+- [x] **🟢 NUEVO 8. Race condition OCR temp file** ✅ CERRADO 06/05 (Bloque A QW2). Resuelto a nivel `gmail.py` (no en `francisco_guerra.py`): `NamedTemporaryFile` con cierre explícito + `Image.open()` en context manager + cleanup en `finally` con `try/except OSError`. Commit `9611fb3`.
 
 ### Pendientes derivados (sesión 04/05 tarde)
 - [x] **🔴 Drive Excels desfasados 5 días** ✅ Provisional re-sincronizado desde Dropbox en sesión 05/05/2026 (21 → 65 filas). PAGOS_Gmail_2T26 sin equivalente en Dropbox; se actualizará automáticamente cuando el cron del viernes 08/05 corra con OAuth Drive funcional. Backup pre-resync: `Facturas 2T26 Provisional_backup_pre_resync_20260505_2023.xlsx`.
@@ -90,6 +90,28 @@
 
 ### Corrección de premisa
 - [x] **El cron de gmail.py NO existe** — auditoría 05/05/2026 tarde reveló que en VPS solo había un header huérfano `# Gmail facturas - viernes 03:00` sin línea cron debajo. Las afirmaciones previas en sesiones 04/05 y 05/05 mañana ("cron viernes procesará...") eran incorrectas. Header reemplazado por comentario explicativo apuntando a `docs/FLUJO_MANUAL_GMAIL.md`. Backup pre-cambio: `/opt/gestion-facturas/backups/crontab_pre_20260505.txt` (en VPS).
+
+---
+
+## Sesión 06/05/2026 — BLOQUE A (auditoría gmail.py, 5 quick wins)
+**Objetivo:** aplicar Bloque A de la auditoría completa generada en chat (`AUDITORIA_GMAIL_PY_20260506.md`).
+
+### Completado
+- [x] **5 quick wins aplicados en `gmail.py`** v1.22 → v1.23:
+  - QW1: VERSION única — eliminados strings hardcoded `v1.14`/`v1.15` del HTML email + asunto + argparse. `Notificador` acepta `version` como param.
+  - QW2: OCR race condition — `NamedTemporaryFile` con cierre explícito + `Image.open()` context manager + cleanup defensivo. Evita `WinError 32`.
+  - QW3: Validación scopes token — `GmailClient.conectar()` aborta con `RuntimeError` si scopes incompletos. Defensa contra causa raíz bug OAuth Drive 28-30/04.
+  - QW4: `LocalDropboxClient` lanza `FileNotFoundError` (no `Exception` genérica).
+  - QW5: `ProveedorNuevoDetectado` `@dataclass` — sustituye lista de dicts ad-hoc.
+- [x] **8 tests unitarios** en `tests/unit/test_gmail_quick_wins.py`. Suite local: 144 passed (antes 136), 0 fallos.
+- [x] **Commit `9611fb3` push origin main**. Sync VPS OK (md5 difiere por CRLF/LF, 2784 líneas idénticas).
+- [x] **Backlog "Race condition OCR `francisco_guerra.py`" cerrado** (resuelto a nivel `gmail.py`).
+- [x] Reporte completo `outputs/bloque_A_gmail_qw_20260506.md`.
+
+### Próximos bloques de la auditoría
+- 🟡 **Bloque B**: bug latente cliente/proveedor (refactor identificación heurística).
+- 🟡 **Bloque C**: Excel I/O (separar lectura/escritura, lock handling).
+- 🟡 **Bloque D**: refactor modular (división de gmail.py en submódulos).
 
 ---
 
