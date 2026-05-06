@@ -93,6 +93,27 @@
 
 ---
 
+## Sesión 06/05/2026 — BLOQUE B + FILTRADO NO-FACTURA (v1.25)
+**Objetivo:** refactor heurística cliente/proveedor a 4 capas + detector PDFs no-factura.
+
+### Completado
+- [x] **Heurística `_nombre_aproximado` refactorizada a 4 capas**: Capa 4 sufijo societario (más fiable) + Capa 2 proximidad CIF + Capa 0 primera línea razonable + Capa 1 lista negra `CONFIG.NOMBRES_CLIENTE`. Helper `_es_nombre_proveedor_razonable` centraliza el criterio.
+- [x] **Detector `_es_factura_valida`**: cuenta marcadores típicos (nº factura, fecha, importe, CIF). ≥2 = factura, <2 = no-factura. Integrado en `_procesar_pdf` con estrategia conservadora (marca REVISAR pero NO descarta).
+- [x] **VERSION** 1.24 → 1.25 + bloque MEJORAS v1.25.
+- [x] **Tests**: nuevo `test_bloque_b.py` (22 tests) + adaptados 2 de `test_nombre_aproximado.py` (cambian `_nombre_aproximado(None, ...)` por `proc._nombre_aproximado(...)`). Suite local 179 passed (antes 157).
+- [x] **CI iteración**: primer push `91f648c` falló (FileNotFoundError MAESTRO — gitignored, no existe en runner). Fix `00eceff` con `__new__` en lugar de `__init__` (tests no necesitan cargar MAESTRO). CI verde.
+- [x] **Sync VPS** (HEAD `00eceff`).
+- [x] **Backlog cerrado**:
+  - 🟡 Bloque B (heurística cliente/proveedor) → ✅ resuelto.
+  - 🟢 Filtrado no-factura (caso Aquí Santoña) → ✅ resuelto.
+
+### Decisiones senior tomadas durante la sesión
+- Test "PROVEEDOR ARTESANAL" del plan inconsistente con `_KEYWORDS_NO_NOMBRE` (la palabra "proveedor" rechaza la candidata). Cambiado a "ARTESANIA LOCAL".
+- Regresión 2 tests preservados de `test_nombre_aproximado.py`: plan ordenaba STOP. Adaptados a invocación con instancia (firma se mantiene; cambia solo cómo invocan).
+- Fix CI iterativo (`__new__` en lugar de `__init__`): los métodos testeados no necesitan `self.maestro`, así que crear instancia sin disparar `__init__` evita la carga de MAESTRO gitignored.
+
+---
+
 ## Sesión 06/05/2026 — FUENTE DE VERDAD MAESTRO (v1.24)
 **Objetivo:** resolver bug silencioso lectura Drive vs escritura datos/.
 
