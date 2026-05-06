@@ -1,9 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GMAIL MODULE v1.22
+GMAIL MODULE v1.23
 Sistema Automatizado de Procesamiento de Facturas
 TASCA BAREA S.L.L. - Abril 2026
+
+MEJORAS v1.23 — QUICK WINS AUDITORÍA (Bloque A):
+- VERSION única: ya no hay strings 'v1.14' / 'v1.15' hardcoded en el HTML del
+  email, asunto del notificador o argparse description. Notificador acepta
+  `version` como parámetro (default = VERSION del módulo) y lo expone en
+  todos los textos visibles al usuario.
+- OCR race condition arreglada: NamedTemporaryFile con cierre explícito de
+  handle + Image.open() en context manager + cleanup defensivo en finally.
+  Evita WinError 32 al hacer unlink en Windows cuando AV o el handle PIL
+  mantenían el archivo abierto (visto en francisco_guerra.py el 05/05/2026).
+- Validación defensiva de scopes del token Gmail: si el token cargado tiene
+  menos scopes de los esperados (causa raíz del bug OAuth Drive 28-30/04),
+  el run aborta con mensaje claro indicando regenerar token.
+- LocalDropboxClient lanza FileNotFoundError (no Exception genérica) si la
+  carpeta base no existe.
+- ProveedorNuevoDetectado @dataclass: sustituye la lista de dicts ad-hoc
+  para tracking de proveedores nuevos detectados. Typing limpio en
+  Notificador.enviar_resumen y GmailProcessor.
 
 MEJORAS v1.22 — DESTINOS CLOUD DEFINITIVOS:
 - PDFs de facturas: SOLO Dropbox (destino primario permanente).
@@ -71,7 +89,7 @@ Ejecuta: python gmail.py --produccion
          python gmail.py --test (modo prueba sin modificar archivos)
 """
 
-VERSION = "1.22"
+VERSION = "1.23"
 
 import os
 import sys
@@ -302,6 +320,19 @@ class ResultadoProcesamiento:
     es_duplicado: bool = False
     es_proveedor_nuevo: bool = False
     cif_detectado: str = ""
+
+
+@dataclass
+class ProveedorNuevoDetectado:
+    """v1.23: Tracking de proveedores con CIF detectado pero sin alta MAESTRO.
+    Se usan para la sección 'Proveedores nuevos detectados' del email resumen
+    (ver Notificador.enviar_resumen)."""
+    cif: str
+    nombre_aproximado: str
+    iban: str = ""
+    referencia: str = ""
+    total: Optional[float] = None
+    fecha: Optional[datetime] = None
 
 
 # ============================================================================
@@ -705,7 +736,22 @@ class GmailClient:
         
         if os.path.exists(self.token_path):
             creds = Credentials.from_authorized_user_file(self.token_path, CONFIG.GMAIL_SCOPES)
-        
+            # v1.23: validación defensiva — el token debe tener TODOS los scopes
+            # esperados. Causa raíz del bug OAuth Drive 28-30/04/2026: token con 3
+            # scopes en vez de 4 (faltaba 'drive'), Credentials.from_authorized_user_file
+            # NO levanta error si el token tiene menos scopes de los pedidos.
+            if creds and creds.scopes:
+                scopes_faltantes = set(CONFIG.GMAIL_SCOPES) - set(creds.scopes)
+                if scopes_faltantes:
+                    self.logger.error(
+                        "Token con scopes insuficientes. Faltantes: %s. "
+                        "Regenera con: python gmail/renovar_token_business.py",
+                        scopes_faltantes,
+                    )
+                    raise RuntimeError(
+                        f"Token Gmail/Drive incompleto (faltan scopes: {scopes_faltantes})"
+                    )
+
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
@@ -953,7 +999,7 @@ class LocalDropboxClient:
     def __init__(self, base_path: str):
         self.base_path = base_path
         if not os.path.exists(base_path):
-            raise Exception(f"Carpeta Dropbox no encontrada: {base_path}")
+            raise FileNotFoundError(f"Carpeta Dropbox no encontrada: {base_path}")
     
     def subir_archivo(self, contenido: bytes, nombre_archivo: str, fecha_factura: datetime, 
                       fecha_ejecucion: datetime) -> Tuple[str, bool]:
@@ -1502,9 +1548,10 @@ class ExcelFacturas:
 
 class Notificador:
     """Envía notificaciones por email"""
-    
-    def __init__(self, gmail_service):
+
+    def __init__(self, gmail_service, version: str = VERSION):
         self.service = gmail_service
+        self.version = version
     
     def enviar_resumen(
         self,
@@ -1513,7 +1560,7 @@ class Notificador:
         excel_path: str,
         dropbox_folder: str,
         log_path: str,
-        proveedores_nuevos: Optional[List[Dict[str, Any]]] = None,
+        proveedores_nuevos: Optional[List[ProveedorNuevoDetectado]] = None,
     ):
         """Envía email de resumen HTML"""
         total = len(procesados)
@@ -1545,7 +1592,7 @@ class Notificador:
         </head>
         <body>
             <div class="header">
-                <h2>📧 Gmail Module v1.14 - Resumen de Procesamiento</h2>
+                <h2>📧 Gmail Module v{self.version} - Resumen de Procesamiento</h2>
                 <p>{datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
             </div>
         """
@@ -1624,23 +1671,23 @@ class Notificador:
             """
             for pn in proveedores_nuevos:
                 importe = ""
-                if pn.get("total") is not None:
+                if pn.total is not None:
                     try:
-                        importe = f"{pn['total']:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
+                        importe = f"{pn.total:,.2f} €".replace(",", "X").replace(".", ",").replace("X", ".")
                     except (TypeError, ValueError):
-                        importe = str(pn["total"])
+                        importe = str(pn.total)
                 fecha_str = ""
-                if pn.get("fecha"):
+                if pn.fecha:
                     try:
-                        fecha_str = pn["fecha"].strftime("%d/%m/%Y")
+                        fecha_str = pn.fecha.strftime("%d/%m/%Y")
                     except AttributeError:
-                        fecha_str = str(pn["fecha"])
+                        fecha_str = str(pn.fecha)
                 html += f"""
                 <tr>
-                    <td>{pn.get("cif", "")}</td>
-                    <td>{pn.get("nombre_aproximado", "")}</td>
-                    <td>{pn.get("iban", "")}</td>
-                    <td>{pn.get("referencia", "")}</td>
+                    <td>{pn.cif}</td>
+                    <td>{pn.nombre_aproximado}</td>
+                    <td>{pn.iban}</td>
+                    <td>{pn.referencia}</td>
                     <td>{importe}</td>
                     <td>{fecha_str}</td>
                 </tr>
@@ -1661,7 +1708,7 @@ class Notificador:
         </html>
         """
         
-        asunto = f"Gmail Module v1.14 - {datetime.now().strftime('%d/%m/%Y')} - {total} facturas"
+        asunto = f"Gmail Module v{self.version} - {datetime.now().strftime('%d/%m/%Y')} - {total} facturas"
         if alertas_rojas > 0:
             asunto = f"🔴 ALERTAS ROJAS - {asunto}"
         
@@ -1822,7 +1869,7 @@ class GmailProcessor:
         self.resultados: List[ResultadoProcesamiento] = []
         self.errores: List[str] = []
         # v1.21: tracking de proveedores nuevos para email resumen
-        self.proveedores_nuevos_detectados: List[Dict[str, Any]] = []
+        self.proveedores_nuevos_detectados: List[ProveedorNuevoDetectado] = []
     
     def ejecutar(self) -> bool:
         """Ejecuta el procesamiento completo"""
@@ -2286,14 +2333,14 @@ class GmailProcessor:
         # v1.21: registrar proveedor nuevo para la sección del email resumen.
         # El IBAN del PDF (si difiere del MAESTRO) llega en factura.iban_detectado.
         if resultado.es_proveedor_nuevo:
-            self.proveedores_nuevos_detectados.append({
-                "cif": resultado.cif_detectado,
-                "nombre_aproximado": proveedor.nombre if proveedor else "",
-                "iban": factura.iban_detectado or "",
-                "referencia": factura.referencia or "",
-                "total": factura.total,
-                "fecha": factura.fecha,
-            })
+            self.proveedores_nuevos_detectados.append(ProveedorNuevoDetectado(
+                cif=resultado.cif_detectado,
+                nombre_aproximado=proveedor.nombre if proveedor else "",
+                iban=factura.iban_detectado or "",
+                referencia=factura.referencia or "",
+                total=factura.total,
+                fecha=factura.fecha,
+            ))
 
         # v1.8: Detectar duplicado CIF+REF (o NOMBRE+REF si CIF vacío)
         es_duplicado_cif_ref = False
@@ -2455,13 +2502,28 @@ class GmailProcessor:
                                 with pdfplumber.open(tmp_path) as pdf:
                                     for page in pdf.pages:
                                         img = page.to_image(resolution=300)
-                                        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as img_tmp:
-                                            img.save(img_tmp.name)
-                                            ocr_text = pytesseract.image_to_string(
-                                                Image.open(img_tmp.name), lang='spa'
-                                            )
+                                        # v1.23: NamedTemporaryFile con cierre explícito
+                                        # de handle + Image.open() en context manager
+                                        # para evitar WinError 32 al hacer unlink en
+                                        # Windows (race condition vista en
+                                        # francisco_guerra.py el 05/05/2026).
+                                        tmp_png = tempfile.NamedTemporaryFile(
+                                            suffix='.png', delete=False
+                                        )
+                                        tmp_png.close()
+                                        try:
+                                            img.save(tmp_png.name)
+                                            with Image.open(tmp_png.name) as pil_img:
+                                                ocr_text = pytesseract.image_to_string(
+                                                    pil_img, lang='spa'
+                                                )
                                             texto_pdf += ocr_text + "\n"
-                                            os.unlink(img_tmp.name)
+                                        finally:
+                                            try:
+                                                os.unlink(tmp_png.name)
+                                            except OSError:
+                                                # AV o handle puntual; no crítico
+                                                pass
                             except Exception as e:
                                 self.logger.warning(f"  ↳ ⚠️ Error OCR en {proveedor.archivo_extractor}: {e}")
                         
@@ -2624,7 +2686,7 @@ class GmailProcessor:
             excel_path = os.path.join(CONFIG.OUTPUT_PATH, f"PAGOS_Gmail_{trimestre}.xlsx")
             log_path = os.path.join(CONFIG.LOGS_PATH, f"{datetime.now().strftime('%Y-%m-%d')}.log")
             
-            notificador = Notificador(self.gmail.service)
+            notificador = Notificador(self.gmail.service, version=VERSION)
             notificador.enviar_resumen(
                 self.resultados,
                 self.errores,
@@ -2700,7 +2762,7 @@ class GmailProcessor:
 # ============================================================================
 
 def main():
-    parser = argparse.ArgumentParser(description="Gmail Module v1.15 - Procesador de Facturas")
+    parser = argparse.ArgumentParser(description=f"Gmail Module v{VERSION} - Procesador de Facturas")
     parser.add_argument("--produccion", action="store_true", help="Ejecutar en modo producción")
     parser.add_argument("--test", action="store_true", help="Ejecutar en modo test")
     
