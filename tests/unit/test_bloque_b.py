@@ -41,9 +41,15 @@ def test_config_nombres_cliente_contiene_clientes_reales():
 # ============================================================================
 
 def _make_processor():
-    """Helper: instancia GmailProcessor en modo_test sin disparar I/O."""
+    """Helper: instancia GmailProcessor SIN invocar __init__.
+
+    Usamos __new__ para evitar cargar MAESTRO_PROVEEDORES.xlsx (gitignored,
+    no existe en CI runner). Los métodos que estos tests verifican
+    (_es_nombre_proveedor_razonable, _nombre_aproximado, _es_factura_valida)
+    NO acceden a self.maestro — solo a constantes de clase y CONFIG.
+    """
     from gmail.gmail import GmailProcessor
-    return GmailProcessor(modo_test=True)
+    return GmailProcessor.__new__(GmailProcessor)
 
 
 def test_razonable_acepta_nombre_normal():
