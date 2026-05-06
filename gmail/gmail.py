@@ -1,9 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GMAIL MODULE v1.23
+GMAIL MODULE v1.24
 Sistema Automatizado de Procesamiento de Facturas
 TASCA BAREA S.L.L. - Abril 2026
+
+MEJORAS v1.24 — FUENTE DE VERDAD MAESTRO UNIFICADA:
+- resolver_maestro_path() apunta SIEMPRE a <base_path>/datos/
+  MAESTRO_PROVEEDORES.xlsx, sin importar plataforma. Antes en Windows
+  leía de G:\\...\\Maestro\\ (Drive Desktop) pero los scripts de alta
+  escribían en datos/. Lecturas y escrituras a archivos distintos
+  provocaron que altas como COMPROVINO (05/05) y JALEO se perdieran
+  silenciosamente para gmail.py.
+- Eliminados _MAESTRO_PATH_WINDOWS, MaestroDriveError,
+  load_maestro_from_drive y su llamada en _conectar_servicios. ~80
+  líneas menos. Drive Maestro/ deprecado, movido a _DEPRECATED_v1.21/.
+- Decisión validada en chat con Jaime el 06/05/2026: con un solo
+  usuario (PC), datos/ es fuente de verdad simple y robusta. Si en
+  el futuro entra Roberto/Cristina/gestoría, migrar B→A es trivial
+  (1 commit, plan documentado en lessons.md).
+- El parámetro `es_windows` de resolver_maestro_path se mantiene en
+  la firma por compatibilidad con tests existentes pero ya no afecta
+  al resultado.
 
 MEJORAS v1.23 — QUICK WINS AUDITORÍA (Bloque A):
 - VERSION única: ya no hay strings 'v1.14' / 'v1.15' hardcoded en el HTML del
@@ -89,7 +107,7 @@ Ejecuta: python gmail.py --produccion
          python gmail.py --test (modo prueba sin modificar archivos)
 """
 
-VERSION = "1.23"
+VERSION = "1.24"
 
 import os
 import sys
@@ -141,23 +159,24 @@ from openpyxl.worksheet.datavalidation import DataValidation
 # CONFIGURACIÓN v1.14
 # ============================================================================
 
-# Raíz Drive Desktop en PC (G: por defecto de Google Drive)
-_MAESTRO_PATH_WINDOWS = r"G:\Mi unidad\Barea - Datos Compartidos\Maestro\MAESTRO_PROVEEDORES.xlsx"
-
-
 def resolver_maestro_path(es_windows: bool, base_path: str) -> str:
-    """Resuelve la ruta al MAESTRO_PROVEEDORES.xlsx según plataforma.
+    """Resuelve la ruta al MAESTRO_PROVEEDORES.xlsx (siempre local).
+
+    v1.24: el MAESTRO se mantiene como un único archivo en
+    `<base_path>/datos/`, fuente de verdad tanto en PC (escritura por
+    scripts de alta) como en VPS (sincronizado por scp manual). Drive
+    `Maestro/` deprecado (ver MEJORAS v1.24 en header).
+
+    Parámetro `es_windows` se mantiene en la firma por compatibilidad
+    con tests existentes pero ya no afecta al resultado.
 
     Prioridad:
       1) env MAESTRO_OVERRIDE (tests/desarrollo)
-      2) Windows → G:\\Mi unidad\\Barea - Datos Compartidos\\Maestro\\...
-      3) Linux   → <base_path>/datos/MAESTRO_PROVEEDORES.xlsx (caché de Drive API)
+      2) <base_path>/datos/MAESTRO_PROVEEDORES.xlsx (siempre)
     """
     override = os.environ.get("MAESTRO_OVERRIDE")
     if override:
         return override
-    if es_windows:
-        return _MAESTRO_PATH_WINDOWS
     return os.path.join(base_path, "datos", "MAESTRO_PROVEEDORES.xlsx")
 
 
@@ -1770,82 +1789,6 @@ class BackupManager:
 
 
 # ============================================================================
-# HELPER: CARGA DE MAESTRO DESDE DRIVE (v1.21)
-# ============================================================================
-
-
-class MaestroDriveError(RuntimeError):
-    """Fallo fatal al cargar MAESTRO desde Drive sin caché disponible."""
-
-
-def load_maestro_from_drive(
-    ruta_local: str,
-    es_windows: Optional[bool] = None,
-    logger: Optional[logging.Logger] = None,
-) -> str:
-    """Garantiza que MAESTRO_PROVEEDORES.xlsx esté disponible en `ruta_local`.
-
-    Comportamiento diferenciado:
-      - Windows (PC): `ruta_local` apunta a G:\\Mi unidad\\... (Drive Desktop).
-        Si el fichero existe, OK. Si no, se lanza MaestroDriveError
-        (el usuario debe tener Drive Desktop sincronizado).
-      - Linux (VPS): descarga desde Drive API a `ruta_local` como caché.
-        Si la descarga falla y existe caché previa → warning, se usa caché.
-        Si falla sin caché → MaestroDriveError.
-
-    Si `es_windows` es None, se detecta con `platform.system()`.
-    """
-    log = logger or logging.getLogger("gmail_module")
-    if es_windows is None:
-        es_windows = platform.system() == "Windows"
-
-    if es_windows:
-        if os.path.exists(ruta_local):
-            return ruta_local
-        raise MaestroDriveError(
-            f"MAESTRO no encontrado en {ruta_local}. "
-            "¿Drive Desktop sincronizado? ¿Carpeta 'Maestro' existe en Drive?"
-        )
-
-    # Linux: descarga vía API
-    try:
-        from nucleo.sync_drive import descargar_archivo
-        ok = descargar_archivo(
-            nombre="MAESTRO_PROVEEDORES.xlsx",
-            carpeta=["Maestro"],
-            destino_local=ruta_local,
-        )
-        if ok:
-            log.info("MAESTRO descargado de Drive → %s", ruta_local)
-            return ruta_local
-        # No encontrado en Drive
-        if os.path.exists(ruta_local):
-            log.warning(
-                "MAESTRO no encontrado en Drive; usando caché local %s",
-                ruta_local,
-            )
-            return ruta_local
-        raise MaestroDriveError(
-            "MAESTRO no existe ni en Drive (Maestro/MAESTRO_PROVEEDORES.xlsx) "
-            f"ni en caché local {ruta_local}. Abortando run."
-        )
-    except MaestroDriveError:
-        raise
-    except Exception as e:
-        # Drive down / red / auth — caer a caché si la hay
-        if os.path.exists(ruta_local):
-            log.warning(
-                "Fallo descargando MAESTRO de Drive (%s); usando caché local %s",
-                e, ruta_local,
-            )
-            return ruta_local
-        raise MaestroDriveError(
-            f"Fallo al descargar MAESTRO de Drive ({e}) y no hay caché local "
-            f"en {ruta_local}. Abortando run."
-        ) from e
-
-
-# ============================================================================
 # PROCESADOR PRINCIPAL
 # ============================================================================
 
@@ -1856,9 +1799,8 @@ class GmailProcessor:
         self.modo_test = modo_test
         self.logger = configurar_logging(modo_test)
 
-        # v1.21: garantizar MAESTRO disponible (PC=G: / VPS=descarga Drive)
-        load_maestro_from_drive(CONFIG.MAESTRO_PATH, logger=self.logger)
-
+        # v1.24: MAESTRO siempre local (datos/MAESTRO_PROVEEDORES.xlsx).
+        # Drive Maestro/ deprecado.
         self.maestro = MaestroProveedores(CONFIG.MAESTRO_PATH)
         self.control = ControlDuplicados(CONFIG.JSON_PATH)
         self.backup = BackupManager(CONFIG.BACKUPS_PATH)
