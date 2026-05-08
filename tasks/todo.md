@@ -30,6 +30,7 @@
 - [ ] Añadir sync Drive también a `scripts/mov_banco.py` (paralelo a `actualizar_movimientos.py`) — omitido por scope.
 - [ ] Borrar `generar_refresh_token_dropbox.py` (gitignored, ya cumplió su función Fase X.2).
 - [ ] Revisar REVISAR reales del run 24/04: La Mar de Tazones, Solicitud factura imagen.
+- [ ] **MAESTRO_PROVEEDORES** — completar CIF de **ISTA METERING SERVICES** (CUENTA `41096000`). Detectado en smoke 1T26 Parseo sesión 08/05 (factura 1025): el extractor `ista.py` identificó el proveedor correctamente pero CIF queda PENDIENTE porque MAESTRO no lo tiene poblado. No es bug del extractor — el recibo ISTA no muestra CIF en absoluto, hay que añadirlo manualmente desde fuente externa (web ISTA, CIRBE, BORME).
 
 ---
 
