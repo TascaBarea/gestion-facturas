@@ -31,6 +31,14 @@
 - [ ] Borrar `generar_refresh_token_dropbox.py` (gitignored, ya cumplió su función Fase X.2).
 - [ ] Revisar REVISAR reales del run 24/04: La Mar de Tazones, Solicitud factura imagen.
 - [ ] **MAESTRO_PROVEEDORES** — completar CIF de **ISTA METERING SERVICES** (CUENTA `41096000`). Detectado en smoke 1T26 Parseo sesión 08/05 (factura 1025): el extractor `ista.py` identificó el proveedor correctamente pero CIF queda PENDIENTE porque MAESTRO no lo tiene poblado. No es bug del extractor — el recibo ISTA no muestra CIF en absoluto, hay que añadirlo manualmente desde fuente externa (web ISTA, CIRBE, BORME).
+- [ ] **MAESTRO_PROVEEDORES — altas pendientes 1T26**: 7 proveedores detectados como CIF_PENDIENTE en smoke 1T26 sesión 08/05 (post-fix issue #8 Parseo). Necesitan alta completa (CUENTA, CIF, ALIAS, CLASE, ARCHIVO_EXTRACTOR si procede):
+  - **ANTHROPIC** — [CIF pendiente, US, suscripción Claude API/web, 3 facturas en 1T26: 1070, 1104, 1168]
+  - **ICATU SPIRITS** — [CIF pendiente, factura 1032]
+  - **CLEMENT GEORGES** — [CIF pendiente, factura 1037]
+  - **AIMANE HAMMOUCH** — [CIF pendiente, factura 1117]
+  - **CAFÉ DROMEDARIO** — [CIF pendiente, factura 1179, recibida vía email administracion@cafedromedario.com]
+  - **MAKRO** — [CIF pendiente, factura 1192 `0302 MAKRO EF.pdf`]
+  - **ORGANIA OLEUM, S.L.** — [CIF pendiente, factura 1065. Pre-fix se mis-identificaba como QUESOS NAVAS por bug substring (issue #8 cerrado en commit Parseo `03dde16`)]
 
 ---
 
