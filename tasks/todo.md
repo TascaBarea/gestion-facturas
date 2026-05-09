@@ -40,6 +40,42 @@
   - **MAKRO** — [CIF pendiente, factura 1192 `0302 MAKRO EF.pdf`]
   - **ORGANIA OLEUM, S.L.** — [CIF pendiente, factura 1065. Pre-fix se mis-identificaba como QUESOS NAVAS por bug substring (issue #8 cerrado en commit Parseo `03dde16`)]
 
+- [ ] **MAESTRO_PROVEEDORES — altas pendientes 2T26**: detectados como CIF_PENDIENTE / extractor genérico en diagnóstico 2T26 sesión 09/05/2026 (89 PDFs procesados con Parseo `415dc73` + flag `--dry-run`). Necesitan alta completa:
+  - **FIVE GALAXIES COMMERCE LTD** — [CIF pendiente, factura `2T26 0418 FIVE GALAXIES COMMERCE LTD TJ.pdf`, fecha también pendiente]
+  - **DUE SERVICIOS INTEGRALES LABORALES SL** — [CIF pendiente, factura `2T26 0420 DUE SERVICIOS INTEGRALES LABORALES SL TF.pdf`, sin total]
+  - **kombucheria** — [REVISAR `2T26 0418 (katrin@kombucheria.com).pdf`, fecha pendiente]
+  - **cetareatazones** — [REVISAR `2T26 0423 (info@cetareatazones.com).pdf`, fecha pendiente]
+  - (TORRES IMPORT, ANTHROPIC y CAFÉ DROMEDARIO ya en lista 1T26 arriba; reaparecen en 2T26)
+
+- [ ] **Parseo — bug PANRUJE descuadre sistemático**. Diagnóstico 2T26 sesión 09/05/2026 detectó descuadres en **2/2 facturas PANRUJE**: `2T26 0408 PANRUJE TF.pdf` (12,60€) y `2T26 0422 PANRUJE TF.pdf` (68,64€). Patrón sistemático = bug de extractor, no caso aislado. Inspeccionar `Parseo/extractores/panruje.py`.
+
+---
+
+## Sesión 09/05/2026 — gmail.py v1.26 lock-safe + Parseo --dry-run
+**Objetivo:** parche crítico de data loss en gmail.py + flag dry-run real en Parseo (cierre de la deuda detectada en diagnóstico 2T26).
+
+### Completado
+- [x] **Auditoría preventiva del prompt v1.26**: detectadas 8 discrepancias entre el prompt y el código real ANTES de implementar (path `compras/gmail.py` → `gmail/gmail.py`, pre-flight v1.5 ya existía con bug, 29 emails históricos no 24, motivos JSON verificados, `--test` vs `--dry-run` inexistente, etc.). Reportado y confirmado con Jaime.
+- [x] **gmail.py v1.25 → v1.26** (commit `6b9cdad`): pre-flight Excels (`r+b`, no `open('a')` prohibido), `ExcelBloqueadoError`, filtro pendientes ignora `error:` y `limpieza_pre_v1.13` (recovery retroactivo de 29 emails históricos), reordering del flujo por email (move etiqueta Gmail al PASO 6, no al PASO 2), eliminado check duplicado en `_crear_backups`. 15 tests nuevos en `tests/unit/test_gmail_lock_safe.py`. Suite 259 → 274 passed.
+- [x] **Decisión canónica del reordering**: el `_mover_email_seguro` pasa de "red de seguridad inicial" a "confirmatorio final". La capa B (hash MD5) cubre el rol antiguo sin el bug de email huérfano. Ver `tasks/lessons.md`.
+- [x] **CLAUDE.md sincronizada**: Gmail v1.25 → v1.26 (en commit anterior), SPEC v4.9 → v4.10 (en este cierre).
+- [x] **SKILL.md gestion-facturas**: añadido TBD para rename `--test` → `--dry-run` en gmail.py (consistencia con la convención global).
+- [x] **Diagnóstico Parseo 2T26 read-only** (sin commit): 89 PDFs, 73 cuadran (82%), importe 22.762,30€. Detectó violación de restricciones del prompt: el "modo aislado" (-o + --no-aprendizaje + --no-subcarpetas) NO era aislado — contaminó Drive y `Parseo/outputs/log_*.txt`. Hallazgos para tracking: PANRUJE descuadre sistemático, 5 SIN_LINEAS, 7 al genérico, 0 GGM GASTRO mismatches (patrón anterior no persiste en 2T26).
+- [x] **Parseo `--dry-run` implementado** (commit Parseo `415dc73`, push origin/main verificado): plan en 3 fases (recon → propuesta → implementación) con checkpoints. Flag mutuamente excluyente con `-o` y `--aplicar-sugerencias` vía `parser.error()`, fuerza `--no-aprendizaje` (con aviso solo si no era explícito), Excel + log a `outputs/dry_runs/`, salta upload Drive. 8 tests nuevos. Suite Parseo 21 → 29 passed. Smoke test verificado sin leaks.
+
+### Decisiones senior tomadas durante la sesión
+- **Inversión del orden de `_mover_email_seguro`** en gmail.py: la propuesta inicial de "no marcar JSON + log + mover etiqueta a mano" del análisis de discrepancias era inaceptable como recovery. Jaime propuso reordering completo del flujo (move al final), aceptado y aplicado. Justificación: la capa B de duplicados ya cubre la función de "red de seguridad" sin el bug de email huérfano.
+- **Verificación cruzada Dropbox en pre-flight**: aunque el data loss histórico fue por el Excel local, añadir también el chequeo de la copia Dropbox previene un fallo distinto pero igual de real (Drive Desktop bloqueando durante sobreescritura final). Coste despreciable (un `r+b` más).
+- **Tests con subprocess** en `Parseo/tests/test_dry_run.py`: descartado mockeo de helpers internos. Subprocess + captura stdout/stderr es más robusto, refleja CLI real, no requiere refactor del orquestador. Fixture `scope="module"` ejecuta el run UNA vez para 5 tests (~3s vs ~30s).
+- **NO usar `add_mutually_exclusive_group`** en argparse: forzaría también que `-o` y `--aplicar-sugerencias` sean mutuos entre sí (no lo son hoy). Usar `parser.error()` explícito por caso, exit 2 estándar argparse.
+
+### Backlog generado por esta sesión
+- 4 altas MAESTRO 2T26 (FIVE GALAXIES, DUE SERVICIOS, kombucheria, cetareatazones) — ver "Próxima sesión" arriba.
+- Bug Parseo PANRUJE descuadre sistemático — ver "Próxima sesión" arriba.
+- Inconsistencia versión Parseo: `--help` v5.15 vs `--version` v5.20 vs banner v5.15 (issue #5 conocido, separado).
+- Investigar "Fallback sintético GENERICO" al import-time en Parseo (4 mensajes antes del banner; aparenta ser side-effect de templates auto-cargados).
+- Rename `--test` → `--dry-run` en gmail.py (TBD añadido a skill `gestion-facturas`).
+
 ---
 
 ## Sesión 29/04/2026

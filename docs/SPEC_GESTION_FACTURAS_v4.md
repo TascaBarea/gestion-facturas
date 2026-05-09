@@ -1,8 +1,56 @@
-# SPEC GESTION-FACTURAS v4.9
+# SPEC GESTION-FACTURAS v4.10
 
-> Documento maestro unificado — actualizado 06/05/2026
+> Documento maestro unificado — actualizado 09/05/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
+
+---
+
+## CHANGELOG v4.10 — 09/05/2026 (gmail.py v1.26 lock-safe + Parseo --dry-run)
+
+Sesión doble: parche crítico de data loss en `gmail/gmail.py` y nuevo flag `--dry-run` en repo `Parseo/` (módulo hermano). HEAD Parseo `415dc73` ya pusheado.
+
+### gmail.py v1.25 → v1.26 (commit `6b9cdad`) — lock-safe Excel handling
+
+**Bug resuelto (data loss histórico).** Entre 20/03 y 10/04/2026 el script registró **29 emails** en `datos/emails_procesados.json` con motivo `error: [Errno 13] Permission denied: PAGOS_Gmail_*.xlsx`. El filtro `email_procesado()` v1.25 trataba esas entradas como procesadas, así que esos emails NUNCA volvieron a procesarse — los Excels quedaron incompletos para Kinema sin que se notara.
+
+**Cinco cambios coordinados:**
+
+| # | Cambio | Mecanismo |
+|---|---|---|
+| 1 | Pre-flight check de Excels al arrancar | Nuevo `pre_flight_check_excels()` con `_excel_disponible()` usando `open(path, 'r+b')` (NO `open('a')` prohibido por `.claude/rules/excel.md`). Verifica PAGOS_Gmail local + Facturas Provisional local + Facturas Provisional Dropbox. Si bloqueado → `SystemExit(1)` antes de tocar nada. |
+| 2 | Filtro de pendientes ignora errores transitorios | `email_procesado()` reescrito: motivos `error: ...` y `limpieza_pre_v1.13` ya NO cuentan como procesado. **Recovery retroactivo automático** de los 29 emails históricos en la próxima ejecución. |
+| 3 | `ExcelBloqueadoError(RuntimeError)` para fallos mid-flight | Si `PermissionError` salta a mitad de procesar un email, NO se marca como procesado y NO se mueve la etiqueta Gmail. Excepción capturada en bucle principal → log + `SystemExit(1)`. |
+| 4 | **Reordering del flujo por email** (decisión canónica) | `_mover_email_seguro` (cambio etiqueta FACTURAS → FACTURAS_PROCESADAS) pasa de PASO 2 (red de seguridad inicial) a PASO 6 (confirmatorio final). Elimina el bug de email huérfano cuando Excel falla mid-flight. La capa B de duplicados (hash MD5) cubre la función de "red de seguridad" sin colateral. |
+| 5 | Eliminado check duplicado en `_crear_backups` | El antiguo `open('a')` (prohibido por `excel.md`) sobrevivía como redundancia. Ahora el chequeo vive solo en `pre_flight_check_excels`. |
+
+Tests: **`tests/unit/test_gmail_lock_safe.py`** (15 nuevos: 5 pre-flight, 6 filtro pendientes, 3 mid-flight + reordering, 1 sanity version). Suite total **259 → 274 passed**, 0 fallos.
+
+Mejora apuntada en TBD de skill `gestion-facturas`: rename `--test` → `--dry-run` en `gmail.py` para alinear con la convención de modos especiales.
+
+### Parseo `main.py` v5.20 + flag `--dry-run` (commit `415dc73`, repo separado)
+
+Cierra deuda detectada en sesión 09/05 21:15: el "modo aislado" anterior (`-o C:\temp\... + --no-aprendizaje + --no-subcarpetas`) **NO era aislado** — un dry-run contaminó Drive (`Compras/Año en curso/test_2T26_diagnostico.xlsx`) y `Parseo/outputs/log_*.txt`.
+
+`--dry-run`:
+- Fuerza output a `outputs/dry_runs/<ts>_<input>.xlsx` (gitignored vía `outputs/`).
+- Salta upload a Drive (envuelve el bloque `sync_archivos` con `if not args.dry_run:`).
+- Salta `outputs/log_<ts>.txt`; redirige el log a `outputs/dry_runs/<ts>_<input>.log`.
+- Implica `--no-aprendizaje` (con aviso explícito en stderr solo si el usuario no lo pasó ya). Esto protege también contra `procesar_correcciones()` que modifica el Diccionario Excel y `actualizar_historial()` que escribe `learning_history.json` fuera del repo Parseo.
+- Mutuamente excluyente con `-o/--output` y `--aplicar-sugerencias` vía `parser.error()` (no `add_mutually_exclusive_group`).
+- Mensajes `[DRY-RUN]` a stderr (inicio, forzado de `--no-aprendizaje` cuando aplica, final).
+
+Tests: **`Parseo/tests/test_dry_run.py`** (8 nuevos). Suite Parseo **21 → 29 passed**, 0 fallos.
+
+### Diagnóstico Parseo 2T26 — read-only (sin commit)
+
+89 PDFs procesados, 73 cuadran (82%), importe 22.762,30€. Hallazgos para tracking:
+- **Descuadre sistemático PANRUJE** (2 de 2 facturas: 12,60€ + 68,64€) — bug de extractor.
+- 5 SIN_LINEAS (SABORES DE PATERNA, ACEITES JALEO, MOLLETES ARTESANOS, COMPROVINO, INDUSTRIAS CARNICAS MRM).
+- 7 facturas al extractor genérico (4 candidatos a dedicado: TORRES IMPORT, FIVE GALAXIES, DUE SERVICIOS, ANTHROPIC).
+- 0 GGM GASTRO mismatches (patrón anterior no persiste en 2T26).
+- 0 proformas, 0 abonos.
+- Capas B/C duplicados aún sin implementar en Parseo (TBD prioridad 1).
 
 ---
 
