@@ -1,17 +1,19 @@
 {
-  "fecha_ejecucion": "2026-05-05T23:54:13",
-  "total_procesados": 5,
-  "exitosos": 3,
+  "fecha_ejecucion": "2026-05-08T18:19:10",
+  "total_procesados": 7,
+  "exitosos": 5,
   "requieren_revision": 2,
   "errores": 0,
   "proveedores_ok": [
-    "DE LUIS SABORES UNICOS SL",
-    "GUERRA OLLER FRANCISCO",
-    "MIGUEZ CAL SL"
+    "CERES CERVEZA SL",
+    "DEBORA GARCIA TOLEDANO",
+    "DISTRIBUCIONES LAVAPIES S.COOP.MAD.",
+    "PESCADOS DON FELIX SL",
+    "PILAR RODRIGUEZ"
   ],
   "revision": [
-    "<torresimport@torresimport.com>",
-    "PIFEMA SL"
+    "CERES CERVEZA SL",
+    "administracion@cafedromedario.com"
   ],
   "errores_detalle": []
 }
