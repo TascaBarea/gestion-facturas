@@ -101,7 +101,10 @@ class TestPreFlight:
         excel_path = tmp_path / f"PAGOS_Gmail_{trim}.xlsx"
         excel_path.write_bytes(b"x")
 
-        proc = g.GmailProcessor(modo_test=True)
+        # Mockear MaestroProveedores para no cargar datos/MAESTRO_PROVEEDORES.xlsx
+        # (gitignored, no existe en CI). Mismo patron que v1.25 commit 00eceff.
+        with patch.object(g, "MaestroProveedores"):
+            proc = g.GmailProcessor(modo_test=True)
         proc.dropbox = None  # sin Dropbox: solo se chequean los locales
 
         def fake_disponible(path):
@@ -122,7 +125,9 @@ class TestPreFlight:
 
         monkeypatch.setattr(g.CONFIG, "OUTPUT_PATH", str(tmp_path))
 
-        proc = g.GmailProcessor(modo_test=True)
+        # Mockear MaestroProveedores para no cargar el Excel real (gitignored en CI).
+        with patch.object(g, "MaestroProveedores"):
+            proc = g.GmailProcessor(modo_test=True)
         proc.dropbox = None
 
         # No raise → pasa
