@@ -1,9 +1,31 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GMAIL MODULE v1.25
+GMAIL MODULE v1.26
 Sistema Automatizado de Procesamiento de Facturas
 TASCA BAREA S.L.L. - Mayo 2026
+
+MEJORAS v1.26 (2026-05-09) — LOCK-SAFE EXCEL HANDLING:
+- Pre-flight check de Excels (PAGOS_Gmail + Facturas Provisional local
+  y Dropbox) ANTES de procesar emails. Usa apertura `r+b` en lugar del
+  `open('a')` antiguo (prohibido por .claude/rules/excel.md). Si algún
+  archivo está bloqueado → SystemExit(1) sin tocar nada.
+- ExcelBloqueadoError: si un PermissionError surge MID-EXECUTION (ej.
+  alguien abre el Excel a mitad), aborta el bucle limpio sin marcar el
+  email como procesado. Próxima ejecución lo verá como pendiente.
+- Filtro de pendientes: motivos `error: ...` y `limpieza_pre_v1.13` ya
+  NO cuentan como procesados. Recovery retroactivo automático de los
+  ~29 emails históricos perdidos entre 20/03 y 10/04/2026 por bloqueos
+  de Excel silenciosos.
+- Reordering del flujo por email: `_mover_email_seguro` (cambio
+  etiqueta Gmail FACTURAS → FACTURAS_PROCESADAS) pasa de PASO 2 (red
+  de seguridad inicial) a PASO FINAL (paso confirmatorio). Razón: el
+  orden antiguo creaba un bug donde un fallo de Excel mid-flight
+  dejaba el email huérfano (sin etiqueta y sin entrada JSON),
+  imposible de recuperar automáticamente. La capa de duplicados por
+  hash MD5 ya cubre la función de "red de seguridad" sin colateral.
+- _crear_backups ya no duplica el check de bloqueo (ahora vive solo
+  en pre_flight_check_excels).
 
 MEJORAS v1.25 — BLOQUE B + FILTRADO NO-FACTURA:
 - Heurística _nombre_aproximado refactorizada a 4 capas. Antes capturaba
@@ -136,7 +158,7 @@ Ejecuta: python gmail.py --produccion
          python gmail.py --test (modo prueba sin modificar archivos)
 """
 
-VERSION = "1.25"
+VERSION = "1.26"
 
 import os
 import sys
@@ -506,6 +528,55 @@ def formatear_iban(iban: str) -> str:
 # MaestroProveedores: importado de nucleo.maestro
 
 # ============================================================================
+# v1.26 — LOCK-SAFE EXCEL HANDLING
+# ============================================================================
+
+class ExcelBloqueadoError(RuntimeError):
+    """v1.26: lanzada cuando un Excel está bloqueado MID-EXECUTION.
+
+    El bucle principal la captura para abortar limpio sin marcar el email
+    en curso como procesado. Se distingue de PermissionError genérico
+    para no enmascarar otros errores de E/S.
+    """
+
+
+# Motivos de descarte legítimo en `emails_procesados.json`. Si el email
+# tiene uno de estos motivos, NO debe reprocesarse en futuras ejecuciones.
+# Cualquier otro motivo (especialmente los que empiezan por "error:") se
+# considera transitorio y el email se reintenta.
+MOTIVOS_DESCARTE_OK = frozenset({
+    "reenvío propio",
+    "sin adjuntos",
+    "duplicado",
+    "Duplicado (CIF+REF) — descartado",
+})
+
+
+def _excel_disponible(path: str) -> Tuple[bool, Optional[str]]:
+    """v1.26: comprueba si un Excel está disponible para escritura.
+
+    Devuelve `(True, None)` si el archivo se puede abrir en modo `r+b`
+    (escritura) o si no existe (el script lo creará). Devuelve
+    `(False, motivo)` si está bloqueado por otra app (Excel abierto,
+    Drive Desktop sincronizando, antivirus).
+
+    Se usa `r+b` y NO `open('a')` (prohibido por .claude/rules/excel.md
+    porque puede tener efectos secundarios sobre el archivo en algunos
+    sistemas).
+    """
+    if not os.path.exists(path):
+        return True, None
+    try:
+        with open(path, "r+b"):
+            pass
+        return True, None
+    except PermissionError:
+        return False, "bloqueado (probablemente abierto en Excel, Drive Desktop o antivirus)"
+    except OSError as e:
+        return False, f"error de E/S: {e}"
+
+
+# ============================================================================
 # CONTROL DUPLICADOS
 # ============================================================================
 
@@ -574,7 +645,41 @@ class ControlDuplicados:
                 pass
     
     def email_procesado(self, email_id: str) -> bool:
-        return email_id in self.datos["emails"]
+        """v1.26: comprueba si un email YA fue procesado correctamente.
+
+        Si la entrada existe pero su `motivo` indica un fallo transitorio
+        (errores de E/S, limpieza histórica), devuelve False para que el
+        email se reprocese. Esto recupera automáticamente los ~29 emails
+        históricos perdidos entre 20/03 y 10/04/2026 por bloqueos
+        silenciosos del Excel.
+        """
+        entry = self.datos["emails"].get(email_id)
+        if entry is None:
+            return False
+        motivo = entry.get("motivo", "")
+        # Errores transitorios → reprocesar
+        if motivo.startswith("error:"):
+            return False
+        # Limpieza histórica del 07/03/2026 → reprocesar
+        if motivo == "limpieza_pre_v1.13":
+            return False
+        # Descarte legítimo (sin adjuntos, reenvío propio, duplicado) → no reprocesar
+        if motivo in MOTIVOS_DESCARTE_OK:
+            return True
+        # Procesado normal con archivo generado → no reprocesar
+        if entry.get("archivo"):
+            return True
+        # Entrada anómala (sin motivo y sin archivo) → reprocesar por seguridad
+        return False
+
+    def contar_emails_a_recuperar(self) -> int:
+        """v1.26: cuenta emails que el filtro nuevo recuperará (motivos error:/limpieza)."""
+        n = 0
+        for entry in self.datos["emails"].values():
+            motivo = entry.get("motivo", "")
+            if motivo.startswith("error:") or motivo == "limpieza_pre_v1.13":
+                n += 1
+        return n
     
     def hash_existe(self, hash_pdf: str) -> bool:
         return hash_pdf in self.datos["hashes"]
@@ -1873,6 +1978,20 @@ class GmailProcessor:
                     "Verifica credenciales (VPS) o ruta Dropbox Desktop (PC)."
                 )
 
+            # v1.26: pre-flight check — abortar antes de procesar nada si algún
+            # Excel destino está bloqueado (Excel abierto, Drive sincronizando,
+            # antivirus). Evita el data-loss histórico (29 emails marcados con
+            # error: PermissionError entre 20/03 y 10/04/2026).
+            self.pre_flight_check_excels(datetime.now())
+
+            # v1.26: log de recovery retroactivo — emails con motivo "error:..."
+            # o "limpieza_pre_v1.13" se reprocesarán gracias al filtro nuevo.
+            recuperables = self.control.contar_emails_a_recuperar()
+            if recuperables > 0:
+                self.logger.info(
+                    f"Recovery automático activado: {recuperables} emails con error previo se reprocesarán"
+                )
+
             # v1.13: Filtro por fecha — solo emails posteriores a la última ejecución
             after_date = None
             ultima = self.control.get_ultima_ejecucion()
@@ -1896,8 +2015,26 @@ class GmailProcessor:
             self._crear_backups()
 
             fecha_proceso = datetime.now()
+            emails_ok = 0
+            emails_pendientes_inicial = len(emails)
             for email in emails:
-                self._procesar_email(email, fecha_proceso)
+                try:
+                    self._procesar_email(email, fecha_proceso)
+                    emails_ok += 1
+                except ExcelBloqueadoError as e:
+                    # v1.26: aborto limpio mid-flight. El email en curso NO
+                    # quedó registrado ni movido; los anteriores sí. Próxima
+                    # ejecución reintentará desde donde se quedó.
+                    self.logger.error(f"🔴 Excel bloqueado a mitad de ejecución: {e}")
+                    self.logger.error(f"   Procesados OK antes del bloqueo: {emails_ok}")
+                    self.logger.error(f"   Quedan pendientes: {emails_pendientes_inicial - emails_ok}")
+                    self.logger.error("   Cierra el Excel y vuelve a ejecutar.")
+                    # Guardar JSON con lo que sí se completó antes
+                    try:
+                        self.control.guardar()
+                    except Exception as e2:
+                        self.logger.error(f"   No se pudo guardar JSON tras aborto: {e2}")
+                    raise SystemExit(1)
 
             # v1.13: Guardar fecha de esta ejecución como cursor
             self.control.set_ultima_ejecucion(fecha_proceso.isoformat())
@@ -1978,80 +2115,158 @@ class GmailProcessor:
             self.logger.warning(f"Dropbox no disponible: {e}")
             self.dropbox = None
     
+    def pre_flight_check_excels(self, fecha: datetime) -> None:
+        """v1.26: aborta la ejecución si algún Excel destino está bloqueado.
+
+        Se llama ANTES de obtener pendientes y antes de procesar nada. Verifica
+        los 3 Excels que el script puede tocar:
+          1. outputs/PAGOS_Gmail_<trim>.xlsx (escritura por email).
+          2. outputs/Facturas <trim> Provisional.xlsx (escritura por email).
+          3. <dropbox>/.../FACTURAS RECIBIDAS/<trim completo>/Facturas <trim>
+             Provisional.xlsx (sobreescritura única al final). Preventivo:
+             si Drive Desktop está sincronizando esa carpeta puede bloquear
+             el archivo y corromperlo en la sobreescritura final.
+
+        El check Dropbox se omite si:
+          - estamos en modo_test, o
+          - no hay cliente Dropbox conectado, o
+          - el cliente Dropbox no es local (DropboxAPIClient en VPS no usa
+            sistema de archivos).
+
+        En caso de bloqueo: loggea ERROR, lista todos los archivos afectados
+        y `sys.exit(1)`. NO se ha procesado ningún email todavía.
+        """
+        trimestre = obtener_trimestre(fecha)
+        rutas: List[Tuple[str, str]] = []  # (ruta, etiqueta)
+
+        rutas.append((
+            os.path.join(CONFIG.OUTPUT_PATH, f"PAGOS_Gmail_{trimestre}.xlsx"),
+            "PAGOS_Gmail (local)",
+        ))
+        rutas.append((
+            os.path.join(CONFIG.OUTPUT_PATH, f"Facturas {trimestre} Provisional.xlsx"),
+            "Facturas Provisional (local)",
+        ))
+
+        # Versión Dropbox de Facturas Provisional — solo si tenemos cliente
+        # local con base_path de sistema de archivos.
+        if not self.modo_test and self.dropbox is not None and hasattr(self.dropbox, "base_path"):
+            try:
+                carpeta_trim = self.dropbox.obtener_ruta_trimestre(fecha)
+                ruta_dbx = os.path.join(
+                    self.dropbox.base_path,
+                    carpeta_trim.replace("/", os.sep),
+                    f"Facturas {trimestre} Provisional.xlsx",
+                )
+                rutas.append((ruta_dbx, "Facturas Provisional (Dropbox)"))
+            except Exception as e:
+                # No bloqueante: un fallo computando la ruta Dropbox no debe
+                # impedir el run. Se logea y sigue.
+                self.logger.warning(f"No pude calcular ruta Dropbox para pre-flight: {e}")
+
+        bloqueados: List[Tuple[str, str, str]] = []
+        for ruta, etiqueta in rutas:
+            ok, motivo = _excel_disponible(ruta)
+            if not ok:
+                bloqueados.append((ruta, etiqueta, motivo or "desconocido"))
+
+        if bloqueados:
+            self.logger.error("🔴 ABORTAR: archivo(s) Excel bloqueado(s) o no escribible(s):")
+            for ruta, etiqueta, motivo in bloqueados:
+                self.logger.error(f"   [{etiqueta}] {ruta}")
+                self.logger.error(f"      Motivo: {motivo}")
+            self.logger.error("   Cierra el archivo (Excel, Drive Desktop, antivirus) y vuelve a ejecutar.")
+            self.logger.error("   No se ha procesado ningún email.")
+            raise SystemExit(1)
+
+        self.logger.info(f"Pre-flight Excels OK: {len(rutas)} archivos verificados")
+
     def _crear_backups(self):
-        """Crea backups de archivos críticos"""
+        """Crea backups de archivos críticos.
+
+        v1.26: la verificación de bloqueo (`open('a')` antiguo, prohibido por
+        .claude/rules/excel.md) se eliminó de aquí. Ahora vive en
+        `pre_flight_check_excels`, que se llama antes y usa `r+b`.
+        """
         self.logger.info("Creando backups...")
         self.backup.crear_backup(CONFIG.JSON_PATH)
-        
+
         trimestre = obtener_trimestre(datetime.now())
         excel_path = os.path.join(CONFIG.OUTPUT_PATH, f"PAGOS_Gmail_{trimestre}.xlsx")
         if os.path.exists(excel_path):
             self.backup.crear_backup(excel_path)
-        
+
         facturas_path = os.path.join(CONFIG.OUTPUT_PATH, f"Facturas {trimestre} Provisional.xlsx")
         if os.path.exists(facturas_path):
             self.backup.crear_backup(facturas_path)
-        
-        # v1.5: Verificar que los Excel no están bloqueados (abiertos en otra app)
-        for path_check in [excel_path, facturas_path]:
-            if os.path.exists(path_check):
-                try:
-                    with open(path_check, 'a'):
-                        pass
-                except PermissionError:
-                    self.logger.error(f"❌ ARCHIVO BLOQUEADO: {path_check}")
-                    self.logger.error("   Cierra el Excel y vuelve a ejecutar.")
-                    raise SystemExit(1)
     
     def _procesar_email(self, email_data: Dict, fecha_proceso: datetime):
         """
         Procesa un email individual.
-        
-        v1.6 FLUJO ANTI-DUPLICADOS:
-        1. Comprobar JSON PRIMERO (antes de todo)
-        2. Mover a FACTURAS_PROCESADAS ANTES de procesar (así si falla, no se repite)
-        3. Guardar JSON DESPUÉS de cada email (no al final)
-        4. Registrar TODOS los emails vistos (con y sin adjuntos)
+
+        v1.26 FLUJO REORDENADO (lock-safe):
+        1. Comprobar JSON PRIMERO (filtro nuevo: motivos "error:..." NO cuentan).
+        2. Filtrar reenvíos propios.
+        3. Descargar adjuntos (operación NO destructiva sobre Gmail).
+        4. Procesar PDF / imagen → escribir Excels (puede lanzar
+           ExcelBloqueadoError si Excel se bloquea mid-flight; en ese caso
+           propagamos para que el bucle principal aborte limpio SIN
+           registrar el email como procesado).
+        5. Registrar el email en JSON.
+        6. _mover_email_seguro a FACTURAS_PROCESADAS (paso final
+           CONFIRMATORIO, no red de seguridad inicial).
+
+        Antes (v1.6) el move era el paso 2: actuaba como "red de seguridad"
+        para que un crash a mitad no causara reproceso. Pero creaba un bug
+        crítico — un fallo de Excel mid-flight dejaba el email huérfano
+        (sin etiqueta y sin entrada JSON), imposible de recuperar
+        automáticamente. La capa B de duplicados (hash MD5 sobre el PDF)
+        ya cubre el rol de "red de seguridad" sin ese efecto colateral:
+        si el PDF se sube a Dropbox y luego algo falla, el reproceso lo
+        detectará por hash y descartará silenciosamente.
+
+        Riesgo residual del orden nuevo (aceptable): si el script muere
+        ENTRE el paso 5 y el 6, el email queda registrado pero la
+        etiqueta sin mover. La próxima ejecución verá el email en la
+        query de pendientes pero el filtro JSON lo descartará como ya
+        procesado — comportamiento correcto, sin pérdida ni duplicación.
+        Para limpiar la etiqueta basta un cleanup manual o un cron
+        separado.
         """
         email_id = email_data['id']
         remitente = email_data.get('from', '')
         asunto = email_data.get('subject', '')
-        
-        # ── PASO 0: Comprobar si ya lo procesamos (JSON) ──
+
+        # ── PASO 1: Comprobar si ya lo procesamos (JSON con filtro v1.26) ──
         if self.control.email_procesado(email_id):
             self.logger.info(f"  ↳ Email ya procesado (JSON), saltando: {asunto[:40]}...")
-            # Por si acaso sigue en FACTURAS, moverlo
+            # Por si acaso sigue en FACTURAS, moverlo (cleanup retroactivo)
             if not self.modo_test:
                 self._mover_email_seguro(email_id)
             return
-        
-        # ── PASO 1: Filtrar reenvíos propios ──
+
+        # ── PASO 2: Filtrar reenvíos propios ──
         email_remitente = remitente.lower()
         if "<" in email_remitente and ">" in email_remitente:
             email_remitente = email_remitente.split("<")[1].split(">")[0].strip()
-        
+
         if email_remitente in CONFIG.EMAILS_IGNORAR:
             self.logger.info(f"Ignorando reenvío de {email_remitente}: {asunto[:40]}...")
             if not self.modo_test:
-                self._mover_email_seguro(email_id)
                 self.control.registrar_email_visto(email_id, "reenvío propio")
                 self.control.guardar()
+                self._mover_email_seguro(email_id)  # v1.26: move al final
             return
-        
+
         self.logger.info(f"Procesando: {asunto[:50]}...")
-        
-        # ── PASO 2: Mover a PROCESADAS ANTES de procesar ──
-        # Así, si el script falla a mitad, el email NO reaparece la próxima semana
-        if not self.modo_test:
-            self._mover_email_seguro(email_id)
-        
+
         resultado = ResultadoProcesamiento(
             email_id=email_id,
             message_id=email_data.get('message_id', ''),
             remitente=remitente,
             asunto=asunto
         )
-        
+
         try:
             # ── PASO 3: Descargar y clasificar adjuntos ──
             adjuntos = self.gmail.descargar_adjuntos(email_data)
@@ -2062,9 +2277,11 @@ class GmailProcessor:
                 if not self.modo_test:
                     self.control.registrar_email_visto(email_id, "sin adjuntos")
                     self.control.guardar()
+                    self._mover_email_seguro(email_id)  # v1.26: move al final
                 return
-            
+
             # ── PASO 4: Procesar PDF (prioridad) o imagen ──
+            # _procesar_pdf puede lanzar ExcelBloqueadoError → se propaga.
             for nombre_archivo, contenido in adjuntos:
                 if nombre_archivo.lower().endswith('.pdf'):
                     self._procesar_pdf(resultado, nombre_archivo, contenido, fecha_proceso)
@@ -2094,16 +2311,33 @@ class GmailProcessor:
                     self.control.guardar()
                 else:
                     self.control.registrar_y_guardar(resultado)
-            
+
+                # ── PASO 6: Mover etiqueta Gmail (paso confirmatorio final) ──
+                self._mover_email_seguro(email_id)
+
+        except ExcelBloqueadoError:
+            # v1.26: Excel bloqueado mid-flight. NO registrar como procesado,
+            # NO mover etiqueta. Propagar para que el bucle principal aborte
+            # limpio. La próxima ejecución verá este email como pendiente.
+            self.logger.warning(
+                f"  ↳ Excel bloqueado durante procesado de '{asunto[:40]}'. "
+                f"Email NO registrado, etiqueta NO movida — se reintentará."
+            )
+            raise
         except Exception as e:
             self.logger.error(f"  ↳ Error: {e}")
             resultado.error = str(e)
             self.errores.append(f"{asunto}: {e}")
             self.resultados.append(resultado)
-            # Registrar incluso si hubo error (ya movimos el email)
+            # Registrar incluso si hubo error (no Excel-bloqueo): el motivo
+            # "error: ..." NO cuenta como procesado en v1.26 → reprocesará.
             if not self.modo_test:
                 self.control.registrar_email_visto(email_id, f"error: {e}")
                 self.control.guardar()
+                # NO movemos etiqueta: con motivo "error:..." el filtro v1.26
+                # devolverá False y la próxima ejecución reintentará. Si
+                # moviéramos la etiqueta el email no aparecería en
+                # obtener_emails_pendientes y se perdería.
     
     def _check_fecha_vs_email(self, resultado: 'ResultadoProcesamiento', email_data: Dict):
         """Red de seguridad observacional contra bugs de extractor multi-albarán.
@@ -2394,24 +2628,32 @@ class GmailProcessor:
                     self.logger.warning(f"  ↳ [DROPBOX FALLO] {e}")
 
             # Añadir al Excel PAGOS_Gmail (solo si no era duplicado en Dropbox)
+            # v1.26: PermissionError en cualquiera de los dos writes se reescala
+            # como ExcelBloqueadoError para que el bucle principal aborte limpio
+            # SIN marcar el email como procesado (recuperable en próxima ejecución).
             if not self.modo_test and not ya_en_dropbox:
                 trimestre = obtener_trimestre(fecha_proceso)
                 excel_path = os.path.join(CONFIG.OUTPUT_PATH, f"PAGOS_Gmail_{trimestre}.xlsx")
-
-                excel = ExcelGenerator(excel_path)
-                excel.abrir_o_crear()
-                excel.añadir_fila(resultado)
-                excel.guardar()
-
-                # Añadir al Excel Facturas_XTYY_Provisional (v1.6)
                 facturas_path = os.path.join(CONFIG.OUTPUT_PATH, f"Facturas {trimestre} Provisional.xlsx")
-                facturas_excel = ExcelFacturas(facturas_path)
-                facturas_excel.abrir_o_crear()
-                facturas_excel.añadir_fila(resultado)
-                facturas_excel.guardar()
+
+                try:
+                    excel = ExcelGenerator(excel_path)
+                    excel.abrir_o_crear()
+                    excel.añadir_fila(resultado)
+                    excel.guardar()
+
+                    # Añadir al Excel Facturas_XTYY_Provisional (v1.6)
+                    facturas_excel = ExcelFacturas(facturas_path)
+                    facturas_excel.abrir_o_crear()
+                    facturas_excel.añadir_fila(resultado)
+                    facturas_excel.guardar()
+                except PermissionError as e:
+                    raise ExcelBloqueadoError(
+                        f"PermissionError escribiendo Excel: {e}"
+                    ) from e
 
                 self.logger.info(f"  ↳ Añadido a Excel")
-        
+
         # NOTA: El registro en JSON se hace en _procesar_email() con registrar_y_guardar()
     
     def _usar_extractor_dedicado(self, proveedor: Proveedor, contenido: bytes) -> Optional[FacturaExtraida]:
@@ -2836,13 +3078,25 @@ class GmailProcessor:
         total = len(self.resultados)
         exitosos = sum(1 for r in self.resultados if r.archivo_generado and not r.requiere_revision)
         revision = sum(1 for r in self.resultados if r.requiere_revision)
-        
+
         self.logger.info("=" * 60)
         self.logger.info("RESUMEN")
         self.logger.info(f"  Total procesados: {total}")
         self.logger.info(f"  Exitosos: {exitosos}")
         self.logger.info(f"  Requieren revisión: {revision}")
         self.logger.info(f"  Errores: {len(self.errores)}")
+        # v1.26: emails con motivo error:/limpieza que aún no se han reprocesado
+        # (típicamente porque no entraron en la query por filtro after_date).
+        # En ejecución limpia que cubre todos los pendientes, este contador es 0.
+        # Si el script abortó por bloqueo mid-flight no se llega aquí (sys.exit(1)).
+        recovery_pendiente = self.control.contar_emails_a_recuperar()
+        if recovery_pendiente > 0:
+            self.logger.info(
+                f"  Recovery pendiente: {recovery_pendiente} emails con error previo "
+                f"(se reintentarán en próximas ejecuciones)"
+            )
+        else:
+            self.logger.info("  Recovery pendiente: 0 emails con error de bloqueo")
         self.logger.info("=" * 60)
 
         # Exportar resumen como JSON para Streamlit

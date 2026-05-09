@@ -166,6 +166,7 @@ Cuando se cierren, mover a la sección anterior y eliminar de aquí.
 - Umbrales de la validación previa a salida que disparan confirmación obligatoria.
 - Si la skill `extractor-creator` se crea ahora o tras refactor del `ExtractorBase`. Antes de crearla, revisar la skill `extractor` ya existente en el repo.
 - Si las skills existentes (`cuadre`, `revisar`, `plan`, `nuevo-proveedor`, `debug-extractor`, `extractor`) requieren consolidación con esta o entre ellas para evitar instrucciones contradictorias.
+- Renombrar `--test` de `gmail/gmail.py` a `--dry-run` (o añadir alias) para alinear con la convención global descrita arriba ("Modos especiales de ejecución"). Hoy `gmail/gmail.py` ya implementa la semántica `--dry-run` bajo el flag `--test` (no escribe Excels, no registra JSON, no envía notificación). Cambio cosmético, scope mínimo. Detectado el 2026-05-09 durante el parche v1.26 lock-safe.
 
 ## Cómo encajan estas convenciones con el código actual
 
