@@ -1,8 +1,56 @@
-# SPEC GESTION-FACTURAS v4.10
+# SPEC GESTION-FACTURAS v4.11
 
-> Documento maestro unificado — actualizado 09/05/2026
+> Documento maestro unificado — actualizado 11/05/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
+
+---
+
+## CHANGELOG v4.11 — 11/05/2026 (Parseo VERSION única + auditoría IVA mixto)
+
+Sesión doble: unificación de la fuente única para `VERSION` en el repo Parseo y nueva herramienta de auditoría sobre proveedores candidatos al refactor de IVA mixto, motivado por el descuadre PANRUJE 2T26.
+
+### Parseo — VERSION única (commit `5d9a2e0`, repo separado)
+
+Tres salidas inconsistentes en `Parseo/main.py` se unificaron contra `config/settings.py:VERSION` (valor actual `"5.20"`):
+- `--version` (ya usaba la constante).
+- `description` de argparse (línea 1733: hardcoded `"v5.15"` → `f"v{VERSION}"`).
+- Banners de ejecución (líneas 1835, 1878).
+
+Las tres salidas ahora coinciden en v5.20. Tests Parseo verde (29 passed).
+
+**Regla canónica (aplicable a todos los bumps futuros en Parseo)**: la fuente de versión vive en `config/settings.py` (constante `VERSION`). Cualquier referencia en código de aplicación se hace por f-string sobre la constante. Prohibido literalizar el número en `main.py`, banners o argparse. Bumpear la versión es modificar **una sola línea**.
+
+**Lección operativa secundaria**: el keyword `closes #N` en el commit message cierra automáticamente al hacer push. Si el número del issue no corresponde con el cambio real, queda daño no trivial (el issue #5 trataba del bug cp1252, no de versión). Reabierto manualmente con `gh issue reopen` + comentario aclaratorio. Verificar siempre `gh issue view N` antes de usar el keyword.
+
+### Auditoría IVA mixto — herramienta nueva (commit `df92dc6`)
+
+Nuevo script read-only `scripts/auditoria_iva_mixto.py` + 19 tests sintéticos. Analiza `outputs/Facturas_<trim>.xlsx` (con hoja `Lineas`) de los últimos 4 trimestres + dry-run de 2T26 generado con Parseo `--dry-run --no-subcarpetas`. Agrupa por proveedor y reporta:
+
+- `HAS_FACTURA_IVA_MIXTO` (intra-factura, >1 IVA en la misma factura).
+- `HAS_IVAS_DISTINTOS_ENTRE_FACTURAS` (inter-factura, distinto IVA entre facturas del mismo proveedor — síntoma típico PANRUJE 2T26).
+- `N_FACTURAS_CON_DESCUADRE` (columna `CUADRE` ≠ `OK` / `SIN_LINEAS`).
+- `TIENE_PORTES` por keyword en `ARTICULO` (señal complementaria, no condición; rara en histórico por la regla del repo de prorratear portes en líneas de producto).
+- `ID_DUDOSA` (heurística regex que marca "proveedores" cuyo nombre es realmente un trozo de filename con fallo de identificación).
+
+Criterio `NIVEL_SOSPECHA` (de mayor a menor): `ALTO` (iva_mixto + descuadres) → `MEDIO-ALTO` → `MEDIO` → `BAJO` → `SIN`. Orden secundario: `ID_DUDOSA` asc (legítimos primero) → `N_FACTURAS` desc.
+
+Ejecución sobre 6 archivos (4 históricos + 1T26 sandbox + 2T26 dry-run): **419 proveedores totales, 22 ALTO + 1 MEDIO-ALTO + 40 MEDIO + 0 BAJO + 356 SIN**. PANRUJE SL: NIVEL ALTO (10 facturas, 5 descuadres, IVAs [4.0, 21.0], keyword PORTES detectada). Excel `outputs/auditoria_iva_mixto_20260511_1813.xlsx` (gitignored). Regenerable trimestralmente.
+
+### Decisiones canónicas consolidadas hoy
+
+1. **VERSION única para Parseo** (regla canónica detallada arriba). Fix aplicado en commit `5d9a2e0`; el `closes #5` del mensaje cerró erróneamente el issue de cp1252, que queda reabierto pendiente.
+2. **Política IVA en COMPRAS**: respetar el IVA tal como factura el proveedor. No recalcular, no prorratear, no "corregir". El dato que llega a Kinema/Modelo 303 debe coincidir con la factura original. La regla previa "distribute proportionally" del SPEC se circunscribe a **categorización de coste** (asignar el porte a la categoría del producto transportado), NO al recálculo de tasas de IVA.
+3. **Patrón "descubrir antes de refactorizar"**: cuando un bug afecta potencialmente a múltiples extractores, el ataque empieza por un script read-only de auditoría sobre los `COMPRAS_<trim>_parseo.xlsx` existentes para mapear el alcance real. Solo después se decide entre fix quirúrgico, helper compartido o refactor en `ExtractorBase`.
+4. **Lectura de IVA mixto en facturas**: cuando el extractor encuentra líneas con valores distintos en la columna `IVA %`, debe agrupar por tasa desde el body y reconstruir totales por grupo. NO confiar en el footer del PDF como fuente única — hay plantillas (caso PANRUJE FT A26 58 22/04/2026) que renderizan footer parcial. Usar el footer solo como cross-check.
+
+### TBD / Decisiones abiertas
+
+1. **Scope del refactor IVA mixto**: tres opciones — fix quirúrgico solo en `panruje.py`, helper compartido en `nucleo/iva_mixto.py`, o método en `ExtractorBase`. Decisión pendiente del análisis cualitativo del Excel `outputs/auditoria_iva_mixto_20260511_1813.xlsx`. Categoría A objetivo: ~10-12 proveedores únicos post-dedup (PANRUJE SL, JIMELUZ, DISTRIBUCIONES LAVAPIES, FABEIRO, SERRIN NO CHAN, CURRIMAR, APOZA, PAGO DE LAS OLMAS, COOPERATIVA MONTBRIO, GRUPO DISBER, GARDA IMPORT).
+2. **Dedup de aliases en MAESTRO_PROVEEDORES**: la auditoría revela duplicación sistemática (PANRUJE/PANRUJE SL, CERES/CERES CERVEZA SL, BM/BM SUPERMERCADOS/2 BM, SERRIN NO CHAN/CHAO/SL, FABEIRO/FABEIRO SL/02218 FABEIRO, ZUCCA en 3 variantes, MARITA en 3, GADITAUN en 3, ORTEGA en 3, JAIME FERNANDEZ en 2, LIDL en 2, MERCADONA en 2). Item de backlog pendiente de priorizar.
+3. **Bug del identificador de proveedor**: ~5% de facturas históricas (~20/419) tienen "proveedor" = trozo de filename, indicando fallo del extractor de identificación. La heurística regex `id_dudosa()` del script de auditoría detecta el patrón. Item de backlog pendiente de priorizar.
+4. **Patrones distintos al IVA-mixto-proveedor que la auditoría reveló**: tickets multi-IVA de supermercado (Cat B: BM, DIA, LIDL, MERCADONA, MAKRO, ALCAMPO), autónomos con retención IRPF (Cat C), servicios con suplidos/tasas (Cat D: SOM ENERGIA, ODOO, KINEMA). Cada uno merece su propio análisis y fix; no se confunden con el patrón PANRUJE.
+5. **Issue #5 (cp1252) reabierto, pendiente**: el commit `5d9a2e0` lo cerró erróneamente por uso incorrecto de `closes #5` en el mensaje. Issue reabierto manualmente con `gh issue reopen`. Pendiente: o bien crear issue separado para el fix de VERSION ya aplicado (y vincularlo al commit), o cerrar #5 cuando se resuelva su contenido real (cp1252).
 
 ---
 
