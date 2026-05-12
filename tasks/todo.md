@@ -47,7 +47,7 @@
   - **cetareatazones** — [REVISAR `2T26 0423 (info@cetareatazones.com).pdf`, fecha pendiente]
   - (TORRES IMPORT, ANTHROPIC y CAFÉ DROMEDARIO ya en lista 1T26 arriba; reaparecen en 2T26)
 
-- [ ] **Parseo — bug PANRUJE descuadre sistemático**. Diagnóstico 2T26 sesión 09/05/2026 detectó descuadres en **2/2 facturas PANRUJE**: `2T26 0408 PANRUJE TF.pdf` (12,60€) y `2T26 0422 PANRUJE TF.pdf` (68,64€). Patrón sistemático = bug de extractor, no caso aislado. Inspeccionar `Parseo/extractores/panruje.py`.
+- [x] **Parseo — bug PANRUJE descuadre sistemático** (CERRADO 12/05/2026, commit Parseo `3053eda`). Refactor body-first: parsea IVA explícito por línea, agrupa por tasa, cross-check con footer. 6 tests nuevos + 4 PDFs fixtures reales (Patrón A IVA 4%/10%, Patrón C1 dos albaranes, Patrón C2 footer roto). Dry-run 2T26: 73 → 76 OK (+3 PANRUJE: 0408=178,63€, 0422=93,20€, 0507=93,20€). Decisión: fix quirúrgico en panruje.py (no helper compartido) — cluster B (supermercados) y C (retenciones IRPF) son patrones distintos, no del mismo bug. Documentado en SPEC v4.12.
 
 ---
 

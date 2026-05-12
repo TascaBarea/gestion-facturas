@@ -1,8 +1,55 @@
-# SPEC GESTION-FACTURAS v4.11
+# SPEC GESTION-FACTURAS v4.12
 
-> Documento maestro unificado — actualizado 11/05/2026
+> Documento maestro unificado — actualizado 12/05/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
+
+---
+
+## CHANGELOG v4.12 — 12/05/2026 (Parseo PANRUJE fix — IVA mixto body-first)
+
+Aplicación del primero de los TBD abiertos en v4.11: refactor del extractor PANRUJE para resolver el descuadre sistemático en 2T26.
+
+### Parseo `extractores/panruje.py` refactor (commit `3053eda`, repo separado)
+
+**Bug resuelto.** Descuadre 68,64€ en FT A26 58 (22/04/2026): la fila del IVA 4% se omite en el cuadro fiscal del PDF cuando la plantilla 2T26 introdujo columnas R.Equ. (sub-variante C2). El extractor v5.20 leía el footer como fuente única → al perderse la fila 4%, el TOTAL extraído cuadraba solo con el 21% (24,56€ + portes), perdiendo los 68,64€ de las rosquillas.
+
+**Refactor aplicado** (5 cambios coordinados):
+1. Nueva `RE_LINEA_BODY_CON_IVA` captura IVA explícito por línea desde el body.
+2. `_extraer_lineas_body()` parsea body sin depender del footer.
+3. `extraer_lineas()` agrupa por IVA y devuelve una línea por tasa (consumido por el orquestador downstream que consolida a 1 línea por factura — política "una línea por coste, no por IVA").
+4. `extraer_total()` calcula desde body como fuente de verdad (footer solo cross-check con `TOLERANCIA_CUADRE=0.05€`).
+5. `_extraer_total_pdf()` refactorizado: máximo de candidatos (cubre Patrón A footer 5-números, Patrón B/C TOTAL aislado, Patrón C2 roto).
+
+Fallback a `_extraer_lineas_legacy()` preserva 100% el comportamiento Patrón A (3T25-4T25, IVA único 4% o 10%).
+
+Tests `tests/extractores/test_panruje.py` (nuevo, 6 tests parametrizados + 2 adicionales) con 4 fixtures reales:
+- FT 15 (30/01/2025, Patrón A IVA 10%): 48,16€ ✓
+- FT 206 (29/12/2025, Patrón A IVA 4%): 92,85€ ✓
+- FT A26 49 (08/04/2026, Patrón C1, 2 albaranes): 178,63€ ✓
+- FT A26 58 (22/04/2026, Patrón C2 footer roto): 93,20€ ✓ — bug original resuelto
+
+Suite Parseo: **29 → 35 passed**, 0 regresiones. CI verde.
+
+Validación dry-run 2T26 (90 PDFs): **73 → 76 OK (+3)**. Las 3 PANRUJE 2T26 ahora cuadran:
+- FT-A26-49 (0408): 178,63€
+- FT-A26-58 (0422): 93,20€ — antes descuadraba 68,64€
+- FT-A26-69 (0507): 93,20€ — factura nueva (no estaba en diagnóstico 11/05)
+
+### Decisión canónica añadida hoy
+
+5. **Una línea por factura en COMPRAS, no por tasa de IVA**: el orquestador downstream consolida las N líneas que devuelve el extractor (una por IVA) en una sola fila en la hoja `Lineas` con TOTAL real + IVA del producto principal + BASE = TOTAL/(1+IVA/100). Razón: el Excel COMPRAS se usa para **conocer el coste**, no para llevar el registro de IVA detallado (esa labor recae en Kinema/Modelo 303 por otro lado). Trade-off conocido: la BASE escrita asume IVA único (89,62€ en FT-A26-58 vs 86,30€ suma real) — algebraicamente coherente con la fila (BASE × IVA = TOTAL) aunque no refleja la mezcla real. Aceptable porque la BASE de COMPRAS no alimenta declaraciones fiscales.
+
+### TBD cerrados
+
+1. **Scope del refactor IVA mixto** (v4.11 TBD #1): cerrado con **fix quirúrgico en `panruje.py`** (no helper compartido ni refactor en `ExtractorBase`). Decisión basada en evidencia empírica del Excel `auditoria_iva_mixto_20260511_1813.xlsx`: la mayoría de los 22 proveedores en NIVEL ALTO son tickets de supermercado (cluster B, patrón distinto a PANRUJE — multi-IVA real, no error de extractor) o autónomos con retenciones IRPF (cluster C — sin relación con IVA mixto). Solo PANRUJE encajaba en el patrón "extractor mal calibrado para IVA mixto". El refactor de `ExtractorBase` queda como deuda para cuando aparezca el segundo proveedor con el mismo patrón.
+
+### TBD que siguen vivos (heredados de v4.11)
+
+2. Dedup de aliases en MAESTRO_PROVEEDORES.
+3. Bug del identificador de proveedor (~5% filename como nombre).
+4. Cluster B (tickets supermercado) y Cluster C (retenciones IRPF) — análisis separado.
+5. Issue #5 Parseo (cp1252) reabierto, pendiente.
 
 ---
 
