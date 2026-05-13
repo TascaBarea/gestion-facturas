@@ -80,6 +80,20 @@ Mismo PDF, mismo código fuente, **dos números completamente distintos con SIGN
 - Cluster C (retenciones IRPF autónomos) — análisis separado (v4.11).
 - Issue #5 Parseo (cp1252) reabierto, pendiente fix real (v4.11).
 
+### Errata 14/05/2026 (pre-cierre v4.15)
+
+La atribución del mecanismo en la sección "Refuerzo de lección v4.13 #5" es incorrecta. Texto original menciona "wrapper `fallback_sintetico` en `main.py` (visible en tests/test_generico.py)" como causante del descuadre del fixture 1215 en baseline pre-fix.
+
+El mecanismo real es **`_merge_resultados` en `Parseo/main.py:1632-1659`**, que cuando el descuadre del fallback OCR (mismo extractor, tesseract en lugar de pdfplumber) es menor que el del primario con margen ≥0,50€, reemplaza las líneas del primario por las del fallback. En el caso 1215, el fallback OCR introdujo una línea espuria (`TICKEIT SIN AHORROS` — typo OCR de "TICKET SIN AHORROS" no cazada por el skip_pattern `\bTICKET\b` por el typo), lo que dio SUMA=9,99 vs SUMA primario 0,84. El merge eligió el fallback al cuadrar mejor.
+
+`_linea_sintetica_desde_total` en `extractores/generico.py:276` (que sí emite `logger.warning` hoy) es un mecanismo distinto que NO se ejecuta para extractores dedicados como BM. Los tests `test_fallback_sintetico_*` en `tests/test_generico.py` verifican ese otro mecanismo, no el del 1215.
+
+La lección sigue válida en su fenómeno observado (gap test-aislado vs dry-run con magnitud y signo distintos). Lo que es incorrecto es la atribución a un mecanismo concreto sin verificación empírica.
+
+TBD anterior "Auditoría wrapper `fallback_sintetico` en `main.py`" se reformula como "Auditoría merge primario↔fallback OCR en `_merge_resultados` de `main.py`" (sesión 14/05/2026 en curso).
+
+Lección operativa candidata para v4.15: **en documentación maestra, distinguir observación verificada de hipótesis técnica**. Cada afirmación de mecanismo concreto debe ser empíricamente reproducible o etiquetarse explícitamente como hipótesis pendiente.
+
 ---
 
 ## CHANGELOG v4.13 — 13/05/2026 (Cluster ECOMS/DIA — TBD #1 v4.11 segundo extractor)
