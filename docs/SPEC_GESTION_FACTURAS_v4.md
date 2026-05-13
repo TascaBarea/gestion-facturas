@@ -1,8 +1,84 @@
-# SPEC GESTION-FACTURAS v4.13
+# SPEC GESTION-FACTURAS v4.14
 
 > Documento maestro unificado — actualizado 13/05/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
+
+---
+
+## CHANGELOG v4.14 — 13/05/2026 (Cluster BM SUPERMERCADOS — TBD #1 v4.13 segundo item cluster B)
+
+Aplicación del segundo item del cluster B abierto en v4.11 y refinado en v4.13: refactor del extractor BM SUPERMERCADOS (`Parseo/extractores/bm.py`) para resolver dos bugs coordinados que causaban descuadres sistemáticos en tickets con descuentos retail y productos con la palabra TOTAL en el nombre. Mergeado vía PR #15 (merge commit `e3b5dae`) en repo Parseo.
+
+Reporte completo de la sesión: `outputs/cluster_b_bm_20260513.md` (no se duplica aquí).
+
+### Cluster BM SUPERMERCADOS — 2 bugs coordinados (PR #15, repo separado)
+
+| # | Bug | Commit | Severidad |
+|---|---|---|---|
+| A | `Oferta -X.XX` capturada como descuento real cuando es informativa (el IMPORTE de la línea de producto YA está descontado) → doble resta | `cfec5a3` | ALTO |
+| B | Skip pattern `\bTOTAL\b` cazaba productos con TOTAL en marca (Colgate Total, Listerine Total). Producto perdido upstream → descuento posterior absorbido en línea anterior incorrecta, enmascarando el bug | `5b7c576` | MEDIO |
+| — | VERSION bump 5.21 → 5.22 | `cc4714b` | chore |
+
+Fixtures reales en `Parseo/tests/extractores/fixtures/bm/`: 7 PDFs (2 controles puros + 4 Bug A puro + 1 Bug A + Bug B combinados, 1T26). Tests parametrizados: **7/7 passed** al céntimo. Suite Parseo completa: **59 passed + 1 skipped**, 0 regresiones. CI verde (32s).
+
+Validación empírica vía dry-run pre/post en baseline real:
+
+| Trimestre | Facturas | BM PRE | BM POST | Otros PRE | Otros POST | Importe total |
+|---|---:|---:|---:|---:|---:|---:|
+| 4T25 | 309 | 1 | **0** | 20 | 20 | 79.681,55 € idéntico |
+| 1T26 | 227 | 5 | **0** | 9 | 9 | 53.129,81 € idéntico |
+
+Cero descuadres BM residuales en el horizonte 4T25+1T26 → el cluster cierra los bugs en los PDFs reprocesables. Histórico 1T25/3T25 (Kinema cerrado) no se reprocesa — la auditoría v4.11 reportaba 33 BM SUPERMERCADOS pero solo 6 viven en PDFs reprocesables.
+
+### Refinamiento de lección v4.13 #1 — "Closes #N" peligro (tercera manifestación)
+
+Variante más sutil que las dos anteriores. El commit 3 del cluster (`cc4714b`) deliberadamente NO usaba `Closes #14` para preservar control manual del cierre del issue. Pero el commit body incluía la cadena LITERAL `"(Closes #14 deliberadamente OMITIDO ..."` explicando que se omitía. GitHub auto-cerró el issue al merge porque parsea con regex sin entender contexto sintáctico ni semántico — vio la cadena `Closes #14` literal y disparó el cierre, ignorando la nota explicativa.
+
+**Protocolo refinado**: NUNCA escribir la cadena `Closes #N` / `Fixes #N` / `Resolves #N` en ningún commit message del PR — ni siquiera negada, comentada, entre paréntesis o explicando que se omite. Si hay que mencionar el comportamiento de auto-cierre como nota, hacerlo fuera del commit body (en el cuerpo del PR o en comentario tras merge). Usar siempre `Refs #N` / `Tracks #N` / `Related to #N` para referenciar sin disparar.
+
+### Refuerzo de lección v4.13 #5 — test aislado ≠ producción (manifestación cuantificada)
+
+Segunda manifestación del gap test aislado vs dry-run, esta vez con datos numéricos concretos. Para fixture 1215 (Colgate TOTAL + Oferta) sobre baseline main pre-fix:
+
+- `extraer_lineas()` invocado directo (test aislado): **SUMA = 0,84 €**, Δ = **+6,05 €** (parseo infravalora)
+- `main.py` dry-run (pipeline completo):           **Total Parseo = 9,99 €**, Δ = **−3,10 €** (parseo sobrevalora)
+
+Mismo PDF, mismo código fuente, **dos números completamente distintos con SIGNO OPUESTO**. Tras aplicar el fix, ambos caminos convergen a TOTAL=6,89 €, Δ=0.
+
+**Diagnóstico**: hay un wrapper de fallback en `main.py` (test_generico.py muestra `test_fallback_sintetico_cuando_no_hay_lineas_pero_si_total` y `test_fallback_sintetico_no_se_activa_si_hay_lineas_legitimas`) que sintetiza líneas cuando `extraer_lineas` devuelve algo anómalo. A veces el fallback sobre-corrige. El fix en la raíz del extractor desactiva el wrapper para esos casos — eso es buena señal, indica que el extractor ya es correcto.
+
+**Protocolo**: comparación dry-run pre/post **NO opcional** para PRs de extractor; los tests aislados NO sustituyen — pueden dar números distintos en **magnitud y signo** para el mismo PDF. El número del test crudo es solo un eslabón; el número de producción es el del orquestador.
+
+### Lecciones operativas nuevas — dominio retail
+
+1. **Tickets retail mezclan descuentos informativos y aplicables**. En BM:
+   - `Oferta -X.XX` = informativa (el IMPORTE de la línea de producto YA está descontado). Ignorar.
+   - `Promoción ...` y `Vales ...` = descuentos reales (IMPORTE de la línea es PVP). Aplicar.
+   El parser debe distinguir **por keyword distintiva**, no por signo del importe (ambas son negativas). Validado contra `TICKET SIN AHORROS` / `AHORRO` de los 7 fixtures de 1T26. Esperable que aplique también a JIMELUZ si tiene tickets de supermercado.
+
+2. **`skip_patterns` con `\b` sin anclaje cazan nombres de producto legítimos**. `r'\bTOTAL\b'`, pensado para descartar `TOTAL COMPRA (iva incl.) X.XX`, también se comía cualquier producto cuyo nombre contenía "TOTAL" (Colgate Total, Listerine Total, P.Total). Cuando un producto se descarta así, el siguiente descuento en el post-procesado de `lineas_filtradas[-1]` aterriza en el producto anterior, **enmascarando el bug como si fuera de otra naturaleza**. Protocolo: anclar `skip_patterns` a inicio de línea (`^\s*TOKEN\b`) o a contexto específico (`\bTOTAL COMPRA\b`) cuando la palabra es genérica.
+
+### Decisión canónica añadida hoy
+
+7. **Auditoría barrida obligatoria de `skip_patterns` con `\b` genéricos**: cuando un extractor define `skip_patterns` con tokens cortos sin anclaje (`\bFACTURA\b`, `\bproducto\b`, `\bgénero\b`, `\bpresente\b`, etc.), es alta probabilidad que algún producto del catálogo del proveedor matchee silenciosamente y se pierda. Al revisar un extractor: cada token de los `skip_patterns` se cruza contra el `DiccionarioProveedoresCategoria.xlsx` del proveedor (búsqueda case-insensitive por substring) y se inspecciona cualquier matching. Aplica a todos los extractores con `skip_patterns`, no solo BM.
+
+### TBDs nuevos / refinados
+
+- **Cluster B item 3/3**: **JIMELUZ** (15/21 descuadres, OCR primario). Único item pendiente del cluster B. Esperable que comparta patrones con DIA (saneamiento OCR) pero también con BM (descuentos retail si el proveedor tiene tickets de supermercado). Orden recomendado: tras este, cluster B queda íntegramente cerrado.
+- **Auditoría wrapper `fallback_sintetico` en `Parseo/main.py`**: nuevo TBD nacido del refuerzo de lección v4.13 #5. Casos legítimos (Patrón A con líneas vacías + TOTAL claro) vs casos donde enmascara bugs upstream (como fixture 1215). Posible refinamiento: cuando se active el wrapper, logar WARNING con magnitud de la corrección sintética para detectar enmascaramientos. 1 sesión.
+- **Auditoría barrida de `skip_patterns` con `\b` no anclados** en TODOS los extractores BM y similares (no solo bm.py). Buscar tokens genéricos (TOTAL, FACTURA, producto, género, etc.) que puedan coincidir con descripciones legítimas del catálogo del proveedor. Aplica decisión canónica #7 arriba. 1 sesión.
+- **Re-procesar 4T25 para validación empírica del cluster ECOMS + BM combinados**: opcional, NO fiscal. Confirmaría empíricamente cuántos de los 23/31 (DIA) + 33 (BM SUPERMERCADOS) descuadres históricos se arreglan con los clusters cerrados.
+
+### TBDs heredados que siguen vivos
+
+- **Cluster B item 3/3: JIMELUZ** (renumerado: 1→DIA done v4.13, 2→BM done v4.14, 3→JIMELUZ pendiente). Único pendiente del cluster B.
+- Barrido pdfplumber multi-página en 12 extractores (heredado de v4.13).
+- Protocolo versionado `DiccionarioProveedoresCategoria.xlsx` (heredado de v4.13, refuerzo de v4.12).
+- Dedup de aliases en `MAESTRO_PROVEEDORES.xlsx` (v4.11).
+- Bug del identificador de proveedor (~5% filename como nombre) (v4.11).
+- Cluster C (retenciones IRPF autónomos) — análisis separado (v4.11).
+- Issue #5 Parseo (cp1252) reabierto, pendiente fix real (v4.11).
 
 ---
 

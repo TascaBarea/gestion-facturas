@@ -5,7 +5,34 @@
 ---
 
 ## Próxima sesión
-**Objetivo:** Cluster B refactor — BM SUPERMERCADOS (33/77 descuadres) o JIMELUZ (15/21, OCR primario). Recomendación: BM primero por volumen, JIMELUZ último por complejidad OCR. Repo afectado: `Parseo/`.
+**Objetivo:** Cluster B item 3/3 — **JIMELUZ** (15/21 descuadres, OCR primario). Último item del cluster B; tras este, cluster cerrado íntegramente. Esperable que comparta patrones con DIA (saneamiento OCR) y con BM (descuentos retail si JIMELUZ tiene tickets de supermercado). Repo afectado: `Parseo/`.
+
+---
+
+## Sesión 13/05/2026 — Cluster B item 2/3 BM SUPERMERCADOS (PR #15)
+
+**Objetivo:** segundo item del cluster B (tras DIA done en v4.13). Refactor de `Parseo/extractores/bm.py` para 2 bugs coordinados que causaban descuadres en tickets con descuentos retail y productos con TOTAL en marca.
+
+### Completado
+- [x] **PR #15 mergeado en `TascaBarea/Parseo` main** (merge commit `e3b5dae`, --merge preserva 3 commits atómicos). Branch `fix/bm-cluster-oferta-y-total` eliminado. Bug A `cfec5a3` + Bug B `5b7c576` + VERSION bump `cc4714b`.
+- [x] **Issue #14 abierto y cerrado**. Auto-cerrado por la cadena LITERAL `"Closes #14"` presente en commit `cc4714b` aunque iba entre paréntesis explicando que se omitía deliberadamente — GitHub parsea regex sin contexto (tercera manifestación de la lección v4.13 #1). Comentario aclaratorio posteado aparte con `gh issue comment 14 --body "..."` ([issuecomment-4444016856](https://github.com/TascaBarea/Parseo/issues/14#issuecomment-4444016856)).
+- [x] **Fixtures reales** en `Parseo/tests/extractores/fixtures/bm/`: 7 PDFs de 1T26 (Dropbox/.../FACTURAS RECIBIDAS/1 TRIMESTRE 2026/). 7 tests parametrizados: **7/7 passed** al céntimo. Suite Parseo completa: **59 passed + 1 skipped**, 0 regresiones. CI verde 32s.
+- [x] **Dry-run pre/post validado empíricamente** en baseline real:
+  - 4T25 (309 fac): BM 1→0 descuadres, otros 20=20 (cero regresión), importe 79.681,55 € idéntico.
+  - 1T26 (227 fac): BM 5→0 descuadres, otros 9=9 (cero regresión), importe 53.129,81 € idéntico.
+- [x] **VERSION Parseo bump 5.21 → 5.22**.
+- [x] **SPEC bump v4.13 → v4.14** (este cierre). CLAUDE.md tabla actualizada. Cluster B item 2/3 marcado cerrado.
+- [x] **Reporte** `outputs/cluster_b_bm_20260513.md` referenciado desde SPEC.
+
+### Cluster B — estado tras esta sesión
+- [x] DIA — done (PR #13, v4.13).
+- [x] BM SUPERMERCADOS — done (PR #15, v4.14).
+- [ ] JIMELUZ — pendiente. 15/21 descuadres, usa OCR primario; validar si los patrones (saneamiento OCR de DIA, descuentos retail de BM) aplican.
+
+### Backlog generado por esta sesión
+- [ ] **Auditoría wrapper `fallback_sintetico` en `Parseo/main.py`**: nuevo TBD nacido del refuerzo de lección v4.13 #5 con datos cuantificados (fixture 1215: test aislado SUMA=0,84 con Δ=+6,05 vs dry-run Total=9,99 con Δ=−3,10 — mismo PDF, mismo código, signo opuesto). Casos legítimos vs casos donde enmascara bugs upstream. Posible refinamiento: cuando se active el wrapper, logar WARNING con magnitud de la corrección sintética. 1 sesión.
+- [ ] **Auditoría barrida `skip_patterns` con `\b` no anclados**: en TODOS los extractores BM y similares (no solo bm.py). Aplicar decisión canónica #7 de v4.14: cada token corto de los `skip_patterns` se cruza contra el catálogo del proveedor buscando colisiones con descripciones legítimas. Tokens a revisar: `\bFACTURA\b`, `\bproducto\b`, `\bgénero\b`, `\bpresente\b`, `\boferta con\b`, etc. 1 sesión.
+- [ ] **Re-procesar 4T25 para validación empírica de los clusters ECOMS + BM combinados**: opcional, NO fiscal. Confirmaría cuántos de los 23/31 (DIA) + 33 (BM SUPERMERCADOS) descuadres históricos se arreglan empíricamente.
 
 ---
 
