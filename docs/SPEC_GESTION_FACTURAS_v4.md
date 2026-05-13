@@ -1,8 +1,71 @@
-# SPEC GESTION-FACTURAS v4.12
+# SPEC GESTION-FACTURAS v4.13
 
-> Documento maestro unificado — actualizado 12/05/2026
+> Documento maestro unificado — actualizado 13/05/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
+
+---
+
+## CHANGELOG v4.13 — 13/05/2026 (Cluster ECOMS/DIA — TBD #1 v4.11 segundo extractor)
+
+Aplicación del segundo extractor del cluster B abierto en v4.11: refactor del extractor ECOMS/DIA para resolver el 74% de descuadres históricos (23/31 facturas DIA descuadradas en el histórico). Mergeado vía PR #13 (merge commit `517cf1f`) en repo Parseo.
+
+### Cluster ECOMS/DIA — 6 bugs coordinados (PR #13, repo separado)
+
+| # | Bug | Commit | Severidad |
+|---|---|---|---|
+| 1 | `procesar()` solo leía `pdf.pages[0]` → TOTAL formato canje a veces None (cuando la ruta de `procesar()` se activaba; existe ruta secundaria en `main.py` que ya leía multi-página) | `eba7d4d` | CRÍTICO |
+| 2 | Regex Formato 2 (OCR) intolerante a ruido tipográfico (`?`, `;`, `*`, etc.) | `f7d9fe9` | ALTO |
+| 3 | Formato 2 no manejaba descripción separada del importe en líneas distintas | `f0a820a` | ALTO |
+| 4 | Regex de descripción no aceptaba comas → `1,5 LT` se perdía | `f7d9fe9` (inline) | ALTO |
+| 5 | Patrones de TOTAL demasiado estrictos para OCR roto | `41d5a4e` | CRÍTICO |
+| 6 | Fallback cuadro fiscal demasiado estricto + sin cross-check | `25d6d05` | MEDIO |
+| — | VERSION bump 5.20 → 5.21 | `3da3d26` | chore |
+| — | Skip CI para tests OCR-dependientes (tesseract ausente en runner) | `78a0c6c` | fix tests |
+
+Fixtures reales en `Parseo/tests/extractores/fixtures/dia/`: 4 PDFs (1 canje 2T26 + 3 OCR del 4T25 cubriendo IVA único 4%/10% y IVA mixto + sub-variantes del OCR). 18 tests parametrizados: **17 passed + 1 skipped intencional** (ref OCR-rota en 4204) en local con tesseract. Suite Parseo completa: **52 passed**, 0 regresiones. Dry-run 2T26 sin diferencia (DIA 2T26_0420 TOTAL=4,68€ idéntico antes/después).
+
+### Refinamiento de la decisión canónica "body-first para IVA mixto"
+
+La decisión canónica #4 (v4.11) — *agrupar por tasa desde body, footer solo como cross-check* — se extiende a **tickets OCR**, no solo a facturas PDF limpias. Para tickets DIA, donde el OCR destruye descripciones y rompe regex aunque el contenido sea recuperable, se introduce un patrón nuevo:
+
+**`CORRECCIONES_OCR_DIA`** — diccionario interno de pares `(keywords_obligatorias, nombre_canónico)`. Cuando TODAS las keywords aparecen como substring en una línea (case-insensitive), la descripción se sustituye por el nombre limpio. El importe e IVA se extraen como siempre por las regex normales (tras saneamiento OCR genérico).
+
+Reglas duras del diccionario:
+- Las keywords deben ser substring distintivo (poco probable que matchee otra línea).
+- El `nombre_canónico` debe coincidir **exacto** con la entrada del `DiccionarioProveedoresCategoria.xlsx` para que el lookup downstream funcione.
+- NO inventar entradas: solo tras confirmación manual del usuario sobre identidad del producto + verificación de presencia en el diccionario externo con categoría correcta.
+- Orden de aplicación: saneamiento OCR PRIMERO, correcciones después (las keywords son substring y sobreviven al saneamiento; el saneamiento sí desbloquea matches al normalizar separadores).
+
+Entradas iniciales aplicadas:
+- `JABON ALMEND MI IMAQ` (keywords `ALMCND + IMAQ`) — fila añadida hoy al diccionario externo en Drive (fila 1347), categoría LIMPIEZA, IVA 21.
+- `AGUA BEZOYA 1.5 LT` (keywords `BEZOY + 7182`) — ya existía con formato `1.5 LT` (PUNTO, no coma), categoría GASTOS NO PERTENECIENTES A TASCA BAREA, IVA 10.
+
+### Lecciones operativas formalizadas (5)
+
+1. **`closes #N` peligro reconfirmado** (segunda manifestación tras Issue #5 Parseo). Esta vez el auto-cierre fue correcto, pero el patrón "no se puede postear comentario al cerrar si ya está cerrado" se reprodujo. Protocolo: tras merge con `Closes #N` automático, postear comentario aclaratorio aparte con `gh issue comment N --body "..."` como paso separado.
+2. **Orden saneamiento → correcciones (contraintuitivo)**: cuando se combina diccionario de keywords con saneamiento regex, aplicar saneamiento PRIMERO. Las keywords son substring y sobreviven al saneamiento; el saneamiento sí desbloquea matches al normalizar separadores (`0 7182` → `0,7182` hace que la keyword `7182` sea encontrable dentro del decimal). El reflejo contrario (correcciones primero por "preservar texto original") es incorrecto.
+3. **Drift CI vs local por dependencias de runtime**: tesseract/poppler disponibles en local pero no en runner de CI causó 12 tests rojos. Política: cualquier test que dependa de runtime externo (OCR, fuentes del sistema, sockets, GPU, binarios opcionales) DEBE llevar `pytest.mark.skipif` condicional. No asumir paridad de entornos entre dev y CI.
+4. **Drift Drive↔repo (segunda ocurrencia, refuerzo)**: `DiccionarioProveedoresCategoria.xlsx` modificado dos sesiones consecutivas desde código sin control de versiones. Hay backups locales datados, pero el Drive no es git. Item de backlog: protocolo de versionado del diccionario (snapshot diario al repo `gestion-facturas/datos/backups/`).
+5. **Tests unitarios verdes no prueban impacto en producción** (formulación generalizada): el commit 1 del cluster describía un bug que los tests parametrizados aislados validaban, pero el dry-run pre/post NO mostraba diferencia (DIA 2T26_0420 TOTAL=4,68€ idéntico antes/después). Existe ruta secundaria en `main.py` que ya cubría el caso en producción. El fix sigue siendo correcto, pero el alcance real es menor del descrito. **Protocolo**: SIEMPRE comparar dry-run pre/post como prueba de impacto real, no solo tests aislados, antes de afirmar magnitud del bug en commit messages o reports.
+
+### Decisión canónica #6 — Diccionario externo + repositorio interno desacoplados
+
+Cuando un extractor necesita un mapeo de keywords→nombre_canónico (caso `CORRECCIONES_OCR_DIA`), ese mapeo vive en el **código** del extractor (visible en code review). La asignación de **categoría** vive en el **`DiccionarioProveedoresCategoria.xlsx`** (visible en negocio). Ambos deben mantenerse sincronizados manualmente: el nombre canónico del código debe matchear EXACTO el del diccionario externo, o el lookup downstream falla silenciosamente.
+
+### TBDs nuevos / refinados
+
+- **Cluster B parcialmente cerrado**: DIA done (PR #13). Pendientes BM SUPERMERCADOS (33/77 descuadres, mayor volumen absoluto) y JIMELUZ (15/21 descuadres, usa OCR primario). Orden recomendado: BM primero por volumen, JIMELUZ último por complejidad OCR (validar si el patrón body-first aplica con texto OCR pre-existente).
+- **Auditoría barrida del bug "solo pág 0"**: 12 extractores de Parseo abren PDF con `with pdfplumber.open(...)` propio y podrían replicar el bug #1 de ECOMS: `alcampo`, `fabeiro`, `garda`, `ceres`, `arganza`, `casa_del_duque`, `celonis_make`, `embutidos_ferriol`, `fernando_moro`, `grupo_disber`, `angel_borja`, `abbati`. 1 sesión de barrido. Decisión por extractor sobre si reprocesar histórico — solo necesario para los que atiendan facturas multi-página.
+- **Protocolo versionado `DiccionarioProveedoresCategoria.xlsx`**: snapshot diario al repo o detección de drift. Segunda manifestación del problema (sesión 13/05/2026 fila 1347 añadida).
+- **Re-procesar 4T25 para validación empírica del cluster ECOMS**: opcional, NO fiscal (Kinema ya cerró), solo auditoría interna. Confirmaría cuántos de los 23/31 descuadres DIA históricos se arreglan empíricamente.
+
+### TBDs heredados que siguen vivos
+
+- Dedup de aliases en `MAESTRO_PROVEEDORES.xlsx` (v4.11).
+- Bug del identificador de proveedor (~5% filename como nombre) (v4.11).
+- Cluster C (retenciones IRPF autónomos) — análisis separado (v4.11).
+- Issue #5 Parseo (cp1252) reabierto, pendiente fix real (no la versión) (v4.11).
 
 ---
 

@@ -5,7 +5,36 @@
 ---
 
 ## Próxima sesión
-**Objetivo:** resolver listado Drive en `/documentos` Cloud + favicon Comestibles + deuda requirements.
+**Objetivo:** Cluster B refactor — BM SUPERMERCADOS (33/77 descuadres) o JIMELUZ (15/21, OCR primario). Recomendación: BM primero por volumen, JIMELUZ último por complejidad OCR. Repo afectado: `Parseo/`.
+
+---
+
+## Sesión 13/05/2026 — Cluster ECOMS/DIA (PR #13)
+
+**Objetivo:** segundo extractor del cluster B abierto en v4.11. Refactor de `Parseo/extractores/ecoms.py` para resolver 6 bugs coordinados que causan 74% descuadre DIA en histórico (23/31 facturas).
+
+### Completado
+- [x] **PR #13 mergeado en `TascaBarea/Parseo` main** (merge commit `517cf1f`). 6 bugs ECOMS atomizados en 6 commits (eba7d4d → 25d6d05) + chore VERSION (3da3d26) + fix CI tests OCR-skip (78a0c6c).
+- [x] **Issue #12 cerrado** automáticamente vía `Closes #12`. Comentario aclaratorio posteado aparte con `gh issue comment` (segunda manifestación del patrón "no se puede comentar al cerrar si ya está cerrado").
+- [x] **Fixtures reales** en `Parseo/tests/extractores/fixtures/dia/`: 4 PDFs (1 canje 2T26 + 3 OCR del 4T25 cubriendo IVA único y mixto). 18 tests parametrizados: 17 passed + 1 skipped intencional (local con tesseract). En CI: 5 passed + 13 skipped (tesseract/poppler no instalados).
+- [x] **VERSION Parseo bump 5.20 → 5.21** (gracias a la unificación del Issue #5, 1 línea cambia y las 3 salidas coinciden).
+- [x] **Diccionario externo `DiccionarioProveedoresCategoria.xlsx` actualizado**: fila 1347 añadida (`ECOMS / JABON ALMEND MI IMAQ / LIMPIEZA / IVA 21`). Backup local en `datos/backups/DiccionarioProveedoresCategoria_pre_jabon_almend_20260513_130223.xlsx`.
+- [x] **SPEC bump v4.12 → v4.13** (este cierre). CLAUDE.md tabla actualizada. Cluster B item 1/3 marcado cerrado.
+
+### Cluster B — estado tras esta sesión
+- [x] DIA — done (PR #13).
+- [ ] BM SUPERMERCADOS — pendiente. 33/77 descuadres, mayor volumen absoluto del cluster.
+- [ ] JIMELUZ — pendiente. 15/21 descuadres, usa OCR primario; validar si el patrón body-first aplica con texto OCR pre-existente.
+
+### Backlog generado por esta sesión
+- [ ] **Auditoría barrida del bug "solo pág 0"**: 12 extractores de Parseo con `with pdfplumber.open(...)` propio podrían replicar el bug #1 de ECOMS. Lista exhaustiva: `alcampo`, `fabeiro`, `garda`, `ceres`, `arganza`, `casa_del_duque`, `celonis_make`, `embutidos_ferriol`, `fernando_moro`, `grupo_disber`, `angel_borja`, `abbati`. 1 sesión de barrido. Decisión por extractor sobre si reprocesar histórico — solo necesario para los que atiendan facturas multi-página.
+- [ ] **Protocolo versionado `DiccionarioProveedoresCategoria.xlsx`**: snapshot diario al repo o detección de drift. Segunda manifestación del problema (sesión 12/05 y 13/05 lo tocaron desde código).
+- [ ] **Re-procesar 4T25** para validación empírica del cluster ECOMS (opcional, no fiscal — solo auditoría interna). Confirmaría cuántos de los 23/31 descuadres DIA históricos se arreglan empíricamente.
+
+---
+
+## Próxima sesión (backlog OG mantenido)
+**Objetivo OG:** resolver listado Drive en `/documentos` Cloud + favicon Comestibles + deuda requirements.
 
 ### Pendientes priorizados
 
