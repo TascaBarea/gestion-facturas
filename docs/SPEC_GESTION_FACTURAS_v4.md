@@ -1,8 +1,79 @@
-# SPEC GESTION-FACTURAS v4.15
+# SPEC GESTION-FACTURAS v4.16
 
 > Documento maestro unificado — actualizado 14/05/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
+
+---
+
+## CHANGELOG v4.16 — 14/05/2026 (Auditoría canónica #7 cerrada + fix LA CUCHARA VALE/TOTAL substring)
+
+### Auditoría barrida skip_patterns — canónica #7 v4.14 ejecutada
+
+Sesión semi-autoaccept (10-15 min real, no overnight largo) que barrió todos los extractores de Parseo cruzando listas de "ignorar" con `DiccionarioProveedoresCategoria.xlsx`. Reporte completo en `outputs/auditoria_skip_patterns_20260513.md` (gitignored, no se duplica aquí).
+
+Resultado empírico:
+- **116 extractores auditados** (cifra del reporte, NO ~80 como estimaba informalmente en sesiones previas).
+- **1 sola colisión ALTA detectada**: `la_cuchara.py` con filtro `'VALE'` substring matcheando 4 productos del catálogo LA CUCHARA (`SSA VALENTINA E.AMARILLA/E.NEGRA 370ML`).
+- 5 extractores adicionales con nomenclatura no estándar (variable `ignorar`/`IGNORAR`/`IGNORAR_DESC` en lugar de `skip_patterns`) sin casos reales: `ceres`, `ecoms`, `la_alacena`, `la_lleidiria`, `la_cuchara`.
+- 0 colisiones MEDIA o BAJA con impacto detectable.
+
+**Tasa de incidencia: 1/116 = 0,86%** — confirma cuantitativamente que el patrón de canónica #7 existe pero NO es sistemático en producción. Refuerza la lección 2 v4.15 sobre invalidar hipótesis con datos.
+
+### Fix LA CUCHARA — VALE/TOTAL como match exacto (PR #17, repo separado)
+
+| # | Cambio | Commit |
+|---|---|---|
+| 1 | `ignorar_exacto = {'TOTAL', 'VALE'}` separado de `ignorar_substring = ['IVA 10']` (set vs list tipa la intención) | `47a9e8e` |
+| 1 | 4 tests sintéticos en `tests/extractores/test_la_cuchara.py` (regresión VALENTINA + 3 cases positivos: VALE exacto, TOTAL exacto, IVA 10 substring) | `47a9e8e` |
+| 1 | VERSION Parseo 5.23 → 5.24 | `47a9e8e` |
+
+Mergeado vía PR #17 (merge SHA `868dcf7`). CI verde 45s. Suite Parseo: **68 passed + 1 skipped**, 0 regresiones. LA CUCHARA es OCR primario; tests sobre texto post-OCR sintético, sin dependencia de tesseract en CI.
+
+### Nueva decisión canónica #8 — exact-match por defecto en filtros de cabecera
+
+El fix LA CUCHARA cristaliza un principio generalizable: **filtros de "ignorar" para cabeceras fiscales son exact-match por defecto, substring-match solo cuando el contexto fuerza inequívocamente.**
+
+Razonamiento: las cabeceras fiscales (`TOTAL`, `VALE`, `BASE`, `IVA`, `CIF`, `NIF`) aparecen como palabras aisladas en líneas que NO son productos. Los nombres de productos legítimos pueden contener esas mismas palabras como substring (`VALENTINA` contiene `VALE`; `Colgate Total` contiene `TOTAL`). El default correcto es match exacto.
+
+Substring solo se justifica cuando el contexto fuerza unicidad — ej. `IVA 10` nunca aparece como descripción de producto porque siempre va con el porcentaje pegado (`IVA 10%`).
+
+**Aplicación inmediata**: cluster B item 3/3 JIMELUZ. Cuando se aborde, auditar todos sus filtros de "ignorar" contra este principio antes de tocar lógica de extracción.
+
+### Hallazgo secundario — regex de captura `[A-Z0-9\s%]` sin puntos
+
+Durante implementación del fix, al ajustar el fixture sintético para que el regex de captura del extractor lo acepte, se descubrió que `la_cuchara.py` usa `[A-Z0-9\s%]` para capturar la descripción del producto. Esto **NO permite puntos**. Pero los productos del catálogo tienen punto (`SSA VALENTINA E.AMARILLA 370ML`).
+
+LA CUCHARA es OCR primario. Si el OCR de tesseract conserva el punto, el regex rechaza la descripción y la línea queda truncada o perdida. Si el OCR borra el punto (lo que hizo en los 2 samples inspeccionados durante la sesión), no hay problema. **El bug es condicional al comportamiento del OCR, no determinista**.
+
+Sin PDFs reales donde el OCR conserve el punto, no podemos validar el impacto. TBD prioridad **MEDIA** (no nominal) — más interesante que un refactor cosmético pero no fiscal urgente.
+
+### Lecciones operativas formalizadas (3)
+
+1. **Validación cuantitativa de hipótesis de impacto**. La auditoría canónica #7 nació de una predicción razonable: si BM tenía el problema, otros extractores BM-like probablemente también. El dato empírico (1/116 = 0,86%) invalidó la predicción de impacto sistemático. Esto refuerza la lección 2 v4.15: hipótesis razonables pueden necesitar invalidación empírica, no solo extrapolación lógica. **Protocolo**: cuando una sesión cierra un cluster con N items afectados, antes de extrapolar a "muchos más casos" en otros extractores, auditar barriendo es la inversión correcta (esta sesión: ~15 min reales, cierra debate y produce el fix prioritario en el mismo flujo).
+
+2. **Patrón "fix durante test reveals bug adyacente"**. Al construir el fixture sintético para `test_la_cuchara` se reveló el regex de captura `[A-Z0-9\s%]` sin puntos — bug adyacente no relacionado al fix original. Esto es valor inesperado del trabajo de tests: forzar sintetizar input válido revela suposiciones implícitas del extractor que no se manifestaban en el camino feliz. **Protocolo**: documentar como TBD cualquier hallazgo de este tipo, aunque sea ortogonal al fix en curso. NO ampliar el alcance del PR actual — bug adyacente va a sesión propia. El test debe pasar con input compatible con la implementación actual; el TBD captura la limitación descubierta.
+
+3. **`set` vs `list` para filtros: tipar la intención**. El fix usó `ignorar_exacto = {'TOTAL', 'VALE'}` (set) y `ignorar_substring = ['IVA 10']` (list). El tipo de colección expresa la semántica de búsqueda: set para exact-match (O(1) y semántica clara), list para iteración con `in` substring (orden potencialmente relevante). Mejor que dos listas con comentarios explicando cuál es cuál. **Protocolo**: para filtros con semánticas mixtas, usar tipos de colección distintos como documentación auto-explicativa. Aplicar al cluster B item 3/3 JIMELUZ y a cualquier refactor futuro de extractores con filtros.
+
+### TBDs nuevos
+
+- **Regex de captura LA CUCHARA `[A-Z0-9\s%]` sin puntos** (prioridad **MEDIA**): bug condicional al comportamiento del OCR de tesseract. Requiere PDF real con punto conservado para validar el impacto. Sesión propia. La próxima ejecución de Parseo sobre una factura LA CUCHARA puede dar la primera señal — si el log muestra líneas truncadas o líneas con base=0, sospechar este caso.
+
+- **Estandarización nominal `ignorar:` → `skip_patterns:`** en los 5 extractores afectados (`ceres`, `ecoms`, `la_alacena`, `la_lleidiria`, `la_cuchara` aunque este ya está fixeado): prioridad **BAJA**, sin casos reales detectados. Conveniencia para que futuras auditorías canónica #7 se puedan correr con el primer regex (la versión inicial del script auditor de esta sesión perdió 5 extractores por buscar solo `skip_patterns`). Se amplió para incluir nombres alternativos, pero estandarizar a un solo nombre es más robusto.
+
+### TBDs heredados que siguen vivos
+
+- **Cluster B item 3/3: JIMELUZ** (15/21 descuadres, OCR primario). Único item pendiente del cluster B. La decisión canónica #8 de esta sesión aplica directamente a sus filtros de "ignorar"; auditar antes de tocar lógica de extracción.
+- Auditoría wrapper `_linea_sintetica_desde_total` en `generico.py` (v4.15, prioridad media-alta, ~37 activaciones visibles en 40 líneas de log).
+- Invocaciones inocuas del fallback OCR (v4.15, 47/627, baja prio).
+- Refactor M3 en `_merge_resultados` (v4.15, decisión abierta).
+- Barrido pdfplumber multi-página en 12 extractores (v4.13).
+- Protocolo versionado `DiccionarioProveedoresCategoria.xlsx` (v4.13).
+- Dedup aliases en `MAESTRO_PROVEEDORES.xlsx` (v4.11).
+- Bug identificador proveedor (~5% filename como nombre) (v4.11).
+- Cluster C (retenciones IRPF autónomos) (v4.11).
+- Issue #5 Parseo (cp1252) reabierto — sigue manifestándose (v4.11).
 
 ---
 

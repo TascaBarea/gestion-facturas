@@ -5,7 +5,29 @@
 ---
 
 ## Próxima sesión
-**Objetivo:** Cluster B item 3/3 — **JIMELUZ** (15/21 descuadres, OCR primario). Último item del cluster B; tras este, cluster cerrado íntegramente. Esperable que comparta patrones con DIA (saneamiento OCR) y con BM (descuentos retail si JIMELUZ tiene tickets de supermercado). Decisión canónica #7 v4.14 aplica directamente: el merge NO desambigua casos OCR primario, por lo que skip_patterns mal anclados causan daño directo sin red de seguridad. Repo afectado: `Parseo/`.
+**Objetivo:** Cluster B item 3/3 — **JIMELUZ** (15/21 descuadres, OCR primario). Último item del cluster B; tras este, cluster cerrado íntegramente. Esperable que comparta patrones con DIA (saneamiento OCR) y con BM (descuentos retail si JIMELUZ tiene tickets de supermercado). Decisiones canónicas que aplican directamente cuando se aborde:
+- **Canónica #7** (v4.14): `skip_patterns` con `\b` anclados, no genéricos. Auditar todos sus filtros.
+- **Canónica #8** (v4.16): exact-match por defecto en filtros de cabecera, substring solo cuando el contexto lo fuerza. Si JIMELUZ tiene filtros tipo `'VALE' in linea`, sospechar colisión con productos del catálogo y usar `set` para exact-match.
+
+Repo afectado: `Parseo/`.
+
+---
+
+## Sesión 14/05/2026 — Auditoría canónica #7 + fix LA CUCHARA (PR #17)
+
+**Objetivo:** ejecutar la auditoría barrida canónica #7 v4.14 sobre todos los extractores de Parseo + cerrar el hallazgo accionable (1 ALTA detectada).
+
+### Completado
+- [x] **Script auditor** `Parseo/_audit_skip_patterns.py` (gitignored): cross-match de listas de "ignorar" (incluyendo `skip_patterns`, `ignorar`, `IGNORAR`, `IGNORAR_DESC`) contra `DiccionarioProveedoresCategoria.xlsx` filtrado por proveedor. Identificación de proveedor vía decorador `@registrar('NOMBRE', ...)`. ~15 min de ejecución.
+- [x] **Reporte** `outputs/auditoria_skip_patterns_20260513.md` (gitignored): 116 extractores auditados, 1 colisión ALTA (LA CUCHARA / VALE / 4 productos VALENTINA), 5 extractores con nomenclatura no estándar sin casos, 0 colisiones MEDIA/BAJA con impacto.
+- [x] **Tasa empírica 1/116 = 0,86%**: confirma cuantitativamente que la canónica #7 NO es problema sistemático en producción. Refuerza lección 2 v4.15.
+- [x] **PR Parseo #17 mergeado** (merge SHA `868dcf7`). Commit único `47a9e8e` con fix LA CUCHARA: `ignorar_exacto = {'TOTAL','VALE'}` separado de `ignorar_substring = ['IVA 10']` + 4 tests sintéticos en `tests/extractores/test_la_cuchara.py` + VERSION 5.23 → 5.24. CI verde 45s. Suite Parseo 68 passed + 1 skipped.
+- [x] **Nueva decisión canónica #8** documentada en SPEC v4.16: exact-match por defecto en filtros de cabecera, substring solo cuando el contexto fuerza unicidad.
+- [x] **SPEC bump v4.15 → v4.16** (este cierre). CLAUDE.md tabla actualizada.
+
+### Backlog generado por esta sesión
+- [ ] **Regex de captura LA CUCHARA `[A-Z0-9\s%]` sin puntos** (prio **MEDIA**): bug condicional al comportamiento del OCR. Si tesseract conserva puntos (`E.AMARILLA`), el regex rechaza la descripción. Si el OCR los borra (`E AMARILLA`), no hay problema. Sin PDF real con punto conservado, no podemos validar impacto. Próxima ejecución de Parseo sobre LA CUCHARA puede dar la primera señal — sospechar este caso si aparecen líneas truncadas o base=0. Sesión propia.
+- [ ] **Estandarización nominal `ignorar:` → `skip_patterns:`** en 4 extractores adicionales (`ceres`, `ecoms`, `la_alacena`, `la_lleidiria`): prio **BAJA**, sin casos reales. Conveniencia para que futuras auditorías canónica #7 sean robustas con un solo nombre de variable.
 
 ---
 
