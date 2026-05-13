@@ -5,7 +5,28 @@
 ---
 
 ## Próxima sesión
-**Objetivo:** Cluster B item 3/3 — **JIMELUZ** (15/21 descuadres, OCR primario). Último item del cluster B; tras este, cluster cerrado íntegramente. Esperable que comparta patrones con DIA (saneamiento OCR) y con BM (descuentos retail si JIMELUZ tiene tickets de supermercado). Repo afectado: `Parseo/`.
+**Objetivo:** Cluster B item 3/3 — **JIMELUZ** (15/21 descuadres, OCR primario). Último item del cluster B; tras este, cluster cerrado íntegramente. Esperable que comparta patrones con DIA (saneamiento OCR) y con BM (descuentos retail si JIMELUZ tiene tickets de supermercado). Decisión canónica #7 v4.14 aplica directamente: el merge NO desambigua casos OCR primario, por lo que skip_patterns mal anclados causan daño directo sin red de seguridad. Repo afectado: `Parseo/`.
+
+---
+
+## Sesión 14/05/2026 — Auditoría merge primario↔fallback OCR (PR #16)
+
+**Objetivo:** investigar mecanismo real del 1215 (errata v4.14) + añadir observabilidad permanente del merge primario↔fallback OCR en `Parseo/main.py`.
+
+### Completado
+- [x] **Investigación del mecanismo real**: el merge en `main.py:1582-1669` (`_merge_resultados` + `_necesita_fallback` + `_calcular_descuadre`), NO el `_linea_sintetica_desde_total` de `generico.py` (errata v4.14 confirmada). Caso 1215 atribuido al merge OCR; típico typo OCR `TICKEIT` + skip_pattern `\bTICKET\b` no anclado.
+- [x] **Errata v4.14 documentada** en SPEC sin bump (commit gestion-facturas `11a32ed`).
+- [x] **PR #16 mergeado en `TascaBarea/Parseo` main** (merge commit `8a3538a`, `--merge` preserva commit). 1 commit principal `2b67231`: refactor `_necesita_fallback`→`Optional[str]` C1-C4 + WARNING `[MERGE_FALLBACK]` en `_merge_resultados` + 5 tests caplog + VERSION 5.22→5.23.
+- [x] **Auditoría empírica 4T25+1T26+2T26 (627 facturas)**: 48 invocaciones del merge (7,7%), **1 sola activación real** (LEVANTINA 1T26 1061, C3+M1, LEGÍTIMA por construcción), 47 mantienen primario, 0 sospechosas. **Hipótesis original ("merge enmascara bugs sistemáticamente") invalidada empíricamente**.
+- [x] **Validación sub-B contra `517cf1f`** (pre-cluster-BM): 1215 reaparece con perfil C3+**M2** swing **−3,86€** (fallback descuadró peor, ganó por cantidad de líneas). Confirma que M2 es heurística cuantitativa débil y blinda el WARNING contra patrones históricos.
+- [x] **Hallazgo secundario M3 código muerto**: bajo `_calcular_descuadre` actual (devuelve `inf` cuando líneas vacío), M1 siempre dispara antes que M3. Documentado en test dedicado. TBD para sesión futura.
+- [x] **CI Parseo verde** (PR #16, 32s). Suite **64 passed + 1 skipped**, 0 regresiones.
+- [x] **SPEC bump v4.14 → v4.15** (este cierre). CLAUDE.md tabla actualizada.
+
+### Backlog generado por esta sesión
+- [ ] **Auditoría wrapper `_linea_sintetica_desde_total` en `Parseo/extractores/generico.py`**: el OTRO mecanismo, el que SÍ emite warning hoy. Conteo informal 4T25: ~37 activaciones en primeras 40 líneas de log → posiblemente cientos por trimestre. Sub-caso LEVANTINA 1061 sugiere bugs upstream del extractor genérico (primario 7,08€ vs fallback 259,20€). Sesión propia, prioridad media-alta.
+- [ ] **Invocaciones inocuas del fallback OCR**: 47/627 facturas (7,5%) entran al merge y mantienen primario. Coste computacional (un OCR completo) sin impacto en datos. Posible refactor: evitar invocación cuando `_necesita_fallback` dispara por C4 sin descuadre real. Baja prioridad.
+- [ ] **Refactor M3 en `_merge_resultados`**: decisión abierta — eliminar M3 (código muerto actual) o reparar `_calcular_descuadre` para que devuelva valor finito (p.ej. el TOTAL) y M3 sea alcanzable.
 
 ---
 

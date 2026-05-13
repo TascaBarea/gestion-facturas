@@ -1,8 +1,91 @@
-# SPEC GESTION-FACTURAS v4.14
+# SPEC GESTION-FACTURAS v4.15
 
-> Documento maestro unificado — actualizado 13/05/2026
+> Documento maestro unificado — actualizado 14/05/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
+
+---
+
+## CHANGELOG v4.15 — 14/05/2026 (Auditoría merge primario↔fallback OCR + resolución errata v4.14)
+
+### Resolución errata v4.14
+
+La errata de 13/05/2026 (registrada al final del bloque CHANGELOG v4.14, sin bump de versión) documentaba una atribución incorrecta del mecanismo que produjo el descuadre del fixture 1215 (test aislado SUMA=0,84 Δ=+6,05 vs `main.py` dry-run Total=9,99 Δ=−3,10, signos opuestos). Esta sesión audita el mecanismo real (`_merge_resultados` en `Parseo/main.py:1582-1669`) y añade observabilidad permanente vía WARNING `[MERGE_FALLBACK]`. Mergeado en PR #16 (merge SHA `8a3538a`) en repo Parseo.
+
+### Auditoría empírica del merge primario↔fallback OCR (PR #16, repo separado)
+
+| # | Cambio | Commit |
+|---|---|---|
+| 1 | Refactor `_necesita_fallback` a `Optional[str]` devolviendo etiqueta C1/C2/C3/C4 (o None) — truthy semantics conservadas | `2b67231` |
+| 1 | Instrumentación `_merge_resultados` con WARNING permanente `[MERGE_FALLBACK]` (formato grep-friendly: archivo, extractor, criterio_entrada, criterio_merge, total, total_origen, swing, swing_ratio, desc_prim, desc_fall, n_prim, n_fall) | `2b67231` |
+| 1 | 5 tests caplog en `tests/test_merge_resultados.py` (M1, M2 sin mejora cuadre, M3 dead code, no_warn primario OK, swing_ratio para ticket pequeño) | `2b67231` |
+| 1 | VERSION 5.22 → 5.23 | `2b67231` |
+
+Métricas empíricas (4T25 + 1T26 + 2T26, código post-cluster-BM, branch `fix/main-merge-resultados-observable`):
+
+| Trimestre | n_facturas | n_invocaciones_merge | n_activaciones | C1 | C2 | C3 | C4 | M1 | M2 | M3 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 4T25 | 309 | 31 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 1T26 | 227 | 9 | 1 | 0 | 0 | 1 | 0 | 1 | 0 | 0 |
+| 2T26 | 91 | 8 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| **Total** | **627** | **48** | **1** | **0** | **0** | **1** | **0** | **1** | **0** | **0** |
+
+- **48 invocaciones del merge (7,7%)** — entran al fallback OCR pero solo **1 activación real** sustituye líneas.
+- **1 caso (LEVANTINA 1T26 1061, generico.py)**: C3+M1, swing 156€ (60%), total origen primario → clasificada **LEGÍTIMA por construcción**.
+- **47 merges donde se mantuvo el primario** (ruido informativo, coste computacional sin impacto en datos).
+- **0 SOSPECHOSAS, 0 INDETERMINADAS, 0 BASURA_COHERENTE** detectadas.
+
+Suite Parseo: **64 passed + 1 skipped**, 0 regresiones. CI verde (PR #16).
+
+### Hallazgo principal — hipótesis original invalidada empíricamente
+
+La sesión nació del TBD reformulado de la errata v4.14: *"el wrapper de merge enmascara bugs upstream sistemáticamente"*. El dato empírico es **0,16% de activación post-cluster-BM con un único caso clasificado como LEGÍTIMA**. La hipótesis queda **invalidada empíricamente** — el merge NO es fuente crónica de problemas en producción actual.
+
+Esto es hallazgo positivo, no neutro: reduce el espacio de causas posibles para descuadres futuros y orienta el trabajo de extractores hacia las causas reales (skip_patterns con `\b` sin anclaje, decisión canónica #7 v4.14).
+
+### Hallazgo M2 — el caso paradigmático 1215 fue elegido por cantidad, no calidad
+
+Validación sub-B contra `517cf1f` (pre-cluster-BM) con `bm.py` y `settings.py` rolled back y la misma instrumentación de `main.py` (que no cambió entre 517cf1f y HEAD) reveló que el 1215 disparaba **C3+M2** con **swing NEGATIVO −3,86€** (descuadre primario 6,05€, descuadre fallback 9,91€, swing/total 56%). El fallback descuadró **PEOR** que el primario, pero ganó porque tenía 3 líneas vs 2 del primario.
+
+Esto confirma cuantitativamente la observación del Paso A.1(b): **M2 es heurística cuantitativa débil** (mide cantidad de líneas, no calidad del cuadre). La causa raíz del descuadre del 1215 NO fue el merge — fue el typo OCR `TICKEIT` + skip_pattern `\bTICKET\b` sin anclaje (decisión canónica #7 v4.14, refuerzo de esta sesión). Pero el merge contribuyó al daño al elegir el resultado peor cuando tuvo que elegir.
+
+### Hallazgo M3 — código muerto bajo implementación actual
+
+`_calcular_descuadre` (`main.py:1565-1579`) devuelve `float('inf')` cuando `lineas` está vacía. Por tanto, si `primario.lineas == []`:
+- `descuadre_primario = inf`
+- `descuadre_fallback = finito` (si `fallback.lineas` no vacío)
+- M1 (`desc_fall < desc_prim - 0.50`) → `finito < inf - 0.50 = True` → **M1 siempre dispara antes que M3**
+
+M3 (`not primario.lineas AND fallback.lineas`) solo sería alcanzable si ambos descuadres fueran `inf`, escenario que no debería ocurrir en práctica si llegamos al merge. Documentado en `test_merge_M3_es_codigo_muerto_con_calcular_descuadre_actual`.
+
+Decisión abierta (TBD): eliminar M3 (es código muerto) o reparar `_calcular_descuadre` para que devuelva valor finito (p.ej. el TOTAL como descuadre máximo cuando no hay líneas) y M3 sea alcanzable. Sesión futura.
+
+### Lecciones operativas formalizadas (3)
+
+1. **Distinguir observación verificada de hipótesis técnica en documentación maestra** (formalización de la lección candidata que motivó la errata v4.14). En SPEC, CHANGELOG y cualquier documento permanente, cada afirmación de mecanismo concreto debe ser empíricamente reproducible o etiquetarse explícitamente como hipótesis pendiente. La diferencia entre *"hay un wrapper en main.py"* (hipótesis no verificada que terminó siendo incorrecta) y *"el mecanismo real es `_merge_resultados` en `main.py:1582-1669`"* (observación verificada con `grep`+lectura) no es matiz menor — son reproducibilidades cualitativamente distintas. Protocolo: cuando atribuyas un comportamiento a una función concreta, citar archivo + rango de líneas y haber leído ese rango. Si no se ha verificado, escribir *"hipótesis pendiente de verificar"* explícitamente.
+
+2. **Una investigación con hipótesis a invalidar también es valor**. Esta sesión no encontró bugs en el merge porque no los hay (en código post-cluster-BM: 0,16% activación, 0 sospechosas). Esto NO es *"sesión sin resultado"* — es resultado positivo: la hipótesis original (*"merge enmascara bugs sistemáticamente"*) queda invalidada empíricamente, lo que permite redirigir el esfuerzo de futuras sesiones a las causas reales (skip_patterns, decisión canónica #7). Protocolo: documentar hipótesis invalidadas con datos en CHANGELOG, no enterrarlas — orientan el trabajo futuro y previenen reabrir investigaciones ya cerradas.
+
+3. **Patrón "sub-validación contra baseline pre-fix"**. Cuando una auditoría se ejecuta sobre código post-fix (típico cuando el bug que motivó la sesión ya está resuelto), validar la instrumentación contra el código pre-fix sobre los casos conocidos para confirmar que habría captado el patrón histórico. En esta sesión: 5-10 minutos de rollback selectivo de `bm.py` + `settings.py` a `517cf1f` (manteniendo `main.py` con instrumentación) + dry-run sobre 1T26 → el caso 1215 reapareció con perfil C3+M2 swing −3,86€, confirmando que el WARNING habría capturado el patrón. Sin esta sub-validación, el commit *"el código actual funciona bien"* sería declaración sin prueba. Con ella, queda blindado: el código actual funciona bien **Y** el código antiguo se caracterizaba correctamente por la instrumentación. Aplicable a cualquier sesión de observabilidad o refactor con casos históricos conocidos.
+
+### TBDs nuevos / refinados
+
+- **Auditoría wrapper `_linea_sintetica_desde_total` en `extractores/generico.py`**: el OTRO mecanismo, el que SÍ emite `logger.warning` hoy (línea 300) y que originalmente atribuí mal al 1215 (errata v4.14). Conteo informal en 4T25: ~37 activaciones visibles en primeras 40 líneas del log stderr → posiblemente cientos por trimestre. El sub-caso LEVANTINA 1T26 1061 sugiere que el genérico puede leer totales incorrectos via este wrapper (primario 7,08€ vs fallback 259,20€, ambos sintéticos). Prioridad media-alta dado el volumen. Sesión propia.
+
+- **Invocaciones inocuas del fallback OCR**: 47/627 facturas (7,5%) entran al merge pero mantienen el primario. Coste computacional (un OCR completo) sin impacto en datos. Posible refactor: evitar invocación cuando `_necesita_fallback` dispara por C4 (categorización débil) sin descuadre real. Sesión propia, baja prioridad.
+
+- **Refactor M3 en `_merge_resultados`**: decisión abierta — eliminar M3 (es código muerto bajo implementación actual) o reparar `_calcular_descuadre` para que devuelva valor finito y M3 sea alcanzable. Test dedicado documenta el estado actual.
+
+### TBDs heredados que siguen vivos
+
+- **Cluster B item 3/3: JIMELUZ** (15/21 descuadres, OCR primario). Único item pendiente del cluster B. Comparte diagnóstico con esta sesión: si JIMELUZ tiene tickets retail con líneas informativas espurias, el merge NO lo desambigua (OCR es primario, no fallback). Decisión canónica #7 aplica directamente.
+- Auditoría barrida `skip_patterns` con `\b` no anclados (decisión canónica #7 v4.14, refuerzo de esta sesión).
+- Barrido pdfplumber multi-página en 12 extractores (v4.13).
+- Protocolo versionado `DiccionarioProveedoresCategoria.xlsx` (v4.13).
+- Dedup aliases en `MAESTRO_PROVEEDORES.xlsx` (v4.11).
+- Bug identificador proveedor (~5% filename como nombre) (v4.11).
+- Cluster C (retenciones IRPF autónomos) (v4.11).
+- Issue #5 Parseo (cp1252) reabierto — sigue manifestándose en cada dry-run (v4.11).
 
 ---
 
