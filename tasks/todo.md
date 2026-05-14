@@ -4,6 +4,12 @@
 
 ---
 
+## Sesión 14/05/2026 — Café Dromedario quick-win (cierre side observation)
+
+- [x] 14/05/2026 — Café Dromedario quick-win: fix CIF cafes_pozo.py `A28136189` → `A28917250` (commit `312afe6` en Parseo). Issue `TascaBarea/Parseo#20` abierta para bug gmail.py renombrado por sender.
+
+---
+
 ## Sesión 14/05/2026 — Cluster B item 3/3 JIMELUZ (PR Parseo #19, en curso)
 
 **Objetivo:** cerrar cluster B con fix de JIMELUZ. Cifra histórica 15/21 obsoleta (extractor v3 16/03/2026 ya resolvió el bulk). Sobre corpus 2T24 (9 samples) quedan 2/9 descuadres reales + 1/9 caso ortogonal de escalera OCR.
