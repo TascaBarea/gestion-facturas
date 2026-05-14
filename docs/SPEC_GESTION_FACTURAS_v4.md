@@ -1,8 +1,67 @@
-# SPEC GESTION-FACTURAS v4.16
+# SPEC GESTION-FACTURAS v4.17
 
-> Documento maestro unificado — actualizado 14/05/2026
+> Documento maestro unificado — actualizado 15/05/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
+
+---
+
+## CHANGELOG v4.17 — 15/05/2026 (Auditoría wrapper `_linea_sintetica` ejecutada — filtro de importancia operacional)
+
+### Auditoría wrapper `_linea_sintetica_desde_total` ejecutada (TBD v4.15/v4.16 cerrado)
+
+Sesión autoaccept overnight 14-15/05/2026. Reporte completo en `outputs/auditoria_linea_sintetica_20260514.md` (gitignored).
+
+Resultado empírico:
+- **26 activaciones totales en 4T25+1T26+2T26** (10× MENOS que la estimación de SPEC v4.15 "~37/40 líneas log → cientos por trimestre"). El conteo informal estaba contando doble: warning del primario + warning del fallback OCR de la misma factura.
+- Distribución mecánica del auditor: 16 LEGÍTIMA-A, 5 SOSPECHOSA-1, 5 SOSPECHOSA-2.
+- Tras triage humano (Jaime), de los 10 SOSPECHOSAs mecánicas:
+  - 2 confirmados falsos positivos del fuzzy threshold 85 (DANI GUTIERREZ → BLANCO GUTIERREZ PILAR, SCM CERVEZA → ACEITES GARCIA)
+  - 6 proveedores irrelevantes operacionalmente (GRUPO KUAI, LEVANTINA, PANADERIA JR, DROPBOX, PIERRE COMUNICACION, otros) — archivados sin TBD
+  - 2 accionables reales: Café Dromedario (alta MAESTRO, ya en backlog) y Amazon Business EU (9 facturas/3 trimestres, candidato a extractor dedicado por volumen)
+
+**Tasa de yield real: 2/26 = 7,7%** — la auditoría confirma que el wrapper NO es fuente sistemática de pérdida de datos. Mismo patrón que sesiones previas (cluster B BM 33→6 reales, merge bugs 1/627=0,16%, skip_patterns 1/116=0,86%).
+
+### Calibración del auditor — threshold fuzzy 85 produce falsos positivos
+
+El auditor usó fuzzy=85 para cross-match filename↔MAESTRO. Esto produjo 2 falsos positivos en 5 sospechosos (40%) por apellidos comunes o prefijos compartidos. El orquestador de Parseo es más estricto y rechazó correctamente esos casos. NO es bug del orquestador.
+
+Decisión: NO ajustar threshold del auditor (el script es ad-hoc, no se va a reutilizar literalmente). Documentar como limitación conocida del barrido de auditoría: thresholds permisivos sobre-generan candidatos, requieren triage humano post-clasificación.
+
+### Nueva lección operativa (4ª) — filtro de importancia operacional
+
+Tras lecciones v4.15 #2 (valor de hipótesis invalidadas) y v4.16 #1 (validación cuantitativa de hipótesis de impacto), esta sesión añade la 4ª lección del eje "no convertir datos en trabajo automáticamente":
+
+**Filtro de importancia operacional**. Cada hallazgo de una auditoría debe pasar dos filtros antes de generar TBD: (1) ¿es estadísticamente significativo? (validación cuantitativa); (2) ¿es operacionalmente relevante? (proveedor recurrente o importe material). Sin el segundo filtro, las auditorías de barrido inflan el backlog con casos que nunca volverán a aparecer. **Protocolo**: tras clasificar mecánicamente, el responsable del negocio (no Claude) marca cada cluster como ACCIONABLE / ARCHIVAR. Solo ACCIONABLE se eleva a TBD del SPEC.
+
+Ilustración cuantitativa de esta sesión: clasificador mecánico produjo 10 sospechosos. Filtro de importancia humano dejó 2. Sin filtro, habría generado ~8 TBDs nuevos sobre proveedores irrelevantes.
+
+### TBDs nuevos (filtrados por importancia operacional)
+
+- **Café Dromedario — alta MAESTRO**: pendiente desde antes de esta auditoría. Esta sesión confirma que aparece (2 facturas) y refuerza la prioridad. Acción: Jaime crea entrada en MAESTRO con CIF + IBAN + alias.
+
+- **Amazon Business EU SARL — evaluar extractor dedicado**: 9 facturas en 3 trimestres = volumen recurrente (~3/trimestre, ~60€/factura, 560€ total). Coste-beneficio: extractor evita fallback sintético para proveedor habitual. Prioridad MEDIA-BAJA (no fiscal urgente, pero ahorra warning recurrente). Sesión propia cuando convenga.
+
+### Hallazgos NO accionables (archivados, sin TBD)
+
+Filtro de importancia operacional aplicado por Jaime tras revisar el reporte:
+- GRUPO KUAI (363€, 2 fact), DISTRIBUCION LEVANTINA ALIMENTOS (259€, 1 fact), PANADERIA JR (272€, 1 fact), DROPBOX (19€), PIERRE COMUNICACION (18€), AIMANE HAMMOUCH (2 fact aisladas), MASSAXUXES SCP (1 fact), FIVE GALAXIES (2 fact).
+- Razón: no son proveedores recurrentes ni operacionalmente relevantes para Tasca/Comestibles. El wrapper sintético hace su trabajo correctamente para estos casos (LEGÍTIMA-A) o el orquestador rechaza con razón (falsos positivos del auditor).
+- Si en futuras auditorías alguno de estos reaparece con frecuencia creciente, reabrir entonces.
+
+### TBDs heredados que siguen vivos
+
+- **Cluster B item 3/3: JIMELUZ** (15/21 descuadres, OCR primario, decisión canónica #8 aplica).
+- Invocaciones inocuas del fallback OCR (v4.15, 47/627, baja prio).
+- Refactor M3 en `_merge_resultados` (v4.15, decisión abierta).
+- Regex captura LA CUCHARA `[A-Z0-9\s%]` sin puntos (v4.16, MEDIA).
+- Estandarización nominal `ignorar:` → `skip_patterns:` (v4.16, BAJA).
+- Barrido pdfplumber multi-página en 12 extractores (v4.13).
+- Protocolo versionado Drive Maestro/ (v4.13).
+- Dedup aliases `MAESTRO_PROVEEDORES.xlsx` (v4.11).
+- Bug identificador proveedor (~5% filename como nombre) (v4.11).
+- Cluster C (retenciones IRPF autónomos) (v4.11).
+- Issue #5 Parseo (cp1252) (v4.11).
 
 ---
 

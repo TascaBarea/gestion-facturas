@@ -13,6 +13,26 @@ Repo afectado: `Parseo/`.
 
 ---
 
+## Sesión 14-15/05/2026 — Auditoría overnight wrapper `_linea_sintetica_desde_total` (SPEC v4.17)
+
+**Objetivo:** ejecutar la auditoría TBD prioridad media-alta v4.15/v4.16 del wrapper que sintetiza líneas desde TOTAL en `Parseo/extractores/generico.py`. Sesión autoaccept overnight, sin supervisión humana hasta despertar.
+
+### Completado
+- [x] **Script auditor** `Parseo/_audit_linea_sintetica.py` (gitignored): detecta activaciones en hoja `Lineas` de los 3 Excel del 13/05 vía marcador `[GENERICO_SINTETICO]`. Cruza filename → MAESTRO (599 aliases @registrar + 568 keys MAESTRO expandidos por `,/;` ) con fuzzy `rapidfuzz.WRatio` cutoff 85. Clasifica en LEGÍTIMA-A/B, SOSPECHOSA-1/2, INDETERMINADA según árbol de reglas estricto. Tiempo total <1s.
+- [x] **Reporte** `outputs/auditoria_linea_sintetica_20260514.md` (gitignored): 26 activaciones totales (4T25 + 1T26 + 2T26), 16 LEGÍTIMA-A, 5 SOSPECHOSA-1, 5 SOSPECHOSA-2. 10× menos que la estimación informal "~37/40 líneas log → cientos/trimestre" de SPEC v4.15 (estaba contando doble: primario + fallback OCR de la misma factura).
+- [x] **Triage humano por filtro de importancia operacional** (Jaime, post-overnight): de 10 SOSPECHOSAs mecánicas → 2 falsos positivos del fuzzy 85, 6 proveedores irrelevantes archivados, 2 accionables reales (Café Dromedario alta MAESTRO + AMAZON evaluar extractor dedicado). Tasa de yield real: 2/26 = 7,7%.
+- [x] **Nueva lección operativa 4ª** formalizada: filtro de importancia operacional como 2º filtro post-validación cuantitativa. Documentado en SPEC v4.17 + `tasks/lessons.md`.
+- [x] **SPEC bump v4.16 → v4.17** (este cierre). CLAUDE.md tabla actualizada.
+
+### Backlog generado por esta sesión
+- [ ] **Alta MAESTRO Café Dromedario** (refuerzo): proveedor ya estaba en backlog. Esta auditoría confirma 2 facturas reales (`AR 1T26 0220` + `REVISAR 2T26 0506`). Acción: Jaime crea entrada con CIF + IBAN + alias `cafedromedario.com` desde el filename.
+- [ ] **Evaluar extractor dedicado AMAZON BUSINESS EU SARL** (prio **MEDIA-BAJA**): 9 facturas en 3 trimestres = ~3/trimestre, ~60€/factura, 560,92€ total. Volumen recurrente que justifica extractor para ahorrar warning permanente del wrapper sintético. No fiscal urgente. Sesión propia cuando convenga.
+
+### Hallazgos NO accionables (archivados, sin TBD)
+GRUPO KUAI (363€), DISTRIBUCION LEVANTINA (259€), PANADERIA JR (272€), DROPBOX (19€), PIERRE COMUNICACION (18€), AIMANE HAMMOUCH (1.875€ pero 2 fact aisladas), MASSAXUXES SCP, FIVE GALAXIES. Razón: no recurrentes ni operacionalmente relevantes para Tasca/Comestibles. Reabrir solo si reaparecen con frecuencia creciente en auditorías futuras.
+
+---
+
 ## Sesión 14/05/2026 — Auditoría canónica #7 + fix LA CUCHARA (PR #17)
 
 **Objetivo:** ejecutar la auditoría barrida canónica #7 v4.14 sobre todos los extractores de Parseo + cerrar el hallazgo accionable (1 ALTA detectada).
@@ -46,7 +66,7 @@ Repo afectado: `Parseo/`.
 - [x] **SPEC bump v4.14 → v4.15** (este cierre). CLAUDE.md tabla actualizada.
 
 ### Backlog generado por esta sesión
-- [ ] **Auditoría wrapper `_linea_sintetica_desde_total` en `Parseo/extractores/generico.py`**: el OTRO mecanismo, el que SÍ emite warning hoy. Conteo informal 4T25: ~37 activaciones en primeras 40 líneas de log → posiblemente cientos por trimestre. Sub-caso LEVANTINA 1061 sugiere bugs upstream del extractor genérico (primario 7,08€ vs fallback 259,20€). Sesión propia, prioridad media-alta.
+- [x] **Auditoría wrapper `_linea_sintetica_desde_total` en `Parseo/extractores/generico.py`** → ejecutada 14-15/05/2026 overnight (SPEC v4.17). 26 activaciones reales, 10× menos que la estimación informal. Tasa de yield 2/26=7,7%. Conteo de "~37/40 líneas" era doble-contado primario+fallback OCR.
 - [ ] **Invocaciones inocuas del fallback OCR**: 47/627 facturas (7,5%) entran al merge y mantienen primario. Coste computacional (un OCR completo) sin impacto en datos. Posible refactor: evitar invocación cuando `_necesita_fallback` dispara por C4 sin descuadre real. Baja prioridad.
 - [ ] **Refactor M3 en `_merge_resultados`**: decisión abierta — eliminar M3 (código muerto actual) o reparar `_calcular_descuadre` para que devuelva valor finito (p.ej. el TOTAL) y M3 sea alcanzable.
 
