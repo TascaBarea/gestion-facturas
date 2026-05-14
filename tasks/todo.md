@@ -4,12 +4,34 @@
 
 ---
 
-## Próxima sesión
-**Objetivo:** Cluster B item 3/3 — **JIMELUZ** (15/21 descuadres, OCR primario). Último item del cluster B; tras este, cluster cerrado íntegramente. Esperable que comparta patrones con DIA (saneamiento OCR) y con BM (descuentos retail si JIMELUZ tiene tickets de supermercado). Decisiones canónicas que aplican directamente cuando se aborde:
-- **Canónica #7** (v4.14): `skip_patterns` con `\b` anclados, no genéricos. Auditar todos sus filtros.
-- **Canónica #8** (v4.16): exact-match por defecto en filtros de cabecera, substring solo cuando el contexto lo fuerza. Si JIMELUZ tiene filtros tipo `'VALE' in linea`, sospechar colisión con productos del catálogo y usar `set` para exact-match.
+## Sesión 14/05/2026 — Cluster B item 3/3 JIMELUZ (PR Parseo #19, en curso)
 
-Repo afectado: `Parseo/`.
+**Objetivo:** cerrar cluster B con fix de JIMELUZ. Cifra histórica 15/21 obsoleta (extractor v3 16/03/2026 ya resolvió el bulk). Sobre corpus 2T24 (9 samples) quedan 2/9 descuadres reales + 1/9 caso ortogonal de escalera OCR.
+
+### Completado (14/05/2026)
+- [x] **Issue Parseo #18**: análisis empírico + plan de fix.
+- [x] **PR Parseo #19**: `fix(jimeluz): derivar tramos faltantes y bonificaciones del cuadro fiscal por delta con TOTAL_FACTURA` (commit `7e9c01a`). Branch `fix/jimeluz-derivar-tramos-faltantes` desde `fa1a4ed`.
+  - Regex flexible en `_extraer_cuadro_fiscal` (`\s*` tolera typo OCR "0, 86").
+  - Helper `_aplicar_cuadre_derivado`: si `subtotal_cf != TOTAL`, añade línea sintética `BONIFICACION (DERIVADA)` (caso 2131, diff=-11,20€) o `TRAMO IVA 0% (DERIVADO)` (caso 2195, diff=+6,76€). Tolerancia 0,02€ respetada.
+  - Anotación `CUADRE_DERIVADO: ...` en OBSERVACIONES de pestaña Facturas (`salidas/excel.py`).
+  - Logger.warning `[JIMELUZ_CUADRE_DERIVADO]` grep-friendly.
+  - VERSION Parseo 5.24 → 5.25.
+- [x] **Tests**: 10/10 JIMELUZ passed. Suite Parseo completa: 78 passed + 1 skipped, 0 regresiones.
+- [x] **Dry-run validado**: 8/9 cuadran al céntimo + 2200 sigue SIN_TOTAL (asserción negativa cumplida).
+- [x] **Reescalado TBD SPEC v4.17**: cifra histórica obsoleta, marcado "en curso, ver PR Parseo #19".
+
+### Pendiente (STOP pre-merge)
+- [~] CI Parseo verde tests.yml.
+- [~] Aprobación explícita del usuario antes de `gh pr merge`.
+
+### Backlog generado por esta sesión (side observations, TBDs propios)
+- [ ] **`jimeluz.py:46` CIF hardcoded vacío**: patrón correcto es leer `proveedor.cif` de MAESTRO_PROVEEDORES al inicio del extractor. Hardcoded solo como fallback si MAESTRO no disponible. CIF confirmado en log dry-run: `B87760676`. Prio BAJA (cosmético, sin impacto fiscal hoy).
+- [ ] **REF extraída solo 1/9 muestras JIMELUZ** (2155 OK). El extractor v3 no implementa `extraer_referencia` específico. Investigar regex de REF en `jimeluz.py`. Prio BAJA.
+- [ ] **Ausencia JIMELUZ en 1T26 Dropbox** (0 facturas en 30 dry-runs entre 09/05 y 14/05). Posibles causas: cadencia irregular del proveedor o miss de `gmail.py` (alias del remitente cambió, asunto sin keyword). Verificar Gmail búsqueda `from:jimeluz OR subject:jimeluz` últimos 90d. Prio BAJA.
+- [ ] **Caso 2200 (SIN_TOTAL)**: OCR severamente degradado (259 chars vs ~640 buenos). Síntoma de la escalera OCR nivel 2 pendiente (PSM alternativos `--psm 4`/`--psm 11` + preprocesado deskew/threshold). Fuera de cluster B JIMELUZ. TBD propio, prio MEDIA.
+
+### Mantenimiento (sesión propia, no JIMELUZ)
+- [ ] Revisar 12 ruidos working tree gestion-facturas → decidir `.gitignore` vs commit (sesión propia, no JIMELUZ).
 
 ---
 

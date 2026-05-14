@@ -51,7 +51,7 @@ Filtro de importancia operacional aplicado por Jaime tras revisar el reporte:
 
 ### TBDs heredados que siguen vivos
 
-- **Cluster B item 3/3: JIMELUZ** (15/21 descuadres, OCR primario, decisión canónica #8 aplica).
+- **Cluster B item 3/3: JIMELUZ** — en curso, ver PR Parseo #19. Cifra histórica "15/21 descuadres" obsoleta: validado 14/05/2026 sobre corpus 2T24 (9 samples) con extractor v3 (16/03/2026), 2/9 descuadres reales por cuadro fiscal con tramos parciales/bonificaciones + 1/9 caso ortogonal de escalera OCR (2200, fuera de cluster B, TBD propio).
 - Invocaciones inocuas del fallback OCR (v4.15, 47/627, baja prio).
 - Refactor M3 en `_merge_resultados` (v4.15, decisión abierta).
 - Regex captura LA CUCHARA `[A-Z0-9\s%]` sin puntos (v4.16, MEDIA).
