@@ -18,6 +18,7 @@ generar_refresh_token_dropbox.py
 
 # Tooling (IDE, Claude Code) — settings personales del usuario
 .claude/settings.local.json
+.claude/settings.json
 
 # Datos financieros (Excel, banco, JSON procesados)
 datos/Movimientos*.xlsx
