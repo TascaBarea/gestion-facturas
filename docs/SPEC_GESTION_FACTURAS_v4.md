@@ -63,6 +63,30 @@ Filtro de importancia operacional aplicado por Jaime tras revisar el reporte:
 - Cluster C (retenciones IRPF autónomos) (v4.11).
 - Issue #5 Parseo (cp1252) (v4.11).
 
+### Errata 14/05/2026 (post-cierre v4.17)
+
+Tras el cierre de v4.17 se detectaron 3 hallazgos derivados que corrigen y matizan la auditoría del wrapper `_linea_sintetica`:
+
+1. **Café Dromedario NO necesitaba alta MAESTRO**. CAFES POZO SA ya está en MAESTRO (confirmado por Jaime) y `cafes_pozo.py` incluye `'CAFE DROMEDARIO'` y `'CAFÉ DROMEDARIO'` como aliases en su decorador `@registrar`. El caso debería haberse clasificado como SOSPECHOSA-1, no SOSPECHOSA-2. El problema real está en el identificador del orquestador, que no seleccionó `cafes_pozo.py` para el filename no canónico `REVISAR_2T26_0506__administracion_cafedromedario_com_.pdf` (formato email-derivado con prefijo REVISAR, no nomenclatura canónica `####_TRIM_MMDD_PROV_MODO`).
+
+   TBD reformulado: investigar bug del identificador para filenames email-derivados o no canónicos. Sesión propia, prioridad MEDIA (proveedor recurrente real).
+
+2. **Punto ciego del auditor overnight**. La lógica del clasificador fue filename → MAESTRO → alias_a_extractor en cadena. Si el match MAESTRO falla, nunca consulta directamente alias_a_extractor. Esto produce **falsos negativos**: proveedores con extractor existente pero filename no parseable se clasifican como SOSPECHOSA-2 (sin extractor) cuando deberían ser SOSPECHOSA-1.
+
+   Re-cruzar ejecutado 14/05/2026 (`Parseo/_recheck_sosps2.py`, gitignored): de las 5 SOSPECHOSAs-2, **0 son falsos negativos puros del encadenamiento MAESTRO→alias** (ningún `prov_raw` extraído matchea `alias_a_extractor` con cutoff 85) y **4 son CONFIRMADO_SIN_EXTRACTOR** mecánicamente (PANADERIA JR, DROPBOX, y los 2 de Café Dromedario). 1 caso (PIERRE COMUNICACION) matchea borderline con `ecoms` a score 72 — falso positivo espurio del fuzzy, descartado.
+
+   Matiz importante sobre Café Dromedario: las 2 facturas SÍ son falsos negativos en sentido amplio porque `cafes_pozo.py` registra `'CAFE DROMEDARIO'` como alias, pero el bug NO está en el encadenamiento MAESTRO→alias_a_extractor — está aguas arriba: `extraer_prov_de_filename` elimina el email entre paréntesis (`(administracion@cafedromedario.com)`) que es la única pista del proveedor, dejando un `prov_raw` inútil (`'2T26 0506'`, `'AR 1T26 0220'`). El TBD del punto 1 captura exactamente este caso — no es bug genérico del orquestador.
+
+3. **Bug pre-existente en `cafes_pozo.py` — discrepancia de CIF**:
+   - Extractor (docstring línea 5 + atributo línea ~19): `A28136189` ("del registro mercantil")
+   - Footer del PDF emitido por Cafés Pozo SA: `ESA28917250`
+
+   El CIF del footer es el oficial. El extractor propaga un CIF incorrecto al output de Parseo cuando procesa facturas Cafés Pozo / Dromedario. Bug independiente del problema actual.
+
+   TBD nuevo: verificar CIF correcto contra entrada MAESTRO de CAFES POZO SA, fixear `cafes_pozo.py`. Sesión propia, prioridad BAJA (cosmético pero útil para integridad del output fiscal).
+
+Estos 3 puntos NO requieren bump de versión — son matices y bugs adyacentes del trabajo cerrado en v4.17, formalizables en el próximo bump.
+
 ---
 
 ## CHANGELOG v4.16 — 14/05/2026 (Auditoría canónica #7 cerrada + fix LA CUCHARA VALE/TOTAL substring)
