@@ -1,14 +1,74 @@
 {
-  "generado": "2026-04-14T00:01:36",
+  "generado": "2026-05-09T11:27:56",
   "talleres": [
+    {
+      "id": 3419,
+      "nombre": "CERRADO-CATA-TALLERMarga",
+      "fecha": "30/05/26",
+      "hora_inicio": null,
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
+    },
+    {
+      "id": 3409,
+      "nombre": "Vermunova de verano Taller de vermú, solsticio, hierbitas de San Juan, y maricxnadas varias, que para eso es el mes del orgullo",
+      "fecha": "24/06/26",
+      "hora_inicio": null,
+      "hora_fin": null,
+      "stock_quantity": 10,
+      "stock_status": "instock",
+      "precio": 30.0
+    },
+    {
+      "id": 3408,
+      "nombre": "Encurtidos Gildas y Banderillas. Todo lo que usted quiso saber sobre encurtidos y jamás osó preguntar. Escabeches y otras técnicas de conservación de alimentos, puestos a bailar en forma de gildas y banderillas",
+      "fecha": "11/06/26",
+      "hora_inicio": null,
+      "hora_fin": null,
+      "stock_quantity": 7,
+      "stock_status": "instock",
+      "precio": 30.0
+    },
+    {
+      "id": 3396,
+      "nombre": "VIVA-MÉXICO_CATA-TALLER-Mezcales-Platillos-Pinchos-Tequilas",
+      "fecha": "22/05/26",
+      "hora_inicio": null,
+      "hora_fin": null,
+      "stock_quantity": 10,
+      "stock_status": "instock",
+      "precio": 40.0
+    },
+    {
+      "id": 3395,
+      "nombre": "CERRADO-CATA-TALLERMai",
+      "fecha": "28/05/26",
+      "hora_inicio": null,
+      "hora_fin": null,
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
+    },
+    {
+      "id": 3394,
+      "nombre": "CATA-TALLER",
+      "fecha": "23/05/26",
+      "hora_inicio": "15:00",
+      "hora_fin": "17:00",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
+      "precio": 30.0
+    },
     {
       "id": 3350,
       "nombre": "CATA ESPECIAL",
       "fecha": "14/05/26",
       "hora_inicio": "19:30",
       "hora_fin": "21:30",
-      "stock_quantity": 3,
-      "stock_status": "instock",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
       "precio": 30.0
     },
     {
@@ -17,8 +77,8 @@
       "fecha": "18/04/26",
       "hora_inicio": "15:00",
       "hora_fin": "16:45",
-      "stock_quantity": 10,
-      "stock_status": "instock",
+      "stock_quantity": 0,
+      "stock_status": "outofstock",
       "precio": 35.0
     },
     {
@@ -77,7 +137,7 @@
       "fecha": "27/05/26",
       "hora_inicio": null,
       "hora_fin": null,
-      "stock_quantity": 10,
+      "stock_quantity": 6,
       "stock_status": "instock",
       "precio": 40.0
     },
@@ -87,7 +147,7 @@
       "fecha": "07/05/26",
       "hora_inicio": null,
       "hora_fin": null,
-      "stock_quantity": 9,
+      "stock_quantity": 6,
       "stock_status": "instock",
       "precio": 30.0
     },
@@ -97,7 +157,7 @@
       "fecha": "24/04/26",
       "hora_inicio": "14:30",
       "hora_fin": "16:30",
-      "stock_quantity": 1,
+      "stock_quantity": 2,
       "stock_status": "instock",
       "precio": 30.0
     },
@@ -107,7 +167,7 @@
       "fecha": "22/04/26",
       "hora_inicio": null,
       "hora_fin": null,
-      "stock_quantity": 8,
+      "stock_quantity": 2,
       "stock_status": "instock",
       "precio": 30.0
     },
@@ -352,16 +412,6 @@
       "precio": 30.0
     },
     {
-      "id": 2890,
-      "nombre": "Cata de vinos Los Gredales del Toboso 5 variedades y mucha tradición",
-      "fecha": "18/12/25",
-      "hora_inicio": null,
-      "hora_fin": null,
-      "stock_quantity": 0,
-      "stock_status": "outofstock",
-      "precio": 30.0
-    },
-    {
       "id": 2808,
       "nombre": "CERRADO-TALLER-VERMUT",
       "fecha": "13/12/25",
@@ -398,16 +448,6 @@
       "hora_inicio": null,
       "hora_fin": null,
       "stock_quantity": 4,
-      "stock_status": "instock",
-      "precio": 30.0
-    },
-    {
-      "id": 2764,
-      "nombre": "Aperitivos vivos. De lactofermentados, kombuchas y kimchis",
-      "fecha": "29/10/25",
-      "hora_inicio": null,
-      "hora_fin": null,
-      "stock_quantity": 3,
       "stock_status": "instock",
       "precio": 30.0
     },
@@ -509,26 +549,6 @@
       "hora_fin": null,
       "stock_quantity": 0,
       "stock_status": "outofstock",
-      "precio": 30.0
-    },
-    {
-      "id": 2609,
-      "nombre": "Vermunova. Taller de maceración de vermú y aledaños",
-      "fecha": "05/11/25",
-      "hora_inicio": null,
-      "hora_fin": null,
-      "stock_quantity": 8,
-      "stock_status": "instock",
-      "precio": 30.0
-    },
-    {
-      "id": 2607,
-      "nombre": "Vermunova. Taller de maceración de vermú y aledaños",
-      "fecha": "09/10/25",
-      "hora_inicio": null,
-      "hora_fin": null,
-      "stock_quantity": 8,
-      "stock_status": "instock",
       "precio": 30.0
     },
     {
