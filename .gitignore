@@ -9,8 +9,15 @@ config_local.py
 credentials.json
 token.json
 token.json.backup
+# Variantes con fecha (gmail/token.json.bak.YYYYMMDD)
+gmail/token.json.bak.*
+gmail/token*
 datos_sensibles.py
 streamlit_app/.streamlit/secrets.toml
+generar_refresh_token_dropbox.py
+
+# Tooling (IDE, Claude Code) — settings personales del usuario
+.claude/settings.local.json
 
 # Datos financieros (Excel, banco, JSON procesados)
 datos/Movimientos*.xlsx
@@ -49,6 +56,8 @@ outputs/logs_gmail/
 outputs/logs_barea/
 outputs/logs_ventas/
 outputs/logs_test/
+gmail_resumen.json
+EXTRACTORES_COMPLETO.xlsx
 
 # Cuadre datos generados
 cuadre/banco/clasificaciones_historicas.json
@@ -63,3 +72,13 @@ ventas_semana/dashboards/*.pdf
 docs/investigacion-fuentes-temp.txt
 docs/youtube-research-notes.md
 gmail/token_nuevo.json
+
+# Backups manuales (no versionar — usar git tags o commits dedicados)
+*_backup_*.xlsx
+*_backup*.py
+
+# Logs efímeros (gmail.py runs, smoke runs, dry-runs)
+*.log
+
+# Python build artifacts (setuptools)
+*.egg-info/
