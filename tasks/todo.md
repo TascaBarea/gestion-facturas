@@ -4,6 +4,20 @@
 
 ---
 
+## Café Dromedario / Cafés Pozo — alta MAESTRO CERRADO (16/05/2026)
+
+TBD registrado en v4.17 CHANGELOG como uno de los 2 accionables del audit overnight `_linea_sintetica_desde_total` (el otro, extractor AMAZON, sigue vivo).
+
+Verificación read-only sobre MAESTRO_PROVEEDORES.xlsx (16/05/2026): el proveedor está dado de alta. Entrada canónica `CAFES POZO S.A.` — CIF real `A28917250` (no el fantasma `A28136189`), IBAN `ES90 0049 6742 5224 1631 9341`, aliases `CAFÉ DROMEDARIO, CAFÉS POZO`. Extractor `cafes_pozo.py` operativo en Parseo con CIF correcto (commit Parseo `312afe6`, 14/05).
+
+Alta MAESTRO dada por cerrada. Flecos NO bloqueantes, derivados:
+- **Duplicado en MAESTRO**: existe una 2ª fila `CAFE DROMEDARIO` (CUENTA 40023003) además de `CAFES POZO S.A.` (CUENTA 40000182) — mismo proveedor real (confirmado por Jaime). La reconciliación de las dos cuentas contables la resuelve la gestoría, no el sistema.
+- **Flags de extractor desactualizados**: la entrada `CAFES POZO S.A.` tiene `TIENE_EXTRACTOR=NO` y `ARCHIVO_EXTRACTOR` vacío pese a que `cafes_pozo.py` existe y está operativo. Mini-TBD residual prioridad BAJA — no afecta a la resolución del extractor (Parseo resuelve por `@registrar`, no por estas columnas de MAESTRO).
+
+NOTA: este cierre NO incluye el bug gmail.py renombrado por sender `administracion@cafedromedario.com` (issue Parseo #20, ABIERTO). Sesión propia.
+
+---
+
 ## PAGOS_Gmail Excel review — CERRADO (15/05/2026)
 
 TBD original abierto 13/02/2026 ("columnas mal identificadas en PAGOS_Gmail Excel"). Bug raíz: shift col3 — PROVEEDOR escrito en columna que debía estar vacía.
@@ -92,7 +106,7 @@ Paso 8 (Drive cleanup) cerrado tras Etapa 2 — verificación read-only del VPS 
 - [x] **SPEC bump v4.16 → v4.17** (este cierre). CLAUDE.md tabla actualizada.
 
 ### Backlog generado por esta sesión
-- [ ] **Alta MAESTRO Café Dromedario** (refuerzo): proveedor ya estaba en backlog. Esta auditoría confirma 2 facturas reales (`AR 1T26 0220` + `REVISAR 2T26 0506`). Acción: Jaime crea entrada con CIF + IBAN + alias `cafedromedario.com` desde el filename.
+- [x] **Alta MAESTRO Café Dromedario** — CERRADO 16/05/2026 (ver sección de cierre al inicio del archivo). Proveedor de alta como `CAFES POZO S.A.` con CIF real `A28917250`. Refuerzo: esta auditoría confirmó 2 facturas reales (`AR 1T26 0220` + `REVISAR 2T26 0506`).
 - [ ] **Evaluar extractor dedicado AMAZON BUSINESS EU SARL** (prio **MEDIA-BAJA**): 9 facturas en 3 trimestres = ~3/trimestre, ~60€/factura, 560,92€ total. Volumen recurrente que justifica extractor para ahorrar warning permanente del wrapper sintético. No fiscal urgente. Sesión propia cuando convenga.
 
 ### Hallazgos NO accionables (archivados, sin TBD)
