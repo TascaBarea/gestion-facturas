@@ -4,6 +4,26 @@
 
 ---
 
+## Sesión 15/05/2026 — Cierre Paso 8 v4.18 + TBD v4.19 (resolución path Diccionario)
+
+Paso 8 (Drive cleanup) cerrado tras Etapa 2 — verificación read-only del VPS 15/05/2026.
+
+### Hallazgos
+- **Drift de datos repo↔Drive: FALSO.** Contenido idéntico (1347 filas Articulos, 168 Categorias, 0 filas exclusivas en ningún lado). La diferencia de 8KB (52.110 vs 60.383 bytes) era solo formato `.xlsx`, no datos. La alarma inicial por tamaño de bytes fue prematura.
+- **Commit `dfd7dbd`**: añadió 1 fila en Articulos (ALCAPARRON FRASCO) + 2 en Categorias (`GENERICO CERVEZA`, 1 vacía). El mensaje del commit dice "1 fila nueva" — imprecisión menor, no se reescribe historia pusheada.
+- **VPS NO ejecuta Parseo** (decisión 05/05/2026, flujo manual desde PC). Solo corre `streamlit.service`. El Diccionario en `/opt/gestion-facturas/datos/` es inerte allí. Sin mount de Drive en VPS.
+- **Drift SPEC↔código (el hallazgo serio).** La arquitectura "Diccionario canónico en Drive" (decisión 22/04/2026, en SPEC + `DICCIONARIO_DEFAULT`) NO está implementada: `rufino.py`, `makro.py`, `jimeluz.py` y `bm legacy` resuelven el Diccionario contra paths relativos al repo vía cascadas hardcoded, ignorando `DICCIONARIO_DEFAULT`.
+
+### TBD v4.19 (nuevo) — unificar resolución del path del Diccionario
+- [ ] Todos los extractores deben leer de una fuente canónica única (`DICCIONARIO_DEFAULT` o equivalente abstraído por plataforma), no de cascadas relativas al repo. Solo entonces es seguro sacar el Diccionario del repo (`git rm` + `.gitignore`, plan original del Paso 8). Prioridad MEDIA — bloquea el cierre arquitectónico Drive-canónico pendiente desde 22/04, pero no urgente (el sistema funciona hoy).
+
+### Etapas del Paso 8
+- [x] Etapa 1 (sync repo→Drive): cancelada — innecesaria, contenido ya idéntico.
+- [x] Etapa 2 (verificación VPS read-only): completada.
+- [ ] Etapa 3 (`git rm` Diccionario del repo): diferida a v4.19 con el scope del TBD de arriba.
+
+---
+
 ## Sesión 14/05/2026 — Café Dromedario quick-win (cierre side observation)
 
 - [x] 14/05/2026 — Café Dromedario quick-win: fix CIF cafes_pozo.py `A28136189` → `A28917250` (commit `312afe6` en Parseo). Issue `TascaBarea/Parseo#20` abierta para bug gmail.py renombrado por sender.
