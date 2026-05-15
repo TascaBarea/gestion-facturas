@@ -49,6 +49,33 @@ Paso 8 (Drive cleanup) cerrado tras Etapa 2 — verificación read-only del VPS 
 ### TBD v4.19 (nuevo) — unificar resolución del path del Diccionario
 - [ ] Todos los extractores deben leer de una fuente canónica única (`DICCIONARIO_DEFAULT` o equivalente abstraído por plataforma), no de cascadas relativas al repo. Solo entonces es seguro sacar el Diccionario del repo (`git rm` + `.gitignore`, plan original del Paso 8). Prioridad MEDIA — bloquea el cierre arquitectónico Drive-canónico pendiente desde 22/04, pero no urgente (el sistema funciona hoy).
 
+#### REFORMULACIÓN 15/05/2026 (misma sesión, post-conversación)
+
+Reversa de la dirección original. En vez de "Drive canónico, mover 4 extractores a `DICCIONARIO_DEFAULT`" → **"repo canónico, Drive mirror automático"**.
+
+Razón de la reformulación: la dirección Drive-canónico tenía coste oculto no valorado en la decisión del 22/04/2026:
+
+- Pierdes versionado git de ediciones del Diccionario (hoy cada alta de artículo es un commit `data(diccionario): ...` rastreable con `git log` + `git blame`).
+- Pierdes atomicidad: hoy puedes hacer un commit que combina código + datos (ej. nuevo extractor + alta de artículos asociados).
+- La lección "CIFs hardcodeados pueden ser fantasma" (14/05) perdería contexto sin trazabilidad git del Diccionario.
+
+Plan operativo reformulado (~30 min, vs 1-2h del plan original):
+
+1. Cambiar `DICCIONARIO_DEFAULT` en `Parseo/config/settings.py`: de `G:\Mi unidad\Barea - Datos Compartidos\Maestro\...xlsx` a path relativo al repo (`../gestion-facturas/datos/...xlsx` o equivalente robusto cross-platform).
+2. Crear post-commit hook en `gestion-facturas/.git/hooks/post-commit` que detecte cambios en `datos/DiccionarioProveedoresCategoria.xlsx` en el commit recién hecho y copie automáticamente a `G:\Mi unidad\Barea - Datos Compartidos\Maestro\...xlsx`. El hook NO se versiona (es local del clon), así que documentar instrucciones en `docs/HOOKS.md` para reinstalar en otro clon.
+3. Verificar workflow end-to-end: edición Excel del Diccionario, commit, verificar que Drive recibe la copia tras commit.
+4. Misma lógica considerar para `MAESTRO_PROVEEDORES.xlsx` si aplica el mismo patrón de drift potencial.
+5. Actualizar SPEC reflejando el cambio de decisión arquitectónica.
+
+Trade-offs aceptados:
+
+- Drive ya no es "source of truth", sino "mirror automático unidireccional". Si alguien edita directamente en Drive (vía drive.google.com web o Drive Desktop en otro PC), se sobreescribe con el próximo commit. Aceptable porque el único editor activo es Jaime desde su PC.
+- El hook es local (`.git/hooks/` no se commitea). Si el repo se clona en otro sitio, hay que reinstalar el hook. Documentar en `docs/HOOKS.md`.
+
+Prioridad sigue siendo MEDIA. Sistema funciona hoy con sync manual, pero el riesgo de drift entre repo y Drive es real.
+
+Bloquea el `git rm datos/DiccionarioProveedoresCategoria.xlsx` ORIGINAL del Paso 8 — pero CANCELA ese `git rm`: con repo canónico, el Diccionario SE QUEDA en el repo, no se borra. La idea del Paso 8 era "Drive única fuente" → ahora la idea es "repo única fuente + Drive espejo".
+
 ### Etapas del Paso 8
 - [x] Etapa 1 (sync repo→Drive): cancelada — innecesaria, contenido ya idéntico.
 - [x] Etapa 2 (verificación VPS read-only): completada.
