@@ -10,7 +10,7 @@
 
 ---
 
-## Sesión 14/05/2026 — Cluster B item 3/3 JIMELUZ (PR Parseo #19, en curso)
+## Sesión 14/05/2026 — Cluster B item 3/3 JIMELUZ (PR Parseo #19 mergeado, cerrado v4.18)
 
 **Objetivo:** cerrar cluster B con fix de JIMELUZ. Cifra histórica 15/21 obsoleta (extractor v3 16/03/2026 ya resolvió el bulk). Sobre corpus 2T24 (9 samples) quedan 2/9 descuadres reales + 1/9 caso ortogonal de escalera OCR.
 
@@ -26,9 +26,10 @@
 - [x] **Dry-run validado**: 8/9 cuadran al céntimo + 2200 sigue SIN_TOTAL (asserción negativa cumplida).
 - [x] **Reescalado TBD SPEC v4.17**: cifra histórica obsoleta, marcado "en curso, ver PR Parseo #19".
 
-### Pendiente (STOP pre-merge)
-- [~] CI Parseo verde tests.yml.
-- [~] Aprobación explícita del usuario antes de `gh pr merge`.
+### Completado (merge + cierre v4.18)
+- [x] CI Parseo verde tests.yml.
+- [x] Aprobación explícita del usuario antes de `gh pr merge`.
+- [x] PR #19 mergeado (merge SHA `904ac71`), issue #18 cerrado, bump SPEC v4.17 → v4.18.
 
 ### Backlog generado por esta sesión (side observations, TBDs propios)
 - [ ] **`jimeluz.py:46` CIF hardcoded vacío**: patrón correcto es leer `proveedor.cif` de MAESTRO_PROVEEDORES al inicio del extractor. Hardcoded solo como fallback si MAESTRO no disponible. CIF confirmado en log dry-run: `B87760676`. Prio BAJA (cosmético, sin impacto fiscal hoy).

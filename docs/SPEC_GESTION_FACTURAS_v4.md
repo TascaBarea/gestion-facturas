@@ -1,8 +1,71 @@
-# SPEC GESTION-FACTURAS v4.17
+# SPEC GESTION-FACTURAS v4.18
 
 > Documento maestro unificado — actualizado 15/05/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
+
+---
+
+## CHANGELOG v4.18 — 15/05/2026 (Cierre cluster B íntegro + 5ª validación cuantitativa culminada)
+
+### Cluster B cerrado íntegro
+
+El cluster B (descuadres de extracción en proveedores con cuadro fiscal / OCR primario) queda cerrado en sus 3 items:
+
+| Item | Proveedor | PR Parseo | Cerrado en | Mecanismo del fix |
+|---|---|---|---|---|
+| 1/3 | ECOMS / DIA | #13 | v4.13 | leer todas las páginas + orden saneamiento OCR antes de diccionario keywords |
+| 2/3 | BM SUPERMERCADOS | #15 | v4.14 | distinguir `Oferta` (informativa, ya descontada) vs `Promoción`/`Vales` (descuento real) + `skip_patterns` anclados a inicio de línea |
+| 3/3 | JIMELUZ | #19 | v4.18 (este bump) | regex flexible del cuadro fiscal + derivación de tramos/bonificaciones por delta con TOTAL_FACTURA |
+
+JIMELUZ item 3/3 — detalle del cierre:
+- Issue Parseo #18: análisis empírico sobre corpus 2T24 (9 samples).
+- PR Parseo #19 mergeado (merge SHA `904ac71`, commit fix `7e9c01a`): `fix(jimeluz): derivar tramos faltantes y bonificaciones del cuadro fiscal por delta con TOTAL_FACTURA`.
+  - Regex flexible en `_extraer_cuadro_fiscal` (tolera typo OCR sistemático tipo `"0, 86"` con `\s*`).
+  - Helper `_aplicar_cuadre_derivado`: añade línea sintética marcada `(DERIVADO)` cuando `subtotal_cuadro_fiscal != TOTAL_FACTURA` (tolerancia 0,02€). Patrón unificado que resuelve 2 casos opuestos en signo — bonificación derivada (caso 2131, −11,20€) y tramo IVA 0% omitido por el ticket (caso 2195, +6,76€).
+  - Anotación `CUADRE_DERIVADO` en OBSERVACIONES (`salidas/excel.py`) + `logger.warning("[JIMELUZ_CUADRE_DERIVADO]...")` grep-friendly.
+  - VERSION Parseo 5.24 → 5.25.
+- Tests: 10/10 JIMELUZ passed (fixtures OCR pre-capturados, sin dependencia de tesseract en CI). Suite Parseo completa 78 passed + 1 skipped, 0 regresiones. CI verde.
+- Issue #18 cerrado manualmente post-merge.
+
+### 5ª validación cuantitativa culminada — JIMELUZ: cifra histórica 15/21 → 2/9 real
+
+La validación empírica de JIMELUZ culmina la serie de validaciones cuantitativas del eje "no convertir datos en trabajo automáticamente" (lecciones v4.15 #2, v4.16 #1, v4.17 #4):
+
+| Validación | Cifra informal / histórica | Cifra real validada |
+|---|---|---|
+| BM SUPERMERCADOS (v4.14) | ~33 descuadres | 6 reales |
+| Merge primario↔fallback OCR (v4.15) | "merge enmascara bugs sistemáticamente" | 1/627 = 0,16% activación, 0 sospechosas |
+| skip_patterns canónica #7 (v4.16) | patrón potencialmente sistemático | 1/116 = 0,86% |
+| wrapper `_linea_sintetica` (v4.17) | "~cientos por trimestre" | 26 activaciones, 2/26 = 7,7% yield |
+| **JIMELUZ (v4.18)** | **"15/21 descuadres"** | **2/9 descuadres reales** + 1/9 ortogonal (2200 OCR) |
+
+La cifra histórica "15/21" provenía de un conteo previo a la v3 del extractor (16/03/2026), que ya había resuelto el grueso. Sobre corpus 2T24 (9 samples) con el extractor v3 vigente: 2/9 descuadres reales por cuadro fiscal con tramos parciales/bonificaciones (resueltos en PR #19) + 1/9 caso ortogonal de escalera OCR (2200, `SIN_TOTAL`, fuera de cluster B). Patrón consistente con las 4 validaciones previas: **toda cifra informal de descuadres, al validarse, resulta sustancialmente menor que la estimación**.
+
+### Errata v4.17 formalizada (commit `82ea1c7`)
+
+Los 3 puntos de la errata 14/05/2026 (registrados sin bump en v4.17) quedan formalizados con su estado de cierre:
+
+1. **Bug identificador filenames email-derivados** — Café Dromedario llega con filename derivado del email del remitente (`REVISAR_2T26_0506__administracion_cafedromedario_com_.pdf`), no nomenclatura canónica. **Estado: ABIERTO** → reformulado como issue Parseo #20 (ver TBDs nuevos).
+2. **Punto ciego del auditor overnight (encadenamiento MAESTRO→alias)** — re-cruce ejecutado 14/05/2026 (`Parseo/_recheck_sosps2.py`). Resultado: 0 falsos negativos puros del encadenamiento, 4 CONFIRMADO_SIN_EXTRACTOR, 1 borderline descartado (PIERRE COMUNICACION, score 72). **Estado: CERRADO** (investigación concluida).
+3. **Discrepancia CIF en `cafes_pozo.py`** (`A28136189` fantasma vs `ESA28917250` real del footer). **Estado: CERRADO** — fix en commit Parseo `312afe6`.
+
+### Cierre quick-win Café Dromedario
+
+Quick-win ejecutado 14/05/2026: fix del CIF fantasma de `cafes_pozo.py` (`A28136189` → `A28917250`, commit Parseo `312afe6`, pusheado + CI verde) + apertura de issue Parseo #20 para el bug del renombrado por sender + docs en gestion-facturas (commit `f8a2566`: `tasks/todo.md` + lección "CIFs hardcodeados pueden ser fantasma" en `tasks/lessons.md`).
+
+### TBDs nuevos
+
+- **gmail.py — mapeo sender `administracion@cafedromedario.com` → CAFES POZO SA** (issue Parseo #20, **ABIERTO**). gmail.py renombra el PDF con el email del remitente como token PROVEEDOR cuando no resuelve el proveedor del contenido. Causa raíz del punto 1 de la errata v4.17. Prioridad MEDIA (proveedor recurrente real). 3 opciones de fix planteadas en el issue, sin decisión.
+- **Side observations JIMELUZ** (4, todas **VIVAS**, derivadas del trabajo de PR #19):
+  - `jimeluz.py` CIF hardcoded vacío — debe leer `cif` de MAESTRO. Prioridad BAJA.
+  - REF extraída solo en 1/9 muestras JIMELUZ — el extractor v3 no implementa `extraer_referencia` específico. Prioridad BAJA.
+  - Ausencia de JIMELUZ en 1T26 Dropbox (0 facturas en dry-runs 09–14/05) — verificar Gmail 90d. Prioridad BAJA.
+  - Caso 2200 `SIN_TOTAL` — OCR severamente degradado, síntoma de la escalera OCR nivel 2 pendiente (PSM alternativos + preprocesado). Fuera de cluster B. Prioridad MEDIA.
+
+### TBDs heredados que siguen vivos
+
+`Cluster B item 3/3: JIMELUZ` sale de la lista (cerrado en este bump). El resto de TBDs heredados de v4.17 siguen vigentes sin cambios (ver §CHANGELOG v4.17, sección "TBDs heredados"): invocaciones inocuas fallback OCR, refactor M3 `_merge_resultados`, regex LA CUCHARA, estandarización `ignorar:`→`skip_patterns:`, barrido pdfplumber multi-página, protocolo versionado Drive, dedup aliases MAESTRO, bug identificador proveedor, cluster C IRPF, issue #5 Parseo.
 
 ---
 
