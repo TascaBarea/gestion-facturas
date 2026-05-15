@@ -4,6 +4,24 @@
 
 ---
 
+## PAGOS_Gmail Excel review — CERRADO (15/05/2026)
+
+TBD original abierto 13/02/2026 ("columnas mal identificadas en PAGOS_Gmail Excel"). Bug raíz: shift col3 — PROVEEDOR escrito en columna que debía estar vacía.
+
+Resolución: fix aplicado en gmail.py v1.17 (12/04/2026), confirmado operacional en v1.17 y verificado en producción con v1.26 sobre PAGOS_Gmail_2T26.xlsx el 15/05/2026:
+- Estructura 15/15 columnas correctas + CUENTA
+- 0 filas con shift sobre 81 filas de datos
+- Sistema de alertas OBS funcionando (10 filas auto-marcadas con 🔴 ALERTA ROJA o ⚠️ FECHA NO DETECTADA)
+- Issues residuales (12/81 = 14,8%) son calidad de extracción por-factura, no defecto estructural
+
+Hallazgo lateral observado: 2 filas (#8 y #36) PANIFIESTO LAVAPIES SL con FORMA_PAGO=TF e IBAN vacío. Verificado MAESTRO_PROVEEDORES (15/05/2026): PANIFIESTO LAVAPIES SL · CIF B87874327 · IBAN='TARJETA' (marcador, no un IBAN). MAESTRO marca correctamente al proveedor como pago con tarjeta — el IBAN vacío en PAGOS_Gmail es consecuencia correcta. El dato erróneo es FORMA_PAGO=TF (debería ser TJ).
+
+Mini-TBD gmail.py (prioridad BAJA): cuando MAESTRO tiene IBAN='TARJETA' (u otro marcador no-IBAN), FORMA_PAGO debe resolverse a TJ, no a TF. Revisar la lógica de asignación de FORMA_PAGO frente a marcadores no-IBAN del MAESTRO. 2 casos en 2T26, mismo proveedor, sin impacto fiscal — el modo de pago sale mal etiquetado.
+
+Working tree pre-commit limpio. Sin cambios de código en esta sesión.
+
+---
+
 ## Sesión 15/05/2026 — Cierre Paso 8 v4.18 + TBD v4.19 (resolución path Diccionario)
 
 Paso 8 (Drive cleanup) cerrado tras Etapa 2 — verificación read-only del VPS 15/05/2026.
