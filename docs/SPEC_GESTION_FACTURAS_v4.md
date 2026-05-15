@@ -67,6 +67,20 @@ Quick-win ejecutado 14/05/2026: fix del CIF fantasma de `cafes_pozo.py` (`A28136
 
 `Cluster B item 3/3: JIMELUZ` sale de la lista (cerrado en este bump). El resto de TBDs heredados de v4.17 siguen vigentes sin cambios (ver §CHANGELOG v4.17, sección "TBDs heredados"): invocaciones inocuas fallback OCR, refactor M3 `_merge_resultados`, regex LA CUCHARA, estandarización `ignorar:`→`skip_patterns:`, barrido pdfplumber multi-página, protocolo versionado Drive, dedup aliases MAESTRO, bug identificador proveedor, cluster C IRPF, issue #5 Parseo.
 
+### Progreso TBD v4.19 — repo canónico para Diccionario (parcial)
+
+Ejecutado 16/05/2026 (sesión separada de la reformulación del 15/05, commit 282194f):
+- `Parseo/config/settings.py`: `DICCIONARIO_DEFAULT` resuelve a path relativo del repo gestion-facturas via pathlib (commit Parseo `a5d734c`).
+- Post-commit hook en `gestion-facturas/.git/hooks/post-commit` copia el Diccionario a Drive tras cada commit que lo modifique. Template versionado en `docs/hooks-templates/post-commit.sample.sh`; instalación documentada en `docs/HOOKS.md`.
+
+Cierra el item principal del TBD v4.19: el riesgo de drift repo↔Drive del Diccionario queda cubierto por sync automático. El desajuste puntual detectado el 14/05 (repo atrasado respecto a Drive) ya se había resuelto con el commit `dfd7dbd`; lo que esta ejecución aporta es la prevención de que recurra.
+
+Items residuales del TBD v4.19 (vivos, no cerrados en esta ejecución):
+- **MAESTRO sync sigue manual**: `MAESTRO_PROVEEDORES.xlsx` está gitignored (repo público + IBANs sensibles). El hook usa `git diff-tree` que solo ve ficheros versionados — incluir MAESTRO requeriría repo privado aparte o mecanismo que no dependa de git. Prioridad BAJA hasta que el drift se manifieste.
+- **4 extractores con cascadas hardcoded**: `rufino.py`, `makro.py`, `jimeluz.py`, `legacy/bm.py` resuelven el Diccionario contra paths relativos propios, ignorando `DICCIONARIO_DEFAULT`. Funcionan porque sus cascadas ya apuntan al repo, pero la unificación que pedía el TBD original no se hizo en esta ejecución. Prioridad MEDIA.
+
+Bump SPEC v4.18 → v4.19 NO se hace en esta sub-sección — decisión aparte cuando los residuales se cierren o se quiera publicar.
+
 ---
 
 ## CHANGELOG v4.17 — 15/05/2026 (Auditoría wrapper `_linea_sintetica` ejecutada — filtro de importancia operacional)
