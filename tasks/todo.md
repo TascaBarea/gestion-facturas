@@ -4,6 +4,17 @@
 
 ---
 
+## streamlit_app — mini-TBD lanzador relocatable (16/05/2026)
+
+- [ ] **Hacer `streamlit_app/Arrancar Dashboard.bat` relocatable** (BAJA)
+  - Estado actual: ruta del repo hardcoded (`cd /d C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas`).
+  - Cambio propuesto: sustituir por `cd /d "%~dp0\.."` (usa el directorio del propio `.bat`, sube un nivel a la raíz del repo).
+  - Beneficio: el script funciona desde cualquier ubicación si se mueve el repo.
+  - Coste: 1 línea editada + smoke test (doble click → Streamlit arranca).
+  - Origen: anotado en chat 16/05/2026 tras versionar el `.bat` (commit `3ea2ac7`).
+
+---
+
 ## Café Dromedario / Cafés Pozo — alta MAESTRO CERRADO (16/05/2026)
 
 TBD registrado en v4.17 CHANGELOG como uno de los 2 accionables del audit overnight `_linea_sintetica_desde_total` (el otro, extractor AMAZON, sigue vivo).
