@@ -1,15 +1,34 @@
 """
 Configuración global de ParsearFacturas.
 
-IMPORTANTE: VERSION se define SOLO aquí.
+IMPORTANTE: VERSION se resuelve desde el Parseo canónico.
 main.py y otros módulos importan VERSION de este archivo.
 """
 from pathlib import Path
+import importlib.util as _importlib_util
+import os as _os
 
 # ==============================================================================
 # VERSIÓN (FUENTE ÚNICA DE VERDAD)
 # ==============================================================================
-VERSION = "5.17"
+_PARSEO_ROOT = Path(_os.getenv("PARSEO_ROOT", Path(__file__).resolve().parent.parent.parent / "Parseo"))
+_PARSEO_SETTINGS = _PARSEO_ROOT / "config" / "settings.py"
+
+if not _PARSEO_SETTINGS.exists():
+    raise RuntimeError(
+        f"No se encontro el settings canonico de Parseo en: {_PARSEO_SETTINGS}"
+    )
+
+_spec = _importlib_util.spec_from_file_location("parseo_settings_canon", _PARSEO_SETTINGS)
+if _spec is None or _spec.loader is None:
+    raise RuntimeError(f"No se pudo cargar el settings canonico de Parseo: {_PARSEO_SETTINGS}")
+
+_parseo_settings = _importlib_util.module_from_spec(_spec)
+_spec.loader.exec_module(_parseo_settings)
+
+VERSION = str(getattr(_parseo_settings, "VERSION", ""))
+if not VERSION:
+    raise RuntimeError(f"El settings canonico de Parseo no define VERSION: {_PARSEO_SETTINGS}")
 
 # ==============================================================================
 # DATOS DE LA EMPRESA

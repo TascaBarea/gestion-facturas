@@ -10,9 +10,20 @@ on:
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
+    env:
+      PARSEO_ROOT: ${{ github.workspace }}/Parseo
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout gestion-facturas
+        uses: actions/checkout@v6
+        with:
+          path: gestion-facturas
+
+      - name: Checkout Parseo canonicamente
+        uses: actions/checkout@v6
+        with:
+          repository: TascaBarea/Parseo
+          path: Parseo
 
       - name: Setup Python 3.13
         uses: actions/setup-python@v6
@@ -20,12 +31,15 @@ jobs:
           python-version: "3.13"
 
       - name: Instalar dependencias
+        working-directory: gestion-facturas
         run: |
           pip install --upgrade pip
           pip install -e ".[dev]"
 
       - name: Ejecutar tests unitarios
+        working-directory: gestion-facturas
         run: pytest tests/unit/ -v --tb=short -m unit
 
       - name: Ejecutar tests con cobertura
+        working-directory: gestion-facturas
         run: pytest tests/unit/ --cov=nucleo --cov=api --cov-report=term-missing --tb=short
