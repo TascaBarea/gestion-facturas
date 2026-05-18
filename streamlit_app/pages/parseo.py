@@ -30,15 +30,17 @@ SNAPSHOTS_DIR = Path(r"C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\datos\snap
 # ── Importar motor Parseo (modo local) ───────────────────────────────────────
 
 PARSEO_DISPONIBLE = False
+_PARSEO_IMPORT_ERROR = None  # diagnóstico: excepción real si el import falla
 try:
     if r"C:\_ARCHIVOS\TRABAJO\Facturas\Parseo" not in sys.path:
         sys.path.insert(0, r"C:\_ARCHIVOS\TRABAJO\Facturas\Parseo")
     from main import procesar_factura, cargar_diccionario  # type: ignore
     from extractores import listar_extractores  # type: ignore
+    from salidas import generar_excel as generar_excel_parseo  # type: ignore
 
     PARSEO_DISPONIBLE = True
-except ImportError:
-    pass
+except ImportError as e:
+    _PARSEO_IMPORT_ERROR = e
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -154,6 +156,10 @@ if not PARSEO_DISPONIBLE:
         "⚠️ Motor de parseo local no disponible — requiere acceso al PC "
         "con la carpeta Parseo."
     )
+    if _PARSEO_IMPORT_ERROR is not None:
+        st.error(f"Detalle del fallo de import: {_PARSEO_IMPORT_ERROR!r}")
+        with st.expander("Traceback completo del ImportError"):
+            st.exception(_PARSEO_IMPORT_ERROR)
     uploaded = st.file_uploader(
         "Sube PDFs para parseo básico", type=["pdf"], accept_multiple_files=True
     )
@@ -164,166 +170,30 @@ if not PARSEO_DISPONIBLE:
         )
     st.stop()
 
-# ── Controles ─────────────────────────────────────────────────────────────────
-
-trimestres = _detectar_trimestres()
-
-if not trimestres:
-    st.error("No se encontraron carpetas de facturas en Dropbox.")
-    st.stop()
-
-# Dropdown 1: Año
-anyos = sorted({t["year"] for t in trimestres}, reverse=True)
-anyo = st.selectbox("Año", anyos)
-
-# Dropdown 2: Trimestre (filtrado por año)
-tris_anyo = [t for t in trimestres if t["year"] == anyo]
-opc_tri = [f"{t['label']}  ({t['num_pdfs']} facturas)" for t in tris_anyo]
-idx = st.selectbox("Trimestre", range(len(opc_tri)), format_func=lambda i: opc_tri[i])
-tri = tris_anyo[idx]
-
-# Selección atrasadas
-opc_atrasadas = ["Solo trimestre"]
-if tri["tiene_atrasadas"]:
-    opc_atrasadas += [
-        f"Solo ATRASADAS ({tri['num_atrasadas']})",
-        f"Trimestre + ATRASADAS ({tri['num_pdfs']} + {tri['num_atrasadas']})",
-    ]
-sel_atrasadas = st.radio("Carpeta", opc_atrasadas, horizontal=True) if len(opc_atrasadas) > 1 else opc_atrasadas[0]
-
-# Recopilar PDFs según selección
-archivos: list[Path] = []
-if "Solo ATRASADAS" not in sel_atrasadas:
-    archivos += sorted(Path(tri["path"]).glob("*.pdf"))
-if "ATRASADAS" in sel_atrasadas and "Solo trimestre" not in sel_atrasadas and tri["path_atrasadas"]:
-    archivos += sorted(Path(tri["path_atrasadas"]).glob("*.pdf"))
-
-modo = st.radio(
-    "Facturas a procesar",
-    ["Todas", "Factura concreta"],
-    horizontal=True,
-)
-
-if modo == "Factura concreta":
-    nombres = [p.name for p in archivos]
-    sel = st.selectbox("Seleccionar PDF", nombres)
-    archivos = [p for p in archivos if p.name == sel]
-
-st.caption(f"{len(archivos)} archivo(s) seleccionado(s)")
-
-# ── Ejecutar parseo ──────────────────────────────────────────────────────────
-
-if st.button("▶️ Ejecutar Parseo", type="primary", use_container_width=True):
-    if not archivos:
-        st.warning("No hay PDFs para procesar.")
-        st.stop()
-
-    indice = _cargar_indice()
-    resultados = []
-    barra = st.progress(0, text="Parseando facturas...")
-
-    for i, pdf in enumerate(archivos):
-        try:
-            factura = procesar_factura(pdf, indice)
-        except Exception as exc:
-            # Crear factura de error sin romper el lote
-            from nucleo.factura import Factura  # type: ignore
-
-            factura = Factura(archivo=pdf.name, numero="")
-            factura.errores.append(str(exc))
-            factura.cuadre = "ERROR"
-        resultados.append(factura)
-        barra.progress(
-            (i + 1) / len(archivos),
-            text=f"[{i + 1}/{len(archivos)}] {pdf.name[:50]}",
-        )
-
-    barra.empty()
-    st.session_state["parseo_resultados"] = resultados
-    st.session_state["parseo_trimestre"] = tri["label"]
-    st.session_state["parseo_tri"] = tri
-
-    # Guardar snapshot del parseo original
-    try:
-        from nucleo.aprendizaje import guardar_snapshot
-        snapshot_path = guardar_snapshot(resultados, tri["label"])
-        st.caption(f"Snapshot guardado: {snapshot_path.name}")
-    except Exception:
-        pass  # No bloquear el parseo si falla el snapshot
-
-# ── Resultados ────────────────────────────────────────────────────────────────
-
-resultados = st.session_state.get("parseo_resultados")
-if not resultados:
-    st.stop()
-
-trimestre_label = st.session_state.get("parseo_trimestre", "")
+# ── Export Excel ──────────────────────────────────────────────────────────────
 
 st.divider()
-st.subheader(f"Resultados — {trimestre_label}")
 
-# Métricas resumen
-total_ok = sum(1 for f in resultados if f.cuadre == "OK")
-total_desc = sum(1 for f in resultados if f.cuadre.startswith("DESCUADRE"))
-total_err = len(resultados) - total_ok - total_desc
-total_lineas = sum(f.num_lineas for f in resultados)
+excel_nombre = f"COMPRAS_{trimestre_label}_parseo.xlsx"
 
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Total", len(resultados))
-c2.metric("OK", total_ok)
-c3.metric("Descuadre", total_desc)
-c4.metric("Errores / Sin extractor", total_err)
-st.metric("Líneas extraídas", total_lineas)
+import tempfile
 
-# Panel de sugerencias de correcciones anteriores
-try:
-    from nucleo.aprendizaje import obtener_sugerencias
+with tempfile.TemporaryDirectory() as _tmpdir:
+    ruta_excel = Path(_tmpdir) / excel_nombre
+    generar_excel_parseo(
+        resultados,
+        ruta_excel,
+        ruta_diccionario=DICCIONARIO_PATH,
+    )
+    excel_bytes = ruta_excel.read_bytes()
 
-    todas_sugerencias = []
-    for r in resultados:
-        sugs = obtener_sugerencias(r.lineas, r.proveedor)
-        todas_sugerencias.extend(sugs)
-
-    if todas_sugerencias:
-        st.markdown("---")
-        st.subheader(f"💡 {len(todas_sugerencias)} sugerencias de correcciones anteriores")
-
-        df_sug = pd.DataFrame(todas_sugerencias)
-        df_sug_display = df_sug[['proveedor', 'articulo', 'campo', 'valor_original', 'valor_sugerido', 'confianza']]
-        df_sug_display.columns = ['Proveedor', 'Artículo', 'Campo', 'Antes', 'Sugerido', 'Confianza']
-
-        st.dataframe(df_sug_display, use_container_width=True, hide_index=True)
-
-        col1, col2 = st.columns(2)
-        if col1.button("✅ Aplicar sugerencias", key="btn_aplicar_sug"):
-            for sug in todas_sugerencias:
-                idx = sug['indice']
-                campo = sug['campo']
-                for r in resultados:
-                    if r.proveedor.upper() == sug['proveedor'].upper():
-                        if idx < len(r.lineas):
-                            setattr(r.lineas[idx], campo, sug['valor_sugerido'])
-
-            from nucleo.aprendizaje import confirmar_correcciones
-            proveedores_arts = {}
-            for sug in todas_sugerencias:
-                prov = sug['proveedor']
-                if prov not in proveedores_arts:
-                    proveedores_arts[prov] = []
-                proveedores_arts[prov].append(sug['articulo'])
-            for prov, arts in proveedores_arts.items():
-                confirmar_correcciones(prov, arts)
-
-            st.success(f"Aplicadas {len(todas_sugerencias)} correcciones")
-            st.rerun()
-
-        if col2.button("❌ Ignorar", key="btn_ignorar_sug"):
-            pass
-
-except ImportError:
-    pass  # Parseo no disponible (modo cloud)
-except Exception as e:
-    st.caption(f"Sugerencias no disponibles: {e}")
+st.download_button(
+    "📥 Descargar Excel",
+    data=excel_bytes,
+    file_name=excel_nombre,
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    use_container_width=True,
+)
 
 # Tabla resumen
 filas_resumen = []
