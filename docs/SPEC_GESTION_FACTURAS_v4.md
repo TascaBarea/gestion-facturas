@@ -1,8 +1,39 @@
-# SPEC GESTION-FACTURAS v4.18
+# SPEC GESTION-FACTURAS v4.19
 
-> Documento maestro unificado — actualizado 15/05/2026
+> Documento maestro unificado — actualizado 19/05/2026
 > Consolida: SPEC v3.0 (28/03) + ESQUEMA DEFINITIVO v5.4 (28/03) + Propuesta Migración Cloud (29/03)
 > Ruta local: `C:\_ARCHIVOS\TRABAJO\Facturas\gestion-facturas\`
+
+---
+
+## CHANGELOG v4.19 — 19/05/2026 (Cierre refactor Parseo/Streamlit + CI cross-repo estable)
+
+Contexto del cierre:
+- Commit de consolidación CI cross-repo: `b5985f4` (`ci: use PARSEO_RO_TOKEN for cross-repo checkout of Parseo`).
+- Run CI verde: `26066541701` (workflow `Tests`, checkout cruzado + unit + cobertura en verde).
+- Parseo en versión canónica: `5.26`.
+
+PRs cerradas en este bloque:
+- **PR-1**: contrato de esquema SPEC v4.x en Parseo (`tests/test_excel_schema_spec_v4.py`).
+- **PR-2**: paridad CLI + Streamlit en export canónico (`COMPRAS_<trim>_parseo.xlsx`) y archivado de `main.py` legacy en gestion-facturas.
+- **PR-3**: fuente única de `VERSION` en gestion-facturas leyendo Parseo canónico por `importlib.util` + CI con doble checkout.
+
+6 fixes concretos aplicados:
+1. Test de contrato de cabeceras exactas SPEC v4.x (hojas `Lineas` y `Facturas`) en Parseo.
+2. Streamlit `pages/parseo.py` deja de construir DataFrame legacy y delega en `salidas.generar_excel` canónico de Parseo.
+3. Naming alineado CLI + dashboard: salida canónica `COMPRAS_<trim>_parseo.xlsx`.
+4. `gestion-facturas/main.py` legacy archivado (`main_LEGACY_ARCHIVADO.py`) y stub de protección con `sys.exit(1)`.
+5. `gestion-facturas/config/settings.py` toma `VERSION` desde `Parseo/config/settings.py` (soporte `PARSEO_ROOT`).
+6. Workflow `tests.yml` con checkout cruzado autenticado de Parseo vía `secrets.PARSEO_RO_TOKEN`.
+
+TBDs cerrados por este refactor (pasan a CERRADO):
+- **Paridad de formato Excel CLI vs Streamlit**: CERRADO (ambos caminos usan el exportador canónico de Parseo).
+- **Fuente de verdad de VERSION entre repos**: CERRADO (`config/settings.py` en gestion-facturas ya no mantiene versión duplicada).
+- **Blindaje por test de contrato de esquema**: CERRADO (falla en CI si se rompe la forma v4.x del Excel).
+
+Notas de coherencia documental:
+- Las referencias a columnas legacy (`TOTAL_CALCULADO`, `MATCH`, `CÓDIGO`, `LÍNEAS`, `ERRORES`) quedan solo como histórico en changelogs/tareas previas.
+- La salida canónica vigente para Parseo es `COMPRAS_<trim>_parseo.xlsx`.
 
 ---
 
@@ -1214,7 +1245,7 @@ Dropbox/.../CONTABILIDAD/
 
 **Ruta local:** `C:\Users\jaime\Dropbox\File inviati\TASCA BAREA S.L.L\CONTABILIDAD\`
 
-### 6.2 PARSEO (v5.18) — ✅ 85%
+### 6.2 PARSEO (v5.26) — ✅ 85%
 
 **Script:** `compras/main.py` (~6.000 líneas)
 **Ejecución:** Manual (menú). Se queda en PC local (ver §12 Migración Cloud).
@@ -1423,7 +1454,7 @@ Barea - Datos Compartidos/
 Scripts que sincronizan a Drive:
 - `ventas_semana/script_barea.py` → `["Ventas", "Año en curso"]` (Excel ventas + dashboards).
 - `scripts/actualizar_movimientos.py` → `["Movimientos Banco", "Año en curso"]`.
-- `Parseo/main.py` → `["Compras", "Año en curso"]` (Facturas_XTxx_*.xlsx).
+- `Parseo/main.py` → `["Compras", "Año en curso"]` (`COMPRAS_XTxx_parseo.xlsx`).
 - `gmail/gmail.py` → `["Compras", "Año en curso"]` (ambos Excels) + Dropbox para Facturas Provisional + PDFs.
 - `cuadre/banco/cuadre.py` → `["Cuadres"]` (best-effort).
 

@@ -7,6 +7,8 @@ description: "Decisiones de diseño, contexto operativo y reglas no documentadas
 
 Esta skill **no duplica el SPEC**. El SPEC (`docs/SPEC_GESTION_FACTURAS_v4.md`) es la fuente canónica para versiones, conteos, arquitectura, paths, nomenclatura y formatos de Excel. Lee el SPEC para esos datos. Esta skill captura lo que el SPEC no recoge: las decisiones de diseño tomadas en conversaciones de planificación, el contexto operativo del usuario y las reglas que aún no están implementadas.
 
+Estado de referencia (19/05/2026): Parseo canónico en `v5.26`.
+
 ## Cómo usar esta skill junto con el SPEC
 
 | Para esto | Consulta |
@@ -156,6 +158,9 @@ Log de decisiones tomadas en conversaciones de planificación. No revertirlas si
 - Modo headless deferido hasta multiusuario o Streamlit producción.
 - Backups automáticos obligatorios antes de sobrescribir cualquier COMPRAS.
 - Sistema de logging migrar a JSONL estructurado (hoy es .txt plano).
+- Refactor Parseo/Streamlit 19/05/2026 cerrado: Streamlit y CLI exportan el mismo formato canónico (`COMPRAS_<trim>_parseo.xlsx`) usando el exportador de Parseo.
+- Fuente de verdad de `VERSION` unificada: gestion-facturas lee `Parseo/config/settings.py` (sin duplicar número de versión local).
+- CI cross-repo cerrado con checkout autenticado de Parseo mediante `PARSEO_RO_TOKEN`.
 
 ## Decisiones abiertas (TBD)
 
@@ -170,7 +175,7 @@ Cuando se cierren, mover a la sección anterior y eliminar de aquí.
 
 ## Cómo encajan estas convenciones con el código actual
 
-Lo que ya respeta el código (ver SPEC §6.2): nomenclatura de archivos, MAESTRO como fuente de verdad, prorrateo de portes, fuzzy 85% en nombre de proveedor, sistema de fallback pdfplumber→tesseract, formato COMPRAS provisional documentado.
+Lo que ya respeta el código (ver SPEC §6.2): nomenclatura de archivos, MAESTRO como fuente de verdad, prorrateo de portes, fuzzy 85% en nombre de proveedor, sistema de fallback pdfplumber→tesseract, formato COMPRAS canónico SPEC v4.x documentado.
 
 Lo que falta y hay que añadir, en orden sugerido de prioridad:
 
