@@ -1,19 +1,16 @@
 {
-  "fecha_ejecucion": "2026-05-08T18:19:10",
+  "fecha_ejecucion": "2026-05-15T11:05:10",
   "total_procesados": 7,
-  "exitosos": 5,
-  "requieren_revision": 2,
+  "exitosos": 6,
+  "requieren_revision": 1,
   "errores": 0,
   "proveedores_ok": [
+    "BLANCO GUTIERREZ PILAR",
     "CERES CERVEZA SL",
-    "DEBORA GARCIA TOLEDANO",
-    "DISTRIBUCIONES LAVAPIES S.COOP.MAD.",
-    "PESCADOS DON FELIX SL",
-    "PILAR RODRIGUEZ"
+    "SABORES DE PATERNA SCA"
   ],
   "revision": [
-    "CERES CERVEZA SL",
-    "administracion@cafedromedario.com"
+    "\"Factura de tu compra de DIA nº ES13908020011424620260509182553-B72738602\" <clientes@dia.es>"
   ],
   "errores_detalle": []
 }
