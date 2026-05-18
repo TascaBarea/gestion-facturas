@@ -23,6 +23,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: TascaBarea/Parseo
+          token: ${{ secrets.PARSEO_RO_TOKEN }}
           path: Parseo
 
       - name: Setup Python 3.13
